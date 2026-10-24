@@ -184,9 +184,9 @@
         <option value="energetic">⚡ Full of energy</option>
         <option value="tired">😴 Tired / want something calm</option>
       </select>
-      <div id="snackPickerWrap" class="hidden">
-        <label>Pick a snack idea</label>
-        <select id="snackPicker"><option value="">Choose a snack...</option></select>
+      <div id="ideaPickerWrap" class="hidden">
+        <label id="ideaPickerLabel">Pick an idea</label>
+        <select id="ideaPicker"><option value="">Choose...</option></select>
       </div>
       <button id="aiSuggestBtn">Get an idea</button>
       <div id="aiSuggestionBox" class="hidden" style="margin-top: 12px; padding: 12px; border-radius: 12px; background: #fff;"></div>
@@ -869,48 +869,109 @@ $("testNotifyBtn").onclick = async () => {
 // --- AI assistant ---
 const PILLAR_LABELS = { fuel: "Fuel 🍎", move: "Move 🏃", grow: "Grow 🌱" };
 
-const SNACK_IDEAS = [
-  "Apple slices + peanut butter",
-  "Veggie sticks + hummus",
-  "Cheese + wholegrain crackers",
-  "Greek yoghurt + berries",
-  "Yoghurt + muesli",
-  "Fruit + popcorn",
-  "Cottage cheese + fruit",
-  "Boiled egg + mandarin",
-  "Cheese + cherry tomatoes",
-  "Wholegrain toast + ricotta + tomato",
-  "Nuts + fresh fruit",
-  "Roasted chickpeas + pumpkin seeds",
-  "Crackers + cheese or tuna",
-  "Smoothie with milk + fruit + yoghurt",
-  "Rice crackers + cheese stick + fruit or cherry tomatoes",
-  "Mini banana muffin + yoghurt + berries",
-  "Corn chips + guacamole or hummus + fruit or baby cucumbers",
-  "Mini tuna sushi + milk",
-];
-const snackPicker = $("snackPicker");
-SNACK_IDEAS.forEach((snack) => {
-  const opt = document.createElement("option");
-  opt.value = snack; opt.textContent = snack;
-  snackPicker.appendChild(opt);
-});
+const IDEA_LISTS = {
+  hungry: [
+    "Apple slices + peanut butter",
+    "Veggie sticks + hummus",
+    "Cheese + wholegrain crackers",
+    "Greek yoghurt + berries",
+    "Yoghurt + muesli",
+    "Fruit + popcorn",
+    "Cottage cheese + fruit",
+    "Boiled egg + mandarin",
+    "Cheese + cherry tomatoes",
+    "Wholegrain toast + ricotta + tomato",
+    "Nuts + fresh fruit",
+    "Roasted chickpeas + pumpkin seeds",
+    "Crackers + cheese or tuna",
+    "Smoothie with milk + fruit + yoghurt",
+    "Rice crackers + cheese stick + fruit or cherry tomatoes",
+    "Mini banana muffin + yoghurt + berries",
+    "Corn chips + guacamole or hummus + fruit or baby cucumbers",
+    "Mini tuna sushi + milk",
+  ],
+  energetic: [
+    "10-minute dance party to your favourite songs",
+    "Backyard obstacle course",
+    "Jump rope challenge — beat your best count",
+    "Bike ride around the block",
+    "Animal walk relay (crab walk, bear crawl, frog jump)",
+    "Backyard soccer or basketball shootout",
+    "Trampoline bounce session",
+    "Scooter or skateboard loop around the block",
+    "Family relay race",
+    "Hula hoop challenge",
+    "Follow-the-leader exercise circuit (jumping jacks, squats, star jumps)",
+    "Swimming or water play",
+  ],
+  bored: [
+    "Build a blanket fort and read inside it",
+    "Start a mini veggie or herb pot garden",
+    "Try a new recipe together from the Recipes tab",
+    "Draw or paint something outside",
+    "Backyard or park scavenger hunt",
+    "Make up a brand new game with a ball",
+    "Write and perform a short play for the family",
+    "Learn a magic trick",
+    "Build something with Lego or blocks",
+    "Make a scrapbook of a favourite memory",
+    "Create an obstacle course for a pet or sibling",
+    "Have a family trivia or board game night",
+  ],
+  tired: [
+    "Quiet reading time with a favourite book",
+    "Gentle stretching or kids' yoga",
+    "Listen to a calming playlist or podcast",
+    "Colouring or drawing quietly",
+    "Puzzle time",
+    "A warm bath or shower",
+    "Journal or draw about your day",
+    "Cuddle up and watch the clouds or stars outside",
+    "A quiet board game with the family",
+    "5 slow, deep breaths with your eyes closed",
+  ],
+};
+const IDEA_META = {
+  hungry: { pill: "fuel", label: "Healthy Snack 🍎", blurb: "A quick, healthy snack idea — enjoy!" },
+  energetic: { pill: "move", label: "Move idea 🏃", blurb: "Get moving and have fun with it!" },
+  bored: { pill: "grow", label: "Try this 🌱", blurb: "A fun thing to try right now." },
+  tired: { pill: "grow", label: "Calm idea 🌿", blurb: "Something gentle and calming." },
+};
+const IDEA_PICKER_LABEL = {
+  hungry: "Pick a snack idea",
+  energetic: "Pick something active",
+  bored: "Pick something to try",
+  tired: "Pick something calm",
+};
+const ideaPicker = $("ideaPicker");
 
 $("aiMood").onchange = () => {
-  const isHungry = $("aiMood").value === "hungry";
-  if (isHungry) { show("snackPickerWrap"); hide("aiSuggestBtn"); }
-  else { hide("snackPickerWrap"); show("aiSuggestBtn"); snackPicker.value = ""; }
+  const mood = $("aiMood").value;
+  const list = IDEA_LISTS[mood];
   hide("aiSuggestionBox");
   clearError("aiError");
+  if (list) {
+    $("ideaPickerLabel").textContent = IDEA_PICKER_LABEL[mood];
+    ideaPicker.innerHTML = '<option value="">Choose...</option>';
+    list.forEach((item) => {
+      const opt = document.createElement("option");
+      opt.value = item; opt.textContent = item;
+      ideaPicker.appendChild(opt);
+    });
+    show("ideaPickerWrap"); hide("aiSuggestBtn");
+  } else {
+    hide("ideaPickerWrap"); show("aiSuggestBtn"); ideaPicker.value = "";
+  }
 };
 
-snackPicker.onchange = () => {
+ideaPicker.onchange = () => {
   clearError("aiError");
-  const snack = snackPicker.value;
-  if (!snack) { hide("aiSuggestionBox"); return; }
-  $("aiSuggestionBox").innerHTML = `<span class="pill fuel">Healthy Snack 🍎</span>
-    <h4 style="margin: 8px 0 4px;">${snack}</h4>
-    <p class="muted" style="margin:0;">A quick, healthy snack idea — enjoy!</p>`;
+  const item = ideaPicker.value;
+  if (!item) { hide("aiSuggestionBox"); return; }
+  const meta = IDEA_META[$("aiMood").value] || { pill: "fuel", label: "Idea", blurb: "" };
+  $("aiSuggestionBox").innerHTML = `<span class="pill ${meta.pill}">${meta.label}</span>
+    <h4 style="margin: 8px 0 4px;">${item}</h4>
+    <p class="muted" style="margin:0;">${meta.blurb}</p>`;
   show("aiSuggestionBox");
 };
 
