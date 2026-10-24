@@ -18,10 +18,10 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 ## Core features (Sessions 1–5 scope)
 | Item | Status | Notes |
 |---|---|---|
-| Family PIN/passcode login | ⛔ | Not started |
-| Shared family calendar (server-backed) | ⛔ | Not started |
-| Fuel/Move/Grow daily "Daily Three" pillars | ⛔ | Design carries over from V1's MOVE/MAKE/OUTSIDE + "Pick 3 Habits" system |
-| Star ledger (spendable + lifetime balances, no duplicate awards) | ⛔ | Not started |
+| Family PIN/passcode login | 🚧 | Signup (`/api/family/signup`) + login (`/api/family/login`) built, using a join code + PIN, PIN hashed with PBKDF2, D1-backed session tokens. Code written and syntax-checked, but **not yet tested against the live site** — needs the `002_add_join_code_and_sessions.sql` migration run first, then a real signup/login through the UI. |
+| Shared family calendar (server-backed) | 🚧 | `/api/events` (list/create/delete) built and wired into the UI. Not yet tested live. |
+| Fuel/Move/Grow daily "Daily Three" pillars | 🚧 | Events can be tagged with a pillar (fuel/move/grow); the dedicated "Daily Three" dashboard view (separate from the raw calendar) isn't built yet. |
+| Star ledger (spendable + lifetime balances, no duplicate awards) | 🚧 | `/api/stars` built: append-only ledger, idempotency-key duplicate protection, balance can't go negative. "Give a star" button wired into the UI. Not yet tested live. |
 | Recipes module | ⛔ | Not started |
 
 ## Extended features (Sessions 6–14 scope)
@@ -42,4 +42,4 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 | V1 snapshot | ✅ | Frozen 2026-10-24. See claude.ai Tobias project doc `claude/version-snapshots.md` for revert instructions. |
 
 ---
-*Last updated: 2026-10-24 — Full infrastructure live: Worker, static site, and real D1 database with schema applied, all confirmed working at https://habitquest.ihav.workers.dev. Ready to start building real features (Session 2: login, calendar, star ledger).*
+*Last updated: 2026-10-24 — Session 2 code written (login, members, calendar, star ledger) and syntax-checked, but not yet proven live. Next: run the `002_add_join_code_and_sessions.sql` migration on the real database, deploy, and test end-to-end through the actual UI before marking anything ✅.*
