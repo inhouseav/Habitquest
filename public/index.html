@@ -173,11 +173,21 @@
 
     <div class="card">
       <h3>Need an idea? 🤖</h3>
-      <p class="muted">Get a fun, personalized activity suggestion.</p>
+      <p class="muted">Get a fun activity suggestion — or a healthy snack idea.</p>
       <label>For</label>
       <select id="aiMemberSelect"></select>
-      <label>How are they feeling / in the mood for? (optional)</label>
-      <input id="aiMood" placeholder="e.g. bored, hungry, full of energy" />
+      <label>How are they feeling / in the mood for?</label>
+      <select id="aiMood">
+        <option value="">Choose one...</option>
+        <option value="hungry">🍎 Hungry</option>
+        <option value="bored">😐 Bored</option>
+        <option value="energetic">⚡ Full of energy</option>
+        <option value="tired">😴 Tired / want something calm</option>
+      </select>
+      <div id="snackPickerWrap" class="hidden">
+        <label>Pick a snack idea</label>
+        <select id="snackPicker"><option value="">Choose a snack...</option></select>
+      </div>
       <button id="aiSuggestBtn">Get an idea</button>
       <div id="aiSuggestionBox" class="hidden" style="margin-top: 12px; padding: 12px; border-radius: 12px; background: #fff;"></div>
       <div class="error hidden" id="aiError"></div>
@@ -767,7 +777,6 @@ $("addShoppingBtn").onclick = async () => {
   } catch (err) { showError("shoppingError", err.message); }
 };
 $("newShoppingItem").addEventListener("keydown", (e) => { if (e.key === "Enter") $("addShoppingBtn").click(); });
-$("aiMood").addEventListener("keydown", (e) => { if (e.key === "Enter") $("aiSuggestBtn").click(); });
 
 // --- Family meeting ---
 async function loadMeeting() {
@@ -859,6 +868,52 @@ $("testNotifyBtn").onclick = async () => {
 
 // --- AI assistant ---
 const PILLAR_LABELS = { fuel: "Fuel 🍎", move: "Move 🏃", grow: "Grow 🌱" };
+
+const SNACK_IDEAS = [
+  "Apple slices + peanut butter",
+  "Veggie sticks + hummus",
+  "Cheese + wholegrain crackers",
+  "Greek yoghurt + berries",
+  "Yoghurt + muesli",
+  "Fruit + popcorn",
+  "Cottage cheese + fruit",
+  "Boiled egg + mandarin",
+  "Cheese + cherry tomatoes",
+  "Wholegrain toast + ricotta + tomato",
+  "Nuts + fresh fruit",
+  "Roasted chickpeas + pumpkin seeds",
+  "Crackers + cheese or tuna",
+  "Smoothie with milk + fruit + yoghurt",
+  "Rice crackers + cheese stick + fruit or cherry tomatoes",
+  "Mini banana muffin + yoghurt + berries",
+  "Corn chips + guacamole or hummus + fruit or baby cucumbers",
+  "Mini tuna sushi + milk",
+];
+const snackPicker = $("snackPicker");
+SNACK_IDEAS.forEach((snack) => {
+  const opt = document.createElement("option");
+  opt.value = snack; opt.textContent = snack;
+  snackPicker.appendChild(opt);
+});
+
+$("aiMood").onchange = () => {
+  const isHungry = $("aiMood").value === "hungry";
+  if (isHungry) { show("snackPickerWrap"); hide("aiSuggestBtn"); }
+  else { hide("snackPickerWrap"); show("aiSuggestBtn"); snackPicker.value = ""; }
+  hide("aiSuggestionBox");
+  clearError("aiError");
+};
+
+snackPicker.onchange = () => {
+  clearError("aiError");
+  const snack = snackPicker.value;
+  if (!snack) { hide("aiSuggestionBox"); return; }
+  $("aiSuggestionBox").innerHTML = `<span class="pill fuel">Healthy Snack 🍎</span>
+    <h4 style="margin: 8px 0 4px;">${snack}</h4>
+    <p class="muted" style="margin:0;">A quick, healthy snack idea — enjoy!</p>`;
+  show("aiSuggestionBox");
+};
+
 $("aiSuggestBtn").onclick = async () => {
   clearError("aiError");
   hide("aiSuggestionBox");
