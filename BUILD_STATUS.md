@@ -33,9 +33,9 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 | Weekly family meetings | 🚧 | `/api/meetings` built: one notes doc per family per week (Monday-starting). Not yet tested live. |
 | Reward shop | 🚧 | `/api/rewards` built: parents add rewards with a star cost, any member can redeem (spends stars via the same ledger, can't go negative). Not yet tested live. |
 | Photo memory books | ⛔ | Not started — needs an R2 bucket, which Maddie hasn't created yet (same process as the D1 database) |
-| External calendar sync (Google Calendar) | 🔒 | **Skipped per Maddie's decision (2026-10-24)** — needs her to register an OAuth app in Google Cloud Console herself; revisit only if time allows before the deadline |
-| Push notifications | 🔒 | **Skipped per Maddie's decision (2026-10-24)** — needs a VAPID key pasted into Cloudflare; revisit only if time allows |
-| AI planning assistant | 🔒 | **Skipped per Maddie's decision (2026-10-24)** — needs a paid AI API key/account; revisit only if time allows |
+| External calendar sync (Google Calendar) | 🚧 | In progress 2026-10-24 — Maddie decided to un-skip this and the two below. Needs her to register an OAuth app in Google Cloud Console. |
+| Push notifications | ✅ | **Tested live 2026-10-24.** Hand-rolled Web Push (VAPID + RFC 8291 encryption via Web Crypto API — no npm package, no third-party account needed). New calendar events now also notify the rest of the family automatically. Maddie confirmed a real notification banner on her Mac (after discovering macOS Focus mode was silently blocking it). |
+| AI planning assistant | 🔒 | **Still skipped for now** — needs a paid AI API key/account; revisit only if time allows |
 
 ## V1 (frozen, untouched)
 | Item | Status | Notes |

@@ -32,3 +32,16 @@ Every real test performed, with date, what was tested, and result. No feature ge
   **Result:** PASS — `{"ok": true, "service": "habitquest-api", "db_binding_present": true, "db_reachable": true, "photos_binding_present": false}`. Database is genuinely live and queryable from the deployed Worker.
 
 **Session 1 is complete and fully verified live — real Worker, real static site, real D1 database with schema applied, all confirmed end-to-end.** Next: Session 2 (family PIN login, shared calendar, star ledger — pure code work, no more dashboard setup needed).
+
+- **Test:** Sessions 2 core features (login, members, calendar, star ledger).
+  **Method:** Maddie created a real family ("The Walkers"), logged in, added members (jim, jam), added a calendar event, gave stars.
+  **Result:** PASS — all persisted correctly through a real session.
+- **Test:** Calendar redesigned as a month grid, then event owner labeling added.
+  **Method:** Maddie compared the live calendar to a reference screenshot and requested changes; both iterations deployed and viewed live.
+  **Result:** PASS — calendar now renders as a proper month grid with color-coded, member-labeled event chips.
+- **Test:** Push notifications (hand-rolled Web Push — VAPID JWT signing + RFC 8291 aes128gcm encryption via Web Crypto API, no npm package or third-party account).
+  **Method:** Ran a local Node script simulating a browser subscription, encrypting a real payload and decrypting it independently to prove the crypto was correct *before* shipping. Then Maddie ran migration `004_push_subscriptions.sql`, added the `VAPID_PRIVATE_JWK` secret in the Cloudflare dashboard, enabled notifications on her Mac in Chrome, and tapped "Send a test."
+  **Result:** PASS (after one real troubleshooting step) — first attempt showed "Sent to 2 device(s)!" from the server but no visible banner; root cause was macOS Focus/Do Not Disturb silently swallowing it. After turning that off, Maddie confirmed a real system notification banner appeared.
+- **Test:** Responsive two-column desktop layout + shopping list left-aligned text / right-aligned checkbox.
+  **Method:** Deployed and Maddie viewed on her Mac (wide screen).
+  **Result:** PASS — cards shown in two columns on the desktop screenshot she sent; shopping list items now show name-left, checkbox/delete-right as requested.
