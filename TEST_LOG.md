@@ -45,3 +45,6 @@ Every real test performed, with date, what was tested, and result. No feature ge
 - **Test:** Responsive two-column desktop layout + shopping list left-aligned text / right-aligned checkbox.
   **Method:** Deployed and Maddie viewed on her Mac (wide screen).
   **Result:** PASS — cards shown in two columns on the desktop screenshot she sent; shopping list items now show name-left, checkbox/delete-right as requested.
+- **Test:** Google Calendar sync (OAuth connect + one-way event push).
+  **Method:** Maddie registered a Google Cloud project + OAuth consent screen + OAuth client herself, added `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` to Cloudflare, and ran migration `005_google_calendar.sql`. First attempt silently failed (blank status, no button) because that migration hadn't run yet — once it was run, "Connect Google Calendar" appeared, the OAuth flow completed ("connected" shown), and a real test event added in the app ("Test sync") appeared on her actual Google Calendar.
+  **Result:** PASS.

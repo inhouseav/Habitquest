@@ -33,7 +33,7 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 | Weekly family meetings | 🚧 | `/api/meetings` built: one notes doc per family per week (Monday-starting). Not yet tested live. |
 | Reward shop | 🚧 | `/api/rewards` built: parents add rewards with a star cost, any member can redeem (spends stars via the same ledger, can't go negative). Not yet tested live. |
 | Photo memory books | ⛔ | Not started — needs an R2 bucket, which Maddie hasn't created yet (same process as the D1 database) |
-| External calendar sync (Google Calendar) | 🚧 | In progress 2026-10-24 — Maddie decided to un-skip this and the two below. Needs her to register an OAuth app in Google Cloud Console. |
+| External calendar sync (Google Calendar) | ✅ | **Tested live 2026-10-24.** One-way sync: new events added in Fuel the Fun also get created on the family's connected Google Calendar. Maddie registered the OAuth app herself, connected her account, added a real test event in the app, and confirmed it appeared on calendar.google.com. (Full two-way sync — pulling existing Google events in — was not built; honest about that scope limit.) |
 | Push notifications | ✅ | **Tested live 2026-10-24.** Hand-rolled Web Push (VAPID + RFC 8291 encryption via Web Crypto API — no npm package, no third-party account needed). New calendar events now also notify the rest of the family automatically. Maddie confirmed a real notification banner on her Mac (after discovering macOS Focus mode was silently blocking it). |
 | AI planning assistant | 🔒 | **Still skipped for now** — needs a paid AI API key/account; revisit only if time allows |
 
