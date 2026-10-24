@@ -12,7 +12,7 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 | GitHub repo created & connected | ✅ | `inhouseav/habitquest`, empty repo cloned 2026-10-24 |
 | Cloudflare Worker project | ✅ | Live at https://habitquest.ihav.workers.dev — deployed, public URL enabled, confirmed working 2026-10-24 |
 | Static site + API scaffold | ✅ | `src/worker.js` serves `public/` and handles `/api/health` — tested live, returned `{"ok": true, ...}` on 2026-10-24 |
-| D1 database | 🚧 | Real database `habitquest-db` created on Cloudflare 2026-10-24 (id `2fa8326b-db8d-4a92-99c0-83a24b7d2a86`) and bound in `wrangler.toml` — but the schema (`db/schema.sql`) hasn't been run against it yet, so it's empty. `/api/health` should now report `db_binding_present: true` once redeployed, but `db_reachable` will stay false until the tables exist. |
+| D1 database | ✅ | Real database `habitquest-db` (id `2fa8326b-db8d-4a92-99c0-83a24b7d2a86`) created, bound, and schema applied via the Cloudflare D1 console on 2026-10-24. All 5 tables confirmed present (`families`, `members`, `events`, `star_ledger`, `recipes`). Live `/api/health` check confirmed `db_binding_present: true` and `db_reachable: true`. |
 | R2 bucket (photos) | ⛔ | Not started; binding commented out for the same reason as D1 |
 
 ## Core features (Sessions 1–5 scope)
@@ -42,4 +42,4 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 | V1 snapshot | ✅ | Frozen 2026-10-24. See claude.ai Tobias project doc `claude/version-snapshots.md` for revert instructions. |
 
 ---
-*Last updated: 2026-10-24 — Session 1 complete. Live app confirmed working at https://habitquest.ihav.workers.dev.*
+*Last updated: 2026-10-24 — Full infrastructure live: Worker, static site, and real D1 database with schema applied, all confirmed working at https://habitquest.ihav.workers.dev. Ready to start building real features (Session 2: login, calendar, star ledger).*

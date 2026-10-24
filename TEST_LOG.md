@@ -21,4 +21,14 @@ Every real test performed, with date, what was tested, and result. No feature ge
   **Method:** Enabled the `workers.dev` Production toggle under the Worker's Domains tab, visited https://habitquest.ihav.workers.dev, clicked "Check API connection" on the live page.
   **Result:** PASS — page rendered correctly in the Calm & Clear design, and `/api/health` returned `{"ok": true, "service": "habitquest-api", "db_binding_present": false, "db_reachable": false, "photos_binding_present": false}` — correctly reporting that D1/R2 aren't wired up yet, exactly as BUILD_STATUS.md says.
 
-**Session 1 is complete and verified live.** Next: Session 2 (family PIN login, real D1 database, shared calendar).
+- **Test:** Real D1 database creation and binding.
+  **Method:** Created `habitquest-db` directly via Cloudflare dashboard (Worker → Settings → Bindings → Add binding → D1 Database → create new), which auto-attached it to the live Worker. Updated `wrangler.toml` with the real `database_id` to match.
+  **Result:** PASS — binding created successfully.
+- **Test:** Schema creation.
+  **Method:** Pasted the full contents of `db/schema.sql` into the D1 dashboard's Console tab and executed it, then ran `/tables`.
+  **Result:** PASS — all 5 expected tables present: `families`, `members`, `events`, `star_ledger`, `recipes`.
+- **Test:** End-to-end live health check after schema creation.
+  **Method:** Visited https://habitquest.ihav.workers.dev, clicked "Check API connection."
+  **Result:** PASS — `{"ok": true, "service": "habitquest-api", "db_binding_present": true, "db_reachable": true, "photos_binding_present": false}`. Database is genuinely live and queryable from the deployed Worker.
+
+**Session 1 is complete and fully verified live — real Worker, real static site, real D1 database with schema applied, all confirmed end-to-end.** Next: Session 2 (family PIN login, shared calendar, star ledger — pure code work, no more dashboard setup needed).
