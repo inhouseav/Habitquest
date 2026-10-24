@@ -71,6 +71,16 @@
   .checkbox-row { display: flex; align-items: center; gap: 10px; }
   .checkbox-row.checked span { text-decoration: line-through; opacity: 0.5; }
   .vote-btn { background: var(--blue); color: var(--text); }
+
+  /* Desktop / wide-screen layout: cards arrange into two columns so the
+     app isn't just a narrow phone-width strip stretched across a big screen.
+     On phones (below 900px) everything stays exactly as a single column. */
+  @media (min-width: 900px) {
+    .wrap { max-width: 920px; }
+    #homeScreen { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    #homeScreen .card { margin-bottom: 0; }
+    #homeScreen .top-bar, #homeScreen .full-width { grid-column: 1 / -1; }
+  }
 </style>
 </head>
 <body>
@@ -114,7 +124,7 @@
       <button class="secondary small" id="logoutBtn">Log out</button>
     </div>
 
-    <div class="card">
+    <div class="card full-width">
       <h3>Your family's join code</h3>
       <p class="muted">Share this so other family members can log in from their own device.</p>
       <div class="join-code" id="joinCodeDisplay">------</div>
@@ -140,7 +150,7 @@
       <div class="error hidden" id="memberError"></div>
     </div>
 
-    <div class="card">
+    <div class="card full-width">
       <div class="cal-header">
         <button class="small secondary" id="calPrevBtn">‹</button>
         <h3 id="calMonthLabel">Month Year</h3>
@@ -568,8 +578,8 @@ async function renderShopping() {
   data.items.forEach((item) => {
     const row = document.createElement("div");
     row.className = "checkbox-row" + (item.checked ? " checked" : "");
-    row.innerHTML = `<input type="checkbox" ${item.checked ? "checked" : ""} data-id="${item.id}" />
-      <span style="flex:1">${item.name}</span>
+    row.innerHTML = `<span style="flex:1">${item.name}</span>
+      <input type="checkbox" ${item.checked ? "checked" : ""} data-id="${item.id}" />
       <button class="small secondary" data-delete="${item.id}" style="margin:0;">✕</button>`;
     list.appendChild(row);
   });
