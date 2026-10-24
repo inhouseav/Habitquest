@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Fuel the Fun</title>
+<title>Fuel the Fun 🌱</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>" />
 <style>
   :root {
     --bg: #FAF6ED;
@@ -34,10 +35,26 @@
   label { display: block; font-size: 0.85rem; margin: 12px 0 4px; font-weight: 600; }
   input, select, textarea { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid #ddd3c0; background: #fff; font-size: 1rem; font-family: inherit; }
   textarea { resize: vertical; min-height: 80px; }
-  button { background: var(--terracotta); color: #fff; border: none; border-radius: 999px; padding: 12px 20px; font-size: 1rem; cursor: pointer; margin-top: 16px; width: 100%; }
+  button { background: var(--terracotta); color: #fff; border: none; border-radius: 999px; padding: 12px 20px; font-size: 1rem; cursor: pointer; margin-top: 16px; width: 100%; transition: transform 0.08s ease, filter 0.15s ease, box-shadow 0.15s ease; }
+  button:hover:not(:disabled) { filter: brightness(1.06); box-shadow: 0 2px 8px rgba(190, 112, 80, 0.3); }
+  button:active:not(:disabled) { transform: scale(0.97); filter: brightness(0.96); }
+  button.secondary:hover:not(:disabled) { box-shadow: 0 2px 8px rgba(124, 148, 115, 0.3); }
   button.secondary { background: var(--sage); color: var(--text); }
   button.small { width: auto; padding: 6px 14px; margin-top: 0; font-size: 0.85rem; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .card { transition: box-shadow 0.15s ease; }
+  .card:hover { box-shadow: 0 4px 18px rgba(24, 63, 53, 0.1); }
+  .tab { transition: background 0.15s ease; }
+  .tab:not(.active):hover { background: #d9e2cc; }
+  .recipe-row { cursor: pointer; }
+  .recipe-row:hover { background: #fbf8f0; }
+  .recipe-detail { margin-top: 6px; padding-left: 4px; }
+  .recipe-detail ul, .recipe-detail ol { margin: 4px 0; padding-left: 20px; }
+  .recipe-detail li { margin-bottom: 2px; }
+  .loading-text { opacity: 0.5; font-size: 0.85rem; font-style: italic; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--text); color: #fff; padding: 12px 22px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease; font-size: 0.9rem; max-width: 90vw; text-align: center; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--danger); }
   .error { color: var(--danger); font-size: 0.9rem; margin-top: 8px; }
   .member-row, .list-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 14px; background: #fff; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
   .member-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; }
@@ -145,7 +162,7 @@
     <div class="card">
       <h3>Today's Three 🌟</h3>
       <p class="muted">Fuel, Move, Grow — one of each a day!</p>
-      <div id="dailyThreeList"></div>
+      <div id="dailyThreeList"><p class="loading-text">Loading...</p></div>
     </div>
 
     <div class="card">
@@ -162,7 +179,7 @@
 
     <div class="card">
       <h3>Family members</h3>
-      <div id="membersList"></div>
+      <div id="membersList"><p class="loading-text">Loading...</p></div>
       <button class="secondary" id="showAddMemberBtn">+ Add a family member</button>
       <div id="addMemberForm" class="hidden" style="margin-top: 12px;">
         <label>Name</label>
@@ -208,7 +225,7 @@
 
     <div class="card">
       <h3>Reward shop 🎁</h3>
-      <div id="rewardsList"></div>
+      <div id="rewardsList"><p class="loading-text">Loading...</p></div>
       <button class="secondary" id="showAddRewardBtn">+ Add a reward</button>
       <div id="addRewardForm" class="hidden" style="margin-top: 12px;">
         <label>Reward</label>
@@ -222,7 +239,7 @@
 
     <div class="card">
       <h3>Recipes 🍳</h3>
-      <div id="recipesList"></div>
+      <div id="recipesList"><p class="loading-text">Loading...</p></div>
       <button class="secondary" id="showAddRecipeBtn">+ Add a recipe</button>
       <div id="addRecipeForm" class="hidden" style="margin-top: 12px;">
         <label>Title</label>
@@ -239,7 +256,9 @@
     <div class="card">
       <h3>This week's meals 🥗</h3>
       <p class="muted">Propose an idea for any day this week — everyone can vote!</p>
-      <div id="mealPlanList"></div>
+      <label>Voting as</label>
+      <select id="mealVoterSelect"></select>
+      <div id="mealPlanList" style="margin-top: 10px;"><p class="loading-text">Loading...</p></div>
       <button class="secondary" id="showAddMealBtn">+ Suggest a meal</button>
       <div id="addMealForm" class="hidden" style="margin-top: 12px;">
         <label>Day</label>
@@ -253,7 +272,7 @@
 
     <div class="card">
       <h3>Shopping list 🛒</h3>
-      <div id="shoppingList"></div>
+      <div id="shoppingList"><p class="loading-text">Loading...</p></div>
       <div style="display:flex; gap: 8px; margin-top: 12px;">
         <input id="newShoppingItem" placeholder="Add an item..." style="flex:1" />
         <button class="small" id="addShoppingBtn" style="margin-top:0;">Add</button>
@@ -273,6 +292,8 @@
 
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
 let state = { token: localStorage.getItem("ftf_token") || null, family: null, members: [] };
 
@@ -281,6 +302,15 @@ function show(id) { $(id).classList.remove("hidden"); }
 function hide(id) { $(id).classList.add("hidden"); }
 function showError(id, msg) { $(id).textContent = msg; show(id); }
 function clearError(id) { hide(id); $(id).textContent = ""; }
+let toastTimer = null;
+function toast(msg, isError = false) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.toggle("error", isError);
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+}
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function mondayOfWeek(d = new Date()) {
   const date = new Date(d);
@@ -359,6 +389,7 @@ function renderMembers() {
   const memberSelect = $("newEventMember"); memberSelect.innerHTML = "";
   const notifySelect = $("notifyMemberSelect"); notifySelect.innerHTML = "";
   const aiSelect = $("aiMemberSelect"); aiSelect.innerHTML = "";
+  const mealVoterSelect = $("mealVoterSelect"); mealVoterSelect.innerHTML = "";
   state.members.forEach((m) => {
     const row = document.createElement("div");
     row.className = "member-row";
@@ -372,9 +403,14 @@ function renderMembers() {
     notifySelect.appendChild(notifyOpt);
     const aiOpt = document.createElement("option"); aiOpt.value = m.id; aiOpt.textContent = m.display_name;
     aiSelect.appendChild(aiOpt);
+    const voterOpt = document.createElement("option"); voterOpt.value = m.id; voterOpt.textContent = m.display_name;
+    mealVoterSelect.appendChild(voterOpt);
   });
   const savedNotifyMember = localStorage.getItem("ftf_notify_member");
   if (savedNotifyMember) notifySelect.value = savedNotifyMember;
+  const savedVoter = localStorage.getItem("ftf_active_member") || savedNotifyMember;
+  if (savedVoter) mealVoterSelect.value = savedVoter;
+  mealVoterSelect.onchange = () => localStorage.setItem("ftf_active_member", mealVoterSelect.value);
   list.querySelectorAll("button[data-member]").forEach((btn) => { btn.onclick = () => giveStar(btn.getAttribute("data-member")); });
 }
 
@@ -390,7 +426,8 @@ async function giveStar(memberId) {
   try {
     await api("/api/stars", { method: "POST", body: JSON.stringify({ memberId, delta: 1, reason: "Given by a family member", idempotencyKey: crypto.randomUUID() })});
     await loadStars(memberId);
-  } catch (err) { alert(err.message); }
+    toast("⭐ Star given!");
+  } catch (err) { toast(err.message, true); }
 }
 
 $("showAddMemberBtn").onclick = () => show("addMemberForm");
@@ -520,7 +557,8 @@ async function renderDailyThree() {
         await api("/api/daily-three/complete", { method: "POST", body: JSON.stringify({ memberId: btn.getAttribute("data-member"), pillar: btn.getAttribute("data-pillar") })});
         await renderDailyThree();
         await loadStars(btn.getAttribute("data-member"));
-      } catch (err) { alert(err.message); }
+        toast("⭐ Nice work!");
+      } catch (err) { toast(err.message, true); }
     };
   });
 }
@@ -545,8 +583,8 @@ async function renderRewards() {
       try {
         await api(`/api/rewards/${rewardId}/redeem`, { method: "POST", body: JSON.stringify({ memberId }) });
         await loadStars(memberId);
-        alert("Redeemed! Enjoy 🎉");
-      } catch (err) { alert(err.message); }
+        toast("Redeemed! Enjoy 🎉");
+      } catch (err) { toast(err.message, true); }
     };
   });
 }
@@ -565,8 +603,15 @@ async function renderRecipes() {
   const list = $("recipesList"); list.innerHTML = "";
   if (!data.recipes.length) { list.innerHTML = '<p class="muted">No recipes yet — add your family\'s favorite below!</p>'; return; }
   data.recipes.forEach((r) => {
-    const row = document.createElement("div"); row.className = "event-row";
-    row.innerHTML = `<strong>${r.title}</strong><div class="muted">${r.ingredients.length} ingredients, ${r.steps.length} steps</div>`;
+    const row = document.createElement("div"); row.className = "event-row recipe-row";
+    row.innerHTML = `<strong>${r.title}</strong> <span class="muted">(tap to view) · ${r.ingredients.length} ingredients, ${r.steps.length} steps</span>
+      <div class="recipe-detail hidden">
+        <strong>Ingredients</strong>
+        <ul>${r.ingredients.map((i) => `<li>${i}</li>`).join("")}</ul>
+        <strong>Steps</strong>
+        <ol>${r.steps.map((s) => `<li>${s}</li>`).join("")}</ol>
+      </div>`;
+    row.onclick = () => row.querySelector(".recipe-detail").classList.toggle("hidden");
     list.appendChild(row);
   });
 }
@@ -596,12 +641,12 @@ async function renderMealPlan() {
   });
   list.querySelectorAll("button[data-id]").forEach((btn) => {
     btn.onclick = async () => {
-      const memberId = state.members[0] && state.members[0].id;
-      if (!memberId) return;
+      const memberId = $("mealVoterSelect").value;
+      if (!memberId) { toast("Add a family member first.", true); return; }
       try {
         await api(`/api/meal-plan/${btn.getAttribute("data-id")}/vote`, { method: "POST", body: JSON.stringify({ memberId })});
         await renderMealPlan();
-      } catch (err) { alert(err.message); }
+      } catch (err) { toast(err.message, true); }
     };
   });
 }
@@ -643,6 +688,8 @@ $("addShoppingBtn").onclick = async () => {
     $("newShoppingItem").value = ""; await renderShopping();
   } catch (err) { showError("shoppingError", err.message); }
 };
+$("newShoppingItem").addEventListener("keydown", (e) => { if (e.key === "Enter") $("addShoppingBtn").click(); });
+$("aiMood").addEventListener("keydown", (e) => { if (e.key === "Enter") $("aiSuggestBtn").click(); });
 
 // --- Family meeting ---
 async function loadMeeting() {
@@ -654,7 +701,7 @@ $("saveMeetingBtn").onclick = async () => {
   clearError("meetingError");
   try {
     await api("/api/meetings", { method: "POST", body: JSON.stringify({ weekOf: mondayOfWeek(), notes: $("meetingNotes").value })});
-    alert("Saved!");
+    toast("📝 Notes saved!");
   } catch (err) { showError("meetingError", err.message); }
 };
 
@@ -728,7 +775,7 @@ $("testNotifyBtn").onclick = async () => {
   clearError("notifyError");
   try {
     const data = await api("/api/push/test", { method: "POST", body: "{}" });
-    alert("Sent to " + data.sent + " device(s)!");
+    toast("🔔 Sent to " + data.sent + " device(s)!");
   } catch (err) { showError("notifyError", err.message); }
 };
 
