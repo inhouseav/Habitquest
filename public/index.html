@@ -361,6 +361,10 @@ function memberColorFor(memberId) {
   const m = state.members.find((mm) => mm.id === memberId);
   return (m && m.color) || null;
 }
+function memberNameFor(memberId) {
+  const m = state.members.find((mm) => mm.id === memberId);
+  return m ? m.display_name : null;
+}
 
 async function renderEvents() {
   const data = await api("/api/events");
@@ -411,8 +415,12 @@ function renderCalendarGrid() {
     div.className = "cal-day" + (cell.otherMonth ? " other-month" : "") + (cell.key === todayKey ? " today" : "");
     const chips = cell.key && eventsByDay[cell.key]
       ? eventsByDay[cell.key].map((e) => {
-          const bg = (e.pillar && PILLAR_COLORS[e.pillar]) || memberColorFor(e.member_id) || "#E4EAD9";
-          return `<div class="cal-event-chip" style="background:${bg}" title="${e.title}">${e.title}</div>`;
+          // Color by the person it's for (so each family member is visually
+          // consistent on the calendar); fall back to pillar color, then default.
+          const bg = memberColorFor(e.member_id) || (e.pillar && PILLAR_COLORS[e.pillar]) || "#E4EAD9";
+          const who = memberNameFor(e.member_id);
+          const label = who ? `${who}: ${e.title}` : e.title;
+          return `<div class="cal-event-chip" style="background:${bg}" title="${label}">${label}</div>`;
         }).join("")
       : "";
     div.innerHTML = `<div class="cal-day-num">${cell.day}</div>${chips}`;
