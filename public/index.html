@@ -183,6 +183,13 @@
         <button id="addEventBtn">Add event</button>
       </div>
       <div class="error hidden" id="eventError"></div>
+
+      <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #eee3cf;">
+        <p class="muted" id="googleCalStatus">Checking Google Calendar connection...</p>
+        <button class="small secondary" id="connectGoogleBtn" style="display:none;">Connect Google Calendar</button>
+        <button class="small secondary" id="disconnectGoogleBtn" style="display:none;">Disconnect Google Calendar</button>
+        <div class="error hidden" id="googleCalError"></div>
+      </div>
     </div>
 
     <div class="card">
@@ -330,6 +337,7 @@ async function loadHome() {
     renderMealPlan(), renderShopping(), loadMeeting(),
   ]);
   await refreshNotifyUi();
+  await refreshGoogleCalUi();
 }
 
 function renderMembers() {
@@ -704,6 +712,36 @@ $("testNotifyBtn").onclick = async () => {
     const data = await api("/api/push/test", { method: "POST", body: "{}" });
     alert("Sent to " + data.sent + " device(s)!");
   } catch (err) { showError("notifyError", err.message); }
+};
+
+// --- Google Calendar ---
+async function refreshGoogleCalUi() {
+  try {
+    const data = await api("/api/calendar/google/status");
+    if (data.connected) {
+      $("googleCalStatus").textContent = "📅 Connected to Google Calendar — new events get added there too.";
+      $("connectGoogleBtn").style.display = "none";
+      $("disconnectGoogleBtn").style.display = "inline-block";
+    } else {
+      $("googleCalStatus").textContent = "Not connected to Google Calendar yet.";
+      $("connectGoogleBtn").style.display = "inline-block";
+      $("disconnectGoogleBtn").style.display = "none";
+    }
+  } catch (err) {
+    $("googleCalStatus").textContent = "";
+  }
+}
+$("connectGoogleBtn").onclick = () => {
+  // Full-page navigation (not fetch) — Google's consent screen needs a real
+  // page load, so the session token is passed as ?t= instead of a header.
+  window.location.href = "/api/calendar/google/start?t=" + encodeURIComponent(state.token);
+};
+$("disconnectGoogleBtn").onclick = async () => {
+  clearError("googleCalError");
+  try {
+    await api("/api/calendar/google/disconnect", { method: "POST", body: "{}" });
+    await refreshGoogleCalUi();
+  } catch (err) { showError("googleCalError", err.message); }
 };
 
 // --- Boot ---

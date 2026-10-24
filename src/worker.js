@@ -14,6 +14,7 @@ import * as mealPlanRoutes from "./routes/mealPlan.js";
 import * as shoppingRoutes from "./routes/shopping.js";
 import * as meetingRoutes from "./routes/meetings.js";
 import * as pushRoutes from "./routes/push.js";
+import * as googleCalendarRoutes from "./routes/googleCalendarRoutes.js";
 
 async function handleHealth(env) {
   const hasDb = !!env.DB;
@@ -57,6 +58,20 @@ async function handleApi(request, env, url) {
   if (path === "/api/family/login" && method === "POST") return familyRoutes.login(request, env);
   if (path === "/api/push/public-key" && method === "GET") {
     return json({ ok: true, publicKey: env.VAPID_PUBLIC_KEY || null });
+  }
+  // Google redirects here with no session cookie/header, so this must stay public.
+  if (path === "/api/calendar/google/callback" && method === "GET") {
+    return googleCalendarRoutes.callback(request, env, url);
+  }
+  // This one is a full-page browser navigation (clicking a link), not a
+  // fetch() call, so it can't carry an Authorization header — the session
+  // token comes through as ?t= instead. Still fully real auth: the token
+  // is just as secret, only delivered a different way for this one route.
+  if (path === "/api/calendar/google/start" && method === "GET") {
+    const token = url.searchParams.get("t");
+    const familyId = await getFamilyIdForToken(env.DB, token);
+    if (!familyId) return errorResponse("Not logged in.", 401);
+    return googleCalendarRoutes.start(familyId, env, url);
   }
 
   // --- Everything below requires a logged-in family ---
@@ -117,6 +132,9 @@ async function handleApi(request, env, url) {
   if (path === "/api/push/subscribe" && method === "POST") return pushRoutes.subscribe(request, familyId, env);
   if (path === "/api/push/unsubscribe" && method === "POST") return pushRoutes.unsubscribe(request, familyId, env);
   if (path === "/api/push/test" && method === "POST") return pushRoutes.sendTest(request, familyId, env);
+
+  if (path === "/api/calendar/google/status" && method === "GET") return googleCalendarRoutes.status(familyId, env);
+  if (path === "/api/calendar/google/disconnect" && method === "POST") return googleCalendarRoutes.disconnect(familyId, env);
 
   return errorResponse("Not found.", 404);
 }

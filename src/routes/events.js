@@ -1,6 +1,7 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
 import { notifyFamily } from "./push.js";
+import { syncEventToGoogle } from "./googleCalendarRoutes.js";
 
 const VALID_PILLARS = ["fuel", "move", "grow"];
 const MAX_TITLE_LENGTH = 100;
@@ -71,6 +72,14 @@ export async function createEvent(request, familyId, env) {
     });
   } catch (err) {
     // ignore — notifications are best-effort
+  }
+
+  // Also best-effort: if this family has connected Google Calendar, mirror
+  // the event there too. Never blocks or fails event creation if it errors.
+  try {
+    await syncEventToGoogle(env, familyId, { title, startsAt, endsAt });
+  } catch (err) {
+    // ignore — Google sync is best-effort
   }
 
   return json({
