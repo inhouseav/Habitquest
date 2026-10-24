@@ -11,5 +11,14 @@ Every real test performed, with date, what was tested, and result. No feature ge
 - **Test:** GitHub repo attach + clone.
   **Method:** `add_repo` then `git clone --depth 1` of `inhouseav/habitquest`.
   **Result:** PASS — repo attached with push access, cloned successfully (confirmed empty, as expected for a new repo).
+- **Test:** First Cloudflare deploy of the Worker (Pages-style config).
+  **Method:** Connected `inhouseav/habitquest` to a new Cloudflare Worker project via the dashboard's "Connect GitHub" flow, deployed with default settings.
+  **Result:** FAIL — build failed at the "Deploying" step. Cause: the repo's `wrangler.toml`/folder layout was written for the old separate "Pages" product, but Cloudflare's current project creation flow builds a unified Worker (Compute) project, which expects a single `main` entry point + `[assets]` binding instead.
+- **Test:** Second Cloudflare deploy, after switching to `src/worker.js` + `[assets]` config and commenting out the not-yet-created D1/R2 bindings.
+  **Method:** Pushed fix to GitHub, clicked "Retry build" in Cloudflare dashboard.
+  **Result:** PASS — build succeeded, "Bindings: 1 (ASSETS)" shown.
+- **Test:** Public URL + live health check.
+  **Method:** Enabled the `workers.dev` Production toggle under the Worker's Domains tab, visited https://habitquest.ihav.workers.dev, clicked "Check API connection" on the live page.
+  **Result:** PASS — page rendered correctly in the Calm & Clear design, and `/api/health` returned `{"ok": true, "service": "habitquest-api", "db_binding_present": false, "db_reachable": false, "photos_binding_present": false}` — correctly reporting that D1/R2 aren't wired up yet, exactly as BUILD_STATUS.md says.
 
-*(No app-level feature tests yet — none have been built.)*
+**Session 1 is complete and verified live.** Next: Session 2 (family PIN login, real D1 database, shared calendar).

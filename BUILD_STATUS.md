@@ -10,8 +10,8 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 | Item | Status | Notes |
 |---|---|---|
 | GitHub repo created & connected | ✅ | `inhouseav/habitquest`, empty repo cloned 2026-10-24 |
-| Cloudflare Worker project | 🚧 | Created as `habitquest` under Workers & Pages → Compute; first deploy attempt failed because the code was still set up for the old "Pages" style — fixed by switching to a unified `src/worker.js` + `[assets]` setup, redeploy pending |
-| Static site + API scaffold | ✅ | `src/worker.js` serves `public/` and handles `/api/health`, replacing the earlier Pages-Functions-style `functions/api/` folder |
+| Cloudflare Worker project | ✅ | Live at https://habitquest.ihav.workers.dev — deployed, public URL enabled, confirmed working 2026-10-24 |
+| Static site + API scaffold | ✅ | `src/worker.js` serves `public/` and handles `/api/health` — tested live, returned `{"ok": true, ...}` on 2026-10-24 |
 | D1 database | ⛔ | Schema drafted (`db/schema.sql`); binding commented out in `wrangler.toml` until the real database is created on Cloudflare (a binding to a non-existent database blocks deploy) |
 | R2 bucket (photos) | ⛔ | Not started; binding commented out for the same reason as D1 |
 
@@ -42,4 +42,4 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 | V1 snapshot | ✅ | Frozen 2026-10-24. See claude.ai Tobias project doc `claude/version-snapshots.md` for revert instructions. |
 
 ---
-*Last updated: 2026-10-24, Session 1 kickoff.*
+*Last updated: 2026-10-24 — Session 1 complete. Live app confirmed working at https://habitquest.ihav.workers.dev.*
