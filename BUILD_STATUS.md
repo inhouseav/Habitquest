@@ -19,7 +19,7 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 | Item | Status | Notes |
 |---|---|---|
 | Family PIN/passcode login | ✅ | Join code + PIN (PBKDF2-hashed), D1-backed sessions. **Tested live 2026-10-24** — Maddie created a real family ("The Walkers"), logged in, and it persisted. |
-| Shared family calendar (server-backed) | ✅ | `/api/events`. **Tested live** — Maddie added a real event ("Walking Benji", tagged "move") and it showed up correctly. |
+| Shared family calendar (server-backed) | ✅ | `/api/events`, rendered as a real month grid (like a standard calendar app) with color-coded event chips, month navigation, and today highlighted — not just a flat list. **Tested live** — Maddie added a real event ("Walking Benji", tagged "move") and it showed up correctly; grid view added 2026-10-24 after Maddie asked for a proper calendar look. |
 | Family members (add/list) | ✅ | **Tested live** — Maddie added 2 extra members ("jim", "jam") with auto-assigned colors. |
 | Star ledger (give-a-star button) | ✅ | **Tested live** — stars visible per member in the UI. |
 | Fuel/Move/Grow "Daily Three" dashboard | 🚧 | Built: a dedicated card showing each member's fuel/move/grow completion for today, with a button per pillar that auto-awards 1 star (duplicate-proof — can't double-award the same pillar twice in one day) and a "Won the day!" banner when all 3 are done. Code written, syntax-checked, **not yet tested live** — needs the 003 migration run first. |

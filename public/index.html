@@ -47,6 +47,17 @@
   .pill.grow { background: var(--sage); }
   .pill.done { background: var(--terracotta); color: #fff; }
   .event-row { padding: 10px 0; border-bottom: 1px solid #eee3cf; }
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .cal-header h3 { margin: 0; }
+  .cal-header button { width: auto; margin: 0; padding: 6px 14px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-weekday { text-align: center; font-size: 0.7rem; font-weight: 700; opacity: 0.6; padding: 4px 0; }
+  .cal-day { min-height: 64px; border-radius: 10px; background: #fff; padding: 4px; font-size: 0.7rem; display: flex; flex-direction: column; gap: 2px; }
+  .cal-day.other-month { background: transparent; opacity: 0.35; }
+  .cal-day.today { outline: 2px solid var(--terracotta); }
+  .cal-day-num { font-weight: 700; font-size: 0.75rem; }
+  .cal-event-chip { border-radius: 6px; padding: 1px 4px; color: #183F35; font-size: 0.62rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-grid + button { margin-top: 12px; }
   .event-row:last-child { border-bottom: none; }
   .muted { opacity: 0.65; font-size: 0.85rem; }
   .hidden { display: none !important; }
@@ -130,8 +141,13 @@
     </div>
 
     <div class="card">
-      <h3>Shared calendar</h3>
-      <div id="eventsList"></div>
+      <div class="cal-header">
+        <button class="small secondary" id="calPrevBtn">‹</button>
+        <h3 id="calMonthLabel">Month Year</h3>
+        <button class="small secondary" id="calNextBtn">›</button>
+      </div>
+      <div class="cal-grid" id="calWeekdayRow"></div>
+      <div class="cal-grid" id="calDaysGrid"></div>
       <button class="secondary" id="showAddEventBtn">+ Add an event</button>
       <div id="addEventForm" class="hidden" style="margin-top: 12px;">
         <label>Title</label>
@@ -335,18 +351,78 @@ $("addMemberBtn").onclick = async () => {
   } catch (err) { showError("memberError", err.message); }
 };
 
-// --- Events ---
+// --- Events: month calendar grid ---
+let calendarMonth = new Date(); // any date within the currently shown month
+let allEvents = [];
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const PILLAR_COLORS = { fuel: "#F8E3D1", move: "#E2ECEE", grow: "#E4EAD9" };
+
+function memberColorFor(memberId) {
+  const m = state.members.find((mm) => mm.id === memberId);
+  return (m && m.color) || null;
+}
+
 async function renderEvents() {
   const data = await api("/api/events");
-  const list = $("eventsList"); list.innerHTML = "";
-  if (!data.events.length) { list.innerHTML = '<p class="muted">No events yet — add your family\'s first one below!</p>'; return; }
-  data.events.forEach((e) => {
-    const when = new Date(e.starts_at).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-    const row = document.createElement("div"); row.className = "event-row";
-    row.innerHTML = `<strong>${e.title}</strong>${e.pillar ? '<span class="pill ' + e.pillar + '">' + e.pillar + '</span>' : ''}<div class="muted">${when}</div>`;
-    list.appendChild(row);
+  allEvents = data.events;
+  renderCalendarGrid();
+}
+
+function renderCalendarGrid() {
+  const year = calendarMonth.getFullYear();
+  const month = calendarMonth.getMonth();
+  $("calMonthLabel").textContent = calendarMonth.toLocaleString([], { month: "long", year: "numeric" });
+
+  const weekdayRow = $("calWeekdayRow");
+  weekdayRow.innerHTML = WEEKDAY_LABELS.map((d) => `<div class="cal-weekday">${d}</div>`).join("");
+
+  const firstOfMonth = new Date(year, month, 1);
+  const startOffset = firstOfMonth.getDay(); // 0 = Sunday
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+  const todayKey = todayStr();
+  const eventsByDay = {};
+  allEvents.forEach((e) => {
+    const key = new Date(e.starts_at).toISOString().slice(0, 10);
+    if (!eventsByDay[key]) eventsByDay[key] = [];
+    eventsByDay[key].push(e);
+  });
+
+  const cells = [];
+  // Leading days from the previous month (greyed out, for grid alignment).
+  for (let i = startOffset - 1; i >= 0; i--) {
+    cells.push({ day: daysInPrevMonth - i, otherMonth: true, key: null });
+  }
+  // This month's real days.
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = new Date(year, month, d).toISOString().slice(0, 10);
+    cells.push({ day: d, otherMonth: false, key });
+  }
+  // Trailing days to fill the last week.
+  while (cells.length % 7 !== 0) {
+    cells.push({ day: cells.length - (startOffset + daysInMonth) + 1, otherMonth: true, key: null });
+  }
+
+  const grid = $("calDaysGrid");
+  grid.innerHTML = "";
+  cells.forEach((cell) => {
+    const div = document.createElement("div");
+    div.className = "cal-day" + (cell.otherMonth ? " other-month" : "") + (cell.key === todayKey ? " today" : "");
+    const chips = cell.key && eventsByDay[cell.key]
+      ? eventsByDay[cell.key].map((e) => {
+          const bg = (e.pillar && PILLAR_COLORS[e.pillar]) || memberColorFor(e.member_id) || "#E4EAD9";
+          return `<div class="cal-event-chip" style="background:${bg}" title="${e.title}">${e.title}</div>`;
+        }).join("")
+      : "";
+    div.innerHTML = `<div class="cal-day-num">${cell.day}</div>${chips}`;
+    grid.appendChild(div);
   });
 }
+
+$("calPrevBtn").onclick = () => { calendarMonth.setMonth(calendarMonth.getMonth() - 1); renderCalendarGrid(); };
+$("calNextBtn").onclick = () => { calendarMonth.setMonth(calendarMonth.getMonth() + 1); renderCalendarGrid(); };
+
 $("showAddEventBtn").onclick = () => show("addEventForm");
 $("addEventBtn").onclick = async () => {
   clearError("eventError");
