@@ -7,6 +7,12 @@ import * as familyRoutes from "./routes/family.js";
 import * as memberRoutes from "./routes/members.js";
 import * as eventRoutes from "./routes/events.js";
 import * as starRoutes from "./routes/stars.js";
+import * as dailyThreeRoutes from "./routes/dailyThree.js";
+import * as rewardRoutes from "./routes/rewards.js";
+import * as recipeRoutes from "./routes/recipes.js";
+import * as mealPlanRoutes from "./routes/mealPlan.js";
+import * as shoppingRoutes from "./routes/shopping.js";
+import * as meetingRoutes from "./routes/meetings.js";
 
 async function handleHealth(env) {
   const hasDb = !!env.DB;
@@ -67,6 +73,42 @@ async function handleApi(request, env, url) {
 
   if (path === "/api/stars" && method === "GET") return starRoutes.getStars(request, familyId, env);
   if (path === "/api/stars" && method === "POST") return starRoutes.awardStars(request, familyId, env);
+
+  if (path === "/api/daily-three" && method === "GET") return dailyThreeRoutes.getDailyThree(request, familyId, env);
+  if (path === "/api/daily-three/complete" && method === "POST") {
+    return dailyThreeRoutes.completePillar(request, familyId, env);
+  }
+
+  if (path === "/api/rewards" && method === "GET") return rewardRoutes.listRewards(familyId, env);
+  if (path === "/api/rewards" && method === "POST") return rewardRoutes.createReward(request, familyId, env);
+  const rewardRedeemMatch = path.match(/^\/api\/rewards\/([^/]+)\/redeem$/);
+  if (rewardRedeemMatch && method === "POST") {
+    return rewardRoutes.redeemReward(rewardRedeemMatch[1], request, familyId, env);
+  }
+
+  if (path === "/api/recipes" && method === "GET") return recipeRoutes.listRecipes(familyId, env);
+  if (path === "/api/recipes" && method === "POST") return recipeRoutes.createRecipe(request, familyId, env);
+
+  if (path === "/api/meal-plan" && method === "GET") return mealPlanRoutes.listMealPlan(request, familyId, env);
+  if (path === "/api/meal-plan" && method === "POST") return mealPlanRoutes.proposeMeal(request, familyId, env);
+  const mealVoteMatch = path.match(/^\/api\/meal-plan\/([^/]+)\/vote$/);
+  if (mealVoteMatch && method === "POST") {
+    return mealPlanRoutes.toggleVote(mealVoteMatch[1], request, familyId, env);
+  }
+
+  if (path === "/api/shopping" && method === "GET") return shoppingRoutes.listShoppingItems(familyId, env);
+  if (path === "/api/shopping" && method === "POST") return shoppingRoutes.addShoppingItem(request, familyId, env);
+  const shoppingToggleMatch = path.match(/^\/api\/shopping\/([^/]+)\/toggle$/);
+  if (shoppingToggleMatch && method === "POST") {
+    return shoppingRoutes.toggleShoppingItem(shoppingToggleMatch[1], familyId, env);
+  }
+  const shoppingDeleteMatch = path.match(/^\/api\/shopping\/([^/]+)$/);
+  if (shoppingDeleteMatch && method === "DELETE") {
+    return shoppingRoutes.deleteShoppingItem(shoppingDeleteMatch[1], familyId, env);
+  }
+
+  if (path === "/api/meetings" && method === "GET") return meetingRoutes.getMeeting(request, familyId, env);
+  if (path === "/api/meetings" && method === "POST") return meetingRoutes.saveMeeting(request, familyId, env);
 
   return errorResponse("Not found.", 404);
 }

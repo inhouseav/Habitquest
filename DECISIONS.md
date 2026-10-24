@@ -36,3 +36,10 @@ Each entry: date, decision, why, alternatives considered.
 ## 2026-10-24 — Design system: "Calm & Clear"
 **Decision:** Adopted the "Calm & Clear" visual design (warm ivory/cream, forest green text, terracotta accent, botanical illustrations, no mascot).
 **Why:** Maddie's selection after reviewing design options on 20 October 2026.
+
+---
+
+## 2026-10-24 — Skip Google Calendar sync, push notifications, and the AI assistant for now
+**Decision:** Build everything else in the 14-session guide first; leave these 3 features out unless there's time left before the Tobias deadline.
+**Why:** Each genuinely requires Maddie (not Claude) to do real outside setup — registering a Google Cloud OAuth app and clicking through Google's own consent screens, and/or creating an account with a paid AI provider. These can't be done on her behalf. Rather than block all other progress on that setup, we're building the rest of the app (Daily Three dashboard, reward shop, recipes, meal planning/voting, shopping list, weekly family meetings, photo books) first.
+**Record:** Tracked individually in BUILD_STATUS.md as 🔒 (blocked, skipped by choice) rather than ⛔, so it's clear this was a deliberate decision, not an oversight.

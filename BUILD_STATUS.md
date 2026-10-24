@@ -18,23 +18,24 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 ## Core features (Sessions 1–5 scope)
 | Item | Status | Notes |
 |---|---|---|
-| Family PIN/passcode login | 🚧 | Signup (`/api/family/signup`) + login (`/api/family/login`) built, using a join code + PIN, PIN hashed with PBKDF2, D1-backed session tokens. Code written and syntax-checked, but **not yet tested against the live site** — needs the `002_add_join_code_and_sessions.sql` migration run first, then a real signup/login through the UI. |
-| Shared family calendar (server-backed) | 🚧 | `/api/events` (list/create/delete) built and wired into the UI. Not yet tested live. |
-| Fuel/Move/Grow daily "Daily Three" pillars | 🚧 | Events can be tagged with a pillar (fuel/move/grow); the dedicated "Daily Three" dashboard view (separate from the raw calendar) isn't built yet. |
-| Star ledger (spendable + lifetime balances, no duplicate awards) | 🚧 | `/api/stars` built: append-only ledger, idempotency-key duplicate protection, balance can't go negative. "Give a star" button wired into the UI. Not yet tested live. |
-| Recipes module | ⛔ | Not started |
+| Family PIN/passcode login | ✅ | Join code + PIN (PBKDF2-hashed), D1-backed sessions. **Tested live 2026-10-24** — Maddie created a real family ("The Walkers"), logged in, and it persisted. |
+| Shared family calendar (server-backed) | ✅ | `/api/events`. **Tested live** — Maddie added a real event ("Walking Benji", tagged "move") and it showed up correctly. |
+| Family members (add/list) | ✅ | **Tested live** — Maddie added 2 extra members ("jim", "jam") with auto-assigned colors. |
+| Star ledger (give-a-star button) | ✅ | **Tested live** — stars visible per member in the UI. |
+| Fuel/Move/Grow "Daily Three" dashboard | 🚧 | Built: a dedicated card showing each member's fuel/move/grow completion for today, with a button per pillar that auto-awards 1 star (duplicate-proof — can't double-award the same pillar twice in one day) and a "Won the day!" banner when all 3 are done. Code written, syntax-checked, **not yet tested live** — needs the 003 migration run first. |
+| Recipes module | 🚧 | `/api/recipes` (list/create) built, ingredients/steps as simple line lists, wired into the UI. Not yet tested live. |
 
 ## Extended features (Sessions 6–14 scope)
 | Item | Status | Notes |
 |---|---|---|
-| Meal planning / voting | ⛔ | Not started |
-| Shopping lists | ⛔ | Not started |
-| Weekly family meetings | ⛔ | Not started |
-| Reward shop | ⛔ | Not started |
-| Photo memory books | ⛔ | Not started — needs R2 |
-| External calendar sync (Google Calendar) | 🔒 | Needs Google Cloud Console app registration — external setup required before any code is written |
-| Push notifications | 🔒 | Needs Web Push/VAPID key setup — external setup required |
-| AI planning assistant | 🔒 | Needs a Worker-side AI adapter + API key — external setup required |
+| Meal planning / voting | 🚧 | `/api/meal-plan` built: propose a meal for a day, anyone can vote (toggle). Not yet tested live. |
+| Shopping lists | 🚧 | `/api/shopping` built: add, check off, delete, shared across the family. Not yet tested live. |
+| Weekly family meetings | 🚧 | `/api/meetings` built: one notes doc per family per week (Monday-starting). Not yet tested live. |
+| Reward shop | 🚧 | `/api/rewards` built: parents add rewards with a star cost, any member can redeem (spends stars via the same ledger, can't go negative). Not yet tested live. |
+| Photo memory books | ⛔ | Not started — needs an R2 bucket, which Maddie hasn't created yet (same process as the D1 database) |
+| External calendar sync (Google Calendar) | 🔒 | **Skipped per Maddie's decision (2026-10-24)** — needs her to register an OAuth app in Google Cloud Console herself; revisit only if time allows before the deadline |
+| Push notifications | 🔒 | **Skipped per Maddie's decision (2026-10-24)** — needs a VAPID key pasted into Cloudflare; revisit only if time allows |
+| AI planning assistant | 🔒 | **Skipped per Maddie's decision (2026-10-24)** — needs a paid AI API key/account; revisit only if time allows |
 
 ## V1 (frozen, untouched)
 | Item | Status | Notes |
@@ -42,4 +43,4 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 | V1 snapshot | ✅ | Frozen 2026-10-24. See claude.ai Tobias project doc `claude/version-snapshots.md` for revert instructions. |
 
 ---
-*Last updated: 2026-10-24 — Session 2 code written (login, members, calendar, star ledger) and syntax-checked, but not yet proven live. Next: run the `002_add_join_code_and_sessions.sql` migration on the real database, deploy, and test end-to-end through the actual UI before marking anything ✅.*
+*Last updated: 2026-10-24 — Sessions 1-2 fully proven live. Sessions 3-8 (Daily Three, reward shop, recipes, meal planning, shopping list, family meetings) all coded, syntax-checked, and pushed, but not yet tested live — needs the `003_daily_pillars_rewards_meals_shopping_meetings.sql` migration run next, then a real end-to-end test through the UI before any of them get marked ✅.*
