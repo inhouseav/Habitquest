@@ -130,6 +130,18 @@
       <div class="join-code" id="joinCodeDisplay">------</div>
     </div>
 
+    <div class="card full-width">
+      <h3>Notifications 🔔</h3>
+      <p class="muted">Turn on notifications for this device so it pings you about new events — pick who's using this device first.</p>
+      <select id="notifyMemberSelect"></select>
+      <div style="display:flex; gap: 8px; margin-top: 12px;">
+        <button class="secondary" id="enableNotifyBtn" style="margin-top:0;">Enable notifications</button>
+        <button class="small" id="testNotifyBtn" style="margin-top:0; display:none;">Send a test</button>
+      </div>
+      <p class="muted" id="notifyStatus" style="margin-top:8px;"></p>
+      <div class="error hidden" id="notifyError"></div>
+    </div>
+
     <div class="card">
       <h3>Today's Three 🌟</h3>
       <p class="muted">Fuel, Move, Grow — one of each a day!</p>
@@ -317,11 +329,13 @@ async function loadHome() {
     renderEvents(), renderDailyThree(), renderRewards(), renderRecipes(),
     renderMealPlan(), renderShopping(), loadMeeting(),
   ]);
+  await refreshNotifyUi();
 }
 
 function renderMembers() {
   const list = $("membersList"); list.innerHTML = "";
   const memberSelect = $("newEventMember"); memberSelect.innerHTML = "";
+  const notifySelect = $("notifyMemberSelect"); notifySelect.innerHTML = "";
   state.members.forEach((m) => {
     const row = document.createElement("div");
     row.className = "member-row";
@@ -331,7 +345,11 @@ function renderMembers() {
     loadStars(m.id);
     const opt = document.createElement("option"); opt.value = m.id; opt.textContent = m.display_name;
     memberSelect.appendChild(opt);
+    const notifyOpt = document.createElement("option"); notifyOpt.value = m.id; notifyOpt.textContent = m.display_name;
+    notifySelect.appendChild(notifyOpt);
   });
+  const savedNotifyMember = localStorage.getItem("ftf_notify_member");
+  if (savedNotifyMember) notifySelect.value = savedNotifyMember;
   list.querySelectorAll("button[data-member]").forEach((btn) => { btn.onclick = () => giveStar(btn.getAttribute("data-member")); });
 }
 
@@ -612,6 +630,80 @@ $("saveMeetingBtn").onclick = async () => {
     await api("/api/meetings", { method: "POST", body: JSON.stringify({ weekOf: mondayOfWeek(), notes: $("meetingNotes").value })});
     alert("Saved!");
   } catch (err) { showError("meetingError", err.message); }
+};
+
+// --- Notifications ---
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+}
+function arrayBufferToBase64Url(buf) {
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+async function refreshNotifyUi() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    $("notifyStatus").textContent = "Notifications aren't supported in this browser.";
+    $("enableNotifyBtn").disabled = true;
+    return;
+  }
+  try {
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      $("notifyStatus").textContent = "🔔 Notifications are ON for this device.";
+      $("enableNotifyBtn").textContent = "Turn off notifications";
+      $("testNotifyBtn").style.display = "inline-block";
+    } else {
+      $("notifyStatus").textContent = "Notifications are off for this device.";
+      $("enableNotifyBtn").textContent = "Enable notifications";
+      $("testNotifyBtn").style.display = "none";
+    }
+  } catch (err) {
+    $("notifyStatus").textContent = "";
+  }
+}
+$("enableNotifyBtn").onclick = async () => {
+  clearError("notifyError");
+  try {
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) {
+      await existing.unsubscribe();
+      await api("/api/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint: existing.endpoint }) });
+      await refreshNotifyUi();
+      return;
+    }
+    const memberId = $("notifyMemberSelect").value;
+    if (!memberId) { showError("notifyError", "Add a family member first."); return; }
+    localStorage.setItem("ftf_notify_member", memberId);
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") { showError("notifyError", "Notifications were blocked — check your browser's site settings."); return; }
+    const keyData = await api("/api/push/public-key");
+    if (!keyData.publicKey) { showError("notifyError", "Notifications aren't set up on the server yet."); return; }
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
+    });
+    await api("/api/push/subscribe", { method: "POST", body: JSON.stringify({
+      memberId,
+      endpoint: sub.endpoint,
+      p256dh: arrayBufferToBase64Url(sub.getKey("p256dh")),
+      auth: arrayBufferToBase64Url(sub.getKey("auth")),
+    })});
+    await refreshNotifyUi();
+  } catch (err) { showError("notifyError", err.message); }
+};
+$("testNotifyBtn").onclick = async () => {
+  clearError("notifyError");
+  try {
+    const data = await api("/api/push/test", { method: "POST", body: "{}" });
+    alert("Sent to " + data.sent + " device(s)!");
+  } catch (err) { showError("notifyError", err.message); }
 };
 
 // --- Boot ---

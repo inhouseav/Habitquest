@@ -1,5 +1,6 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
+import { notifyFamily } from "./push.js";
 
 const VALID_PILLARS = ["fuel", "move", "grow"];
 const MAX_TITLE_LENGTH = 100;
@@ -59,6 +60,18 @@ export async function createEvent(request, familyId, env) {
     )
     .bind(eventId, familyId, memberId, title, pillar, startsAt, endsAt, recurrence ? JSON.stringify(recurrence) : null)
     .run();
+
+  // Best-effort: let the rest of the family know. Awaited (Workers can cancel
+  // un-awaited background work once the response is sent), but never breaks
+  // the request if a notification fails to send.
+  try {
+    await notifyFamily(env, familyId, memberId, {
+      title: "New calendar event 📅",
+      body: title,
+    });
+  } catch (err) {
+    // ignore — notifications are best-effort
+  }
 
   return json({
     ok: true,

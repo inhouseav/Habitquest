@@ -6,6 +6,12 @@ main = "src/worker.js"
 directory = "public"
 binding = "ASSETS"
 
+# Push notifications: the public key is safe to be plain text (it's not secret).
+# The matching private key (VAPID_PRIVATE_JWK) is pasted as a Cloudflare *secret*
+# via the dashboard — see PUSH_SETUP.md — never committed to this file.
+[vars]
+VAPID_PUBLIC_KEY = "BKN1BhU8csmRfkwF17Yq0yCziD2Po3jcmTE2ThbxAJ8rdTrFaGQqPlVUK6BoFxEWd2y5atAsDbgW6OKzuSvPyF0"
+
 # Real D1 database — created 2026-10-24 via the Cloudflare dashboard
 # (Workers & Pages → habitquest → Settings → Bindings → Add binding).
 [[d1_databases]]

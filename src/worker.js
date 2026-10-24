@@ -13,6 +13,7 @@ import * as recipeRoutes from "./routes/recipes.js";
 import * as mealPlanRoutes from "./routes/mealPlan.js";
 import * as shoppingRoutes from "./routes/shopping.js";
 import * as meetingRoutes from "./routes/meetings.js";
+import * as pushRoutes from "./routes/push.js";
 
 async function handleHealth(env) {
   const hasDb = !!env.DB;
@@ -54,6 +55,9 @@ async function handleApi(request, env, url) {
   if (path === "/api/health" && method === "GET") return handleHealth(env);
   if (path === "/api/family/signup" && method === "POST") return familyRoutes.signup(request, env);
   if (path === "/api/family/login" && method === "POST") return familyRoutes.login(request, env);
+  if (path === "/api/push/public-key" && method === "GET") {
+    return json({ ok: true, publicKey: env.VAPID_PUBLIC_KEY || null });
+  }
 
   // --- Everything below requires a logged-in family ---
   const { familyId, response } = await requireFamily(request, env);
@@ -109,6 +113,10 @@ async function handleApi(request, env, url) {
 
   if (path === "/api/meetings" && method === "GET") return meetingRoutes.getMeeting(request, familyId, env);
   if (path === "/api/meetings" && method === "POST") return meetingRoutes.saveMeeting(request, familyId, env);
+
+  if (path === "/api/push/subscribe" && method === "POST") return pushRoutes.subscribe(request, familyId, env);
+  if (path === "/api/push/unsubscribe" && method === "POST") return pushRoutes.unsubscribe(request, familyId, env);
+  if (path === "/api/push/test" && method === "POST") return pushRoutes.sendTest(request, familyId, env);
 
   return errorResponse("Not found.", 404);
 }
