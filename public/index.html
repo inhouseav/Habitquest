@@ -149,6 +149,18 @@
     </div>
 
     <div class="card">
+      <h3>Need an idea? 🤖</h3>
+      <p class="muted">Get a fun, personalized activity suggestion.</p>
+      <label>For</label>
+      <select id="aiMemberSelect"></select>
+      <label>How are they feeling / in the mood for? (optional)</label>
+      <input id="aiMood" placeholder="e.g. bored, hungry, full of energy" />
+      <button id="aiSuggestBtn">Get an idea</button>
+      <div id="aiSuggestionBox" class="hidden" style="margin-top: 12px; padding: 12px; border-radius: 12px; background: #fff;"></div>
+      <div class="error hidden" id="aiError"></div>
+    </div>
+
+    <div class="card">
       <h3>Family members</h3>
       <div id="membersList"></div>
       <button class="secondary" id="showAddMemberBtn">+ Add a family member</button>
@@ -157,6 +169,8 @@
         <input id="newMemberName" placeholder="e.g. Jamie" />
         <label>Role</label>
         <select id="newMemberRole"><option value="child">Child</option><option value="parent">Parent</option></select>
+        <label>What do they like? (optional, comma separated)</label>
+        <input id="newMemberInterests" placeholder="e.g. dinosaurs, gardening, soccer" />
         <button id="addMemberBtn">Add</button>
       </div>
       <div class="error hidden" id="memberError"></div>
@@ -344,6 +358,7 @@ function renderMembers() {
   const list = $("membersList"); list.innerHTML = "";
   const memberSelect = $("newEventMember"); memberSelect.innerHTML = "";
   const notifySelect = $("notifyMemberSelect"); notifySelect.innerHTML = "";
+  const aiSelect = $("aiMemberSelect"); aiSelect.innerHTML = "";
   state.members.forEach((m) => {
     const row = document.createElement("div");
     row.className = "member-row";
@@ -355,6 +370,8 @@ function renderMembers() {
     memberSelect.appendChild(opt);
     const notifyOpt = document.createElement("option"); notifyOpt.value = m.id; notifyOpt.textContent = m.display_name;
     notifySelect.appendChild(notifyOpt);
+    const aiOpt = document.createElement("option"); aiOpt.value = m.id; aiOpt.textContent = m.display_name;
+    aiSelect.appendChild(aiOpt);
   });
   const savedNotifyMember = localStorage.getItem("ftf_notify_member");
   if (savedNotifyMember) notifySelect.value = savedNotifyMember;
@@ -380,8 +397,9 @@ $("showAddMemberBtn").onclick = () => show("addMemberForm");
 $("addMemberBtn").onclick = async () => {
   clearError("memberError");
   try {
-    await api("/api/members", { method: "POST", body: JSON.stringify({ displayName: $("newMemberName").value, role: $("newMemberRole").value })});
-    $("newMemberName").value = ""; hide("addMemberForm");
+    const interests = $("newMemberInterests").value.split(",").map((s) => s.trim()).filter(Boolean);
+    await api("/api/members", { method: "POST", body: JSON.stringify({ displayName: $("newMemberName").value, role: $("newMemberRole").value, interests })});
+    $("newMemberName").value = ""; $("newMemberInterests").value = ""; hide("addMemberForm");
     const me = await api("/api/me"); state.members = me.members;
     renderMembers(); await renderDailyThree();
   } catch (err) { showError("memberError", err.message); }
@@ -712,6 +730,32 @@ $("testNotifyBtn").onclick = async () => {
     const data = await api("/api/push/test", { method: "POST", body: "{}" });
     alert("Sent to " + data.sent + " device(s)!");
   } catch (err) { showError("notifyError", err.message); }
+};
+
+// --- AI assistant ---
+const PILLAR_LABELS = { fuel: "Fuel 🍎", move: "Move 🏃", grow: "Grow 🌱" };
+$("aiSuggestBtn").onclick = async () => {
+  clearError("aiError");
+  hide("aiSuggestionBox");
+  const memberId = $("aiMemberSelect").value;
+  if (!memberId) { showError("aiError", "Add a family member first."); return; }
+  $("aiSuggestBtn").disabled = true;
+  $("aiSuggestBtn").textContent = "Thinking...";
+  try {
+    const data = await api("/api/ai/suggest", { method: "POST", body: JSON.stringify({
+      memberId, mood: $("aiMood").value,
+    })});
+    const s = data.suggestion;
+    $("aiSuggestionBox").innerHTML = `<span class="pill ${s.pillar}">${PILLAR_LABELS[s.pillar] || s.pillar}</span>
+      <h4 style="margin: 8px 0 4px;">${s.title}</h4>
+      <p class="muted" style="margin:0;">${s.description}</p>`;
+    show("aiSuggestionBox");
+  } catch (err) {
+    showError("aiError", err.message);
+  } finally {
+    $("aiSuggestBtn").disabled = false;
+    $("aiSuggestBtn").textContent = "Get an idea";
+  }
 };
 
 // --- Google Calendar ---

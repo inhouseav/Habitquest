@@ -15,6 +15,7 @@ import * as shoppingRoutes from "./routes/shopping.js";
 import * as meetingRoutes from "./routes/meetings.js";
 import * as pushRoutes from "./routes/push.js";
 import * as googleCalendarRoutes from "./routes/googleCalendarRoutes.js";
+import * as aiAssistantRoutes from "./routes/aiAssistant.js";
 
 async function handleHealth(env) {
   const hasDb = !!env.DB;
@@ -135,6 +136,8 @@ async function handleApi(request, env, url) {
 
   if (path === "/api/calendar/google/status" && method === "GET") return googleCalendarRoutes.status(familyId, env);
   if (path === "/api/calendar/google/disconnect" && method === "POST") return googleCalendarRoutes.disconnect(familyId, env);
+
+  if (path === "/api/ai/suggest" && method === "POST") return aiAssistantRoutes.suggest(request, familyId, env);
 
   return errorResponse("Not found.", 404);
 }
