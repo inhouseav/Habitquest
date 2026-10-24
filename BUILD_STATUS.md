@@ -10,10 +10,10 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 | Item | Status | Notes |
 |---|---|---|
 | GitHub repo created & connected | ✅ | `inhouseav/habitquest`, empty repo cloned 2026-10-24 |
-| Cloudflare Pages project | ⛔ | Not created yet — needs Maddie's decision: new separate project vs. existing |
-| Pages Functions / Workers scaffold | 🚧 | Being created this session |
-| D1 database | ⛔ | Schema being drafted this session; not yet created on Cloudflare |
-| R2 bucket (photos) | ⛔ | Not started |
+| Cloudflare Worker project | 🚧 | Created as `habitquest` under Workers & Pages → Compute; first deploy attempt failed because the code was still set up for the old "Pages" style — fixed by switching to a unified `src/worker.js` + `[assets]` setup, redeploy pending |
+| Static site + API scaffold | ✅ | `src/worker.js` serves `public/` and handles `/api/health`, replacing the earlier Pages-Functions-style `functions/api/` folder |
+| D1 database | ⛔ | Schema drafted (`db/schema.sql`); binding commented out in `wrangler.toml` until the real database is created on Cloudflare (a binding to a non-existent database blocks deploy) |
+| R2 bucket (photos) | ⛔ | Not started; binding commented out for the same reason as D1 |
 
 ## Core features (Sessions 1–5 scope)
 | Item | Status | Notes |
