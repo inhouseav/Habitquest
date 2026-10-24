@@ -1,0 +1,18 @@
+name = "habitquest"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "public"
+
+# D1 database binding — the database_id below is a placeholder.
+# Run `wrangler d1 create habitquest-db` once the Cloudflare project exists,
+# then paste the real database_id here. Until that's done, any Function
+# that touches D1 will fail — that's expected and tracked in BUILD_STATUS.md.
+[[d1_databases]]
+binding = "DB"
+database_name = "habitquest-db"
+database_id = "REPLACE_ME_AFTER_WRANGLER_D1_CREATE"
+
+# R2 bucket binding for family photos — same situation: placeholder until
+# `wrangler r2 bucket create habitquest-photos` has actually been run.
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "habitquest-photos"
