@@ -50,3 +50,11 @@ Each entry: date, decision, why, alternatives considered.
 **Decision:** Google Calendar sync and push notifications got un-skipped and shipped (both tested live). The AI assistant's code was also built and deployed, but Maddie decided not to set up the paid Anthropic API account right now, and to move on to polishing the app instead.
 **Why:** The AI assistant is the one remaining feature that costs real money to actually use (a per-request API fee), which needs a parent for the payment step. Maddie would rather spend her remaining time on polish than chase that down right now.
 **Record:** The "Need an idea? 🤖" card and `/api/ai/suggest` route are already live in the code — turning the feature on later is just adding one Cloudflare secret, no further building needed.
+
+---
+
+## 2026-10-24 — Begin the "connected family system" rework, starting with personal habits
+**Decision:** Maddie asked for a bigger rework connecting habits, calendar, meals/recipes/shopping and a new guided Weekly Family Check-in, instead of a loose set of separate features. Starting with Phase 1: replace the fixed Fuel/Move/Grow categories with each family member's own 3 chosen weekly habits.
+**Why:** Fuel/Move/Grow forced every family member into the same 3 generic buckets. Personal habits (any title + emoji a member picks) is the foundation the rest of the rework (calendar links, the weekly check-in wizard, progress language) depends on, so it goes first.
+**What changed:** New `weekly_habits` and `habit_completions` tables (migration 006). New `/api/habits` routes. Dashboard card renamed "This Week's Habits," tick-circle rows instead of fixed pillar buttons, "X of 3 practised today" instead of "Won the day!", inline "Choose/Edit habits" form per member. The old Fuel/Move/Grow code and `daily_pillars` table are left in place untouched — not deleted — so no history is lost and V1/early V2 data stays intact.
+**Next phases (not yet started):** move the join code into its own "invite family member" area; a "Today in the family" summary header; a less competitive kudos system replacing star-giving; calendar day cells showing habit/event indicators together; linking calendar events to habits (support vs. complete); connecting recipes → meal plan → shopping list; and the guided Weekly Family Check-in that sets the week's habits/meals/events in one flow.

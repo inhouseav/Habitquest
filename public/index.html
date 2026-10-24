@@ -63,6 +63,12 @@
   .pill.move { background: var(--blue); }
   .pill.grow { background: var(--sage); }
   .pill.done { background: var(--terracotta); color: #fff; }
+  .habit-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; width: 100%; }
+  .habit-row-btn { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--cream, #faf6ee); border: 1px solid #eee3cf; border-radius: 12px; padding: 10px 14px; font-size: 0.95rem; cursor: pointer; }
+  .habit-row-btn .habit-check { font-size: 1.1rem; width: 20px; text-align: center; color: var(--terracotta); }
+  .habit-row-btn.done { background: #eef4e8; border-color: var(--sage); opacity: 0.85; }
+  .habit-row-btn.done .habit-title { text-decoration: line-through; }
+  .habit-row-btn:disabled { cursor: default; }
   .event-row { padding: 10px 0; border-bottom: 1px solid #eee3cf; }
   .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .cal-header h3 { margin: 0; }
@@ -160,9 +166,9 @@
     </div>
 
     <div class="card">
-      <h3>Today's Three 🌟</h3>
-      <p class="muted">Fuel, Move, Grow — one of each a day!</p>
-      <div id="dailyThreeList"><p class="loading-text">Loading...</p></div>
+      <h3>This Week's Habits 🌟</h3>
+      <p class="muted">Everyone picks 3 things they want to do this week — tick them off as you go.</p>
+      <div id="habitsList"><p class="loading-text">Loading...</p></div>
     </div>
 
     <div class="card">
@@ -377,7 +383,7 @@ async function loadHome() {
 
   renderMembers();
   await Promise.all([
-    renderEvents(), renderDailyThree(), renderRewards(), renderRecipes(),
+    renderEvents(), renderHabits(), renderRewards(), renderRecipes(),
     renderMealPlan(), renderShopping(), loadMeeting(),
   ]);
   await refreshNotifyUi();
@@ -438,7 +444,7 @@ $("addMemberBtn").onclick = async () => {
     await api("/api/members", { method: "POST", body: JSON.stringify({ displayName: $("newMemberName").value, role: $("newMemberRole").value, interests })});
     $("newMemberName").value = ""; $("newMemberInterests").value = ""; hide("addMemberForm");
     const me = await api("/api/me"); state.members = me.members;
-    renderMembers(); await renderDailyThree();
+    renderMembers(); await renderHabits();
   } catch (err) { showError("memberError", err.message); }
 };
 
@@ -536,32 +542,104 @@ $("addEventBtn").onclick = async () => {
   } catch (err) { showError("eventError", err.message); }
 };
 
-// --- Daily Three ---
-async function renderDailyThree() {
-  const data = await api("/api/daily-three?day=" + todayStr());
-  const list = $("dailyThreeList"); list.innerHTML = "";
+// --- Personal weekly habits ---
+let habitEditingMemberId = null;
+
+async function renderHabits() {
+  const data = await api("/api/habits?day=" + todayStr());
+  const list = $("habitsList"); list.innerHTML = "";
+
   data.members.forEach((m) => {
-    const row = document.createElement("div"); row.className = "member-row"; row.style.flexDirection = "column"; row.style.alignItems = "stretch";
-    const btnsHtml = ["fuel", "move", "grow"].map((p) => {
-      const done = m.completed.includes(p);
-      return `<button class="small ${done ? 'done' : ''}" data-member="${m.memberId}" data-pillar="${p}" ${done ? 'disabled' : ''}>${p[0].toUpperCase() + p.slice(1)}${done ? ' ✓' : ''}</button>`;
-    }).join("");
-    row.innerHTML = `<div><span class="member-dot" style="background:${m.color || '#ccc'}"></span><strong>${m.displayName}</strong></div>
-      <div class="pillar-btns">${btnsHtml}</div>
-      ${m.wonTheDay ? '<div class="won">🏆 Won the day!</div>' : ''}`;
+    const row = document.createElement("div");
+    row.className = "member-row";
+    row.style.flexDirection = "column";
+    row.style.alignItems = "stretch";
+
+    const headerHtml = `<div style="display:flex; align-items:center; justify-content:space-between;">
+      <div><span class="member-dot" style="background:${m.color || '#ccc'}"></span><strong>${m.displayName}</strong></div>
+      <button class="small secondary" data-edit-member="${m.memberId}">${m.totalHabits ? 'Edit' : 'Choose'} habits ✏️</button>
+    </div>`;
+
+    let bodyHtml;
+    if (habitEditingMemberId === m.memberId) {
+      bodyHtml = habitEditFormHtml(m);
+    } else if (!m.totalHabits) {
+      bodyHtml = `<p class="muted" style="margin:6px 0 0;">No habits picked yet — tap "Choose habits" to pick 3 things for this week.</p>`;
+    } else {
+      const habitsHtml = m.habits.map((h) => `
+        <button class="habit-row-btn ${h.completed ? 'done' : ''}" data-habit="${h.id}" ${h.completed ? 'disabled' : ''}>
+          <span class="habit-check">${h.completed ? '✓' : '○'}</span>
+          <span class="habit-title">${h.emoji ? h.emoji + ' ' : ''}${escapeHtml(h.title)}</span>
+        </button>`).join("");
+      bodyHtml = `<div class="habit-rows">${habitsHtml}</div>
+        <p class="muted" style="margin:6px 0 0;">${m.completedCount} of ${m.totalHabits} practised today</p>`;
+    }
+
+    row.innerHTML = headerHtml + bodyHtml;
     list.appendChild(row);
   });
-  list.querySelectorAll("button[data-pillar]").forEach((btn) => {
+
+  list.querySelectorAll("button[data-habit]").forEach((btn) => {
     btn.onclick = async () => {
       try {
-        await api("/api/daily-three/complete", { method: "POST", body: JSON.stringify({ memberId: btn.getAttribute("data-member"), pillar: btn.getAttribute("data-pillar") })});
-        await renderDailyThree();
-        await loadStars(btn.getAttribute("data-member"));
+        await api(`/api/habits/${btn.getAttribute("data-habit")}/complete`, { method: "POST", body: JSON.stringify({}) });
+        await renderHabits();
         toast("⭐ Nice work!");
       } catch (err) { toast(err.message, true); }
     };
   });
+
+  list.querySelectorAll("button[data-edit-member]").forEach((btn) => {
+    btn.onclick = () => {
+      habitEditingMemberId = habitEditingMemberId === btn.getAttribute("data-edit-member") ? null : btn.getAttribute("data-edit-member");
+      renderHabits();
+    };
+  });
+
+  list.querySelectorAll("form[data-habit-form]").forEach((form) => {
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const memberId = form.getAttribute("data-habit-form");
+      const habits = [1, 2, 3].map((slot) => {
+        const title = form.querySelector(`[name="title${slot}"]`).value.trim();
+        const emoji = form.querySelector(`[name="emoji${slot}"]`).value.trim();
+        return title ? { slot, title, emoji } : null;
+      }).filter(Boolean);
+      try {
+        await api("/api/habits/set", { method: "POST", body: JSON.stringify({ memberId, habits }) });
+        habitEditingMemberId = null;
+        await renderHabits();
+        toast("Habits saved!");
+      } catch (err) { toast(err.message, true); }
+    };
+  });
+
+  list.querySelectorAll("button[data-cancel-edit]").forEach((btn) => {
+    btn.onclick = () => { habitEditingMemberId = null; renderHabits(); };
+  });
 }
+
+function habitEditFormHtml(m) {
+  const slots = [1, 2, 3].map((slot) => {
+    const existing = m.habits.find((h) => h.slot === slot);
+    return `<div style="display:flex; gap:6px; margin-top:6px;">
+      <input name="emoji${slot}" placeholder="🙂" maxlength="4" value="${existing ? escapeAttr(existing.emoji) : ''}" style="width:48px; text-align:center;" />
+      <input name="title${slot}" placeholder="Habit ${slot} (e.g. Walk Benji for 20 mins)" value="${existing ? escapeAttr(existing.title) : ''}" style="flex:1;" />
+    </div>`;
+  }).join("");
+  return `<form data-habit-form="${m.memberId}">
+    ${slots}
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <button class="small" type="submit">Save</button>
+      <button class="small secondary" type="button" data-cancel-edit>Cancel</button>
+    </div>
+  </form>`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function escapeAttr(s) { return escapeHtml(s); }
 
 // --- Rewards ---
 async function renderRewards() {

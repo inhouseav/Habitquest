@@ -8,6 +8,7 @@ import * as memberRoutes from "./routes/members.js";
 import * as eventRoutes from "./routes/events.js";
 import * as starRoutes from "./routes/stars.js";
 import * as dailyThreeRoutes from "./routes/dailyThree.js";
+import * as habitRoutes from "./routes/habits.js";
 import * as rewardRoutes from "./routes/rewards.js";
 import * as recipeRoutes from "./routes/recipes.js";
 import * as mealPlanRoutes from "./routes/mealPlan.js";
@@ -97,6 +98,13 @@ async function handleApi(request, env, url) {
   if (path === "/api/daily-three" && method === "GET") return dailyThreeRoutes.getDailyThree(request, familyId, env);
   if (path === "/api/daily-three/complete" && method === "POST") {
     return dailyThreeRoutes.completePillar(request, familyId, env);
+  }
+
+  if (path === "/api/habits" && method === "GET") return habitRoutes.getHabits(request, familyId, env);
+  if (path === "/api/habits/set" && method === "POST") return habitRoutes.setHabits(request, familyId, env);
+  const habitCompleteMatch = path.match(/^\/api\/habits\/([^/]+)\/complete$/);
+  if (habitCompleteMatch && method === "POST") {
+    return habitRoutes.completeHabit(habitCompleteMatch[1], request, familyId, env);
   }
 
   if (path === "/api/rewards" && method === "GET") return rewardRoutes.listRewards(familyId, env);
