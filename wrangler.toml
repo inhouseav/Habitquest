@@ -6,16 +6,16 @@ main = "src/worker.js"
 directory = "public"
 binding = "ASSETS"
 
-# D1 and R2 bindings are commented out for now — Cloudflare will refuse to
-# deploy a binding that points at a database/bucket that doesn't exist yet.
-# Once these are really created (see README "Setup" steps), uncomment both
-# blocks below, fill in the real database_id, and redeploy.
-#
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "habitquest-db"
-# database_id = "REPLACE_ME_AFTER_WRANGLER_D1_CREATE"
-#
+# Real D1 database — created 2026-10-24 via the Cloudflare dashboard
+# (Workers & Pages → habitquest → Settings → Bindings → Add binding).
+[[d1_databases]]
+binding = "DB"
+database_name = "habitquest-db"
+database_id = "2fa8326b-db8d-4a92-99c0-83a24b7d2a86"
+
+# R2 bucket (family photos) — not created yet, so this stays commented out
+# until it exists (see README "Setup" steps). An uncommented binding to a
+# non-existent bucket blocks deploy.
 # [[r2_buckets]]
 # binding = "PHOTOS"
 # bucket_name = "habitquest-photos"

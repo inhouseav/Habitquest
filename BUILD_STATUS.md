@@ -12,7 +12,7 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 | GitHub repo created & connected | ✅ | `inhouseav/habitquest`, empty repo cloned 2026-10-24 |
 | Cloudflare Worker project | ✅ | Live at https://habitquest.ihav.workers.dev — deployed, public URL enabled, confirmed working 2026-10-24 |
 | Static site + API scaffold | ✅ | `src/worker.js` serves `public/` and handles `/api/health` — tested live, returned `{"ok": true, ...}` on 2026-10-24 |
-| D1 database | ⛔ | Schema drafted (`db/schema.sql`); binding commented out in `wrangler.toml` until the real database is created on Cloudflare (a binding to a non-existent database blocks deploy) |
+| D1 database | 🚧 | Real database `habitquest-db` created on Cloudflare 2026-10-24 (id `2fa8326b-db8d-4a92-99c0-83a24b7d2a86`) and bound in `wrangler.toml` — but the schema (`db/schema.sql`) hasn't been run against it yet, so it's empty. `/api/health` should now report `db_binding_present: true` once redeployed, but `db_reachable` will stay false until the tables exist. |
 | R2 bucket (photos) | ⛔ | Not started; binding commented out for the same reason as D1 |
 
 ## Core features (Sessions 1–5 scope)
