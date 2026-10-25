@@ -26,15 +26,15 @@ export async function listMealPlan(request, familyId, env) {
   const db = env.DB;
   const items = await db
     .prepare(
-      "SELECT id, day, recipe_id, title, votes FROM meal_plan_items WHERE family_id = ? AND day BETWEEN ? AND ? ORDER BY day ASC, created_at ASC"
+      "SELECT id, day, recipe_id, title, votes, together FROM meal_plan_items WHERE family_id = ? AND day BETWEEN ? AND ? ORDER BY day ASC, created_at ASC"
     )
     .bind(familyId, startDay, endDay)
     .all();
 
-  return json({
-    ok: true,
-    items: (items.results || []).map((i) => ({ ...i, votes: safeParseArray(i.votes) })),
-  });
+  const results = (items.results || []).map((i) => ({ ...i, votes: safeParseArray(i.votes), together: !!i.together }));
+  const togetherCount = results.filter((i) => i.together).length;
+
+  return json({ ok: true, items: results, togetherCount });
 }
 
 /** POST /api/meal-plan — propose a meal option for a given day. */
@@ -45,6 +45,7 @@ export async function proposeMeal(request, familyId, env) {
   const day = body.day;
   const title = (body.title || "").trim();
   const recipeId = body.recipeId || null;
+  const together = body.together ? 1 : 0;
 
   if (!validDay(day)) return errorResponse("day must be formatted YYYY-MM-DD.");
   if (!title) return errorResponse("Please enter a meal title.");
@@ -60,11 +61,11 @@ export async function proposeMeal(request, familyId, env) {
 
   const itemId = newId();
   await db
-    .prepare("INSERT INTO meal_plan_items (id, family_id, day, recipe_id, title, votes) VALUES (?, ?, ?, ?, ?, '[]')")
-    .bind(itemId, familyId, day, recipeId, title)
+    .prepare("INSERT INTO meal_plan_items (id, family_id, day, recipe_id, title, votes, together) VALUES (?, ?, ?, ?, ?, '[]', ?)")
+    .bind(itemId, familyId, day, recipeId, title, together)
     .run();
 
-  return json({ ok: true, item: { id: itemId, day, recipeId, title, votes: [] } });
+  return json({ ok: true, item: { id: itemId, day, recipeId, title, votes: [], together: !!together } });
 }
 
 /** POST /api/meal-plan/:id/vote — toggle this member's vote on a meal option. */
@@ -98,4 +99,16 @@ export async function toggleVote(itemId, request, familyId, env) {
   await db.prepare("UPDATE meal_plan_items SET votes = ? WHERE id = ?").bind(JSON.stringify(votes), itemId).run();
 
   return json({ ok: true, votes });
+}
+
+/** POST /api/meal-plan/:id/together — toggle whether this meal is a together family meal. */
+export async function toggleTogether(itemId, familyId, env) {
+  const db = env.DB;
+  const item = await db.prepare("SELECT id, together FROM meal_plan_items WHERE id = ? AND family_id = ?").bind(itemId, familyId).first();
+  if (!item) return errorResponse("Meal option not found.", 404);
+
+  const nextValue = item.together ? 0 : 1;
+  await db.prepare("UPDATE meal_plan_items SET together = ? WHERE id = ?").bind(nextValue, itemId).run();
+
+  return json({ ok: true, together: !!nextValue });
 }

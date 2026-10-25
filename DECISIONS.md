@@ -67,3 +67,12 @@ Each entry: date, decision, why, alternatives considered.
 **Why — AI photos:** Claude doesn't generate images, so this needs a separate provider (OpenAI). Researched current pricing (~$0.01-$0.17/image depending on quality/provider) and recommended real uploaded photos as the default (free, more meaningful for a family memory book) with AI photos as an optional add-on, gated behind a key the same way the AI assistant is.
 **Research basis:** Maddie provided the original dietitian survey spreadsheet (16 responses) — see `DIETITIAN_RESEARCH.md`. The unanimous finding (never frame anything around weight loss for kids) and the most-repeated theme (involve kids in shopping/cooking/choosing) directly shaped the recipe set (added build-your-own formats: pizza night, rice bowl bar) and the "How'd it go?" rating in the cook view (😍/🙂/😐 instead of pass/fail, so trying something new never feels like a test).
 **Blocked:** the Family Cookbook needs an R2 bucket created in the Cloudflare dashboard (same one-time step as the D1 database) before photos will actually work — binding is ready in `wrangler.toml`, just commented out.
+
+---
+
+## 2026-10-25 — Two app changes directly from the dietitian research
+**Decision:** After distilling the full 16-response dietitian spreadsheet into `DIETITIAN_RESEARCH.md`, made two concrete app changes it pointed to:
+1. **Grouped the "Hungry" snack picker into 4 categories** (Protein + Fruit, Protein + Veggies, High-Fibre, Crunchy) instead of one flat list of 18 — matches how one dietitian response itself grouped good snack combinations, and makes the dropdown easier for a kid to scan (shown as `<optgroup>`s).
+2. **Added a "family meal together" tracker** — a checkbox when suggesting a meal ("We're all eating this together 👨‍👩‍👧"), a toggle on existing meal-plan rows, and a weekly counter ("X family meals together this week!"). Several dietitian responses named eating together regularly as one of the highest-impact habits — more so than any single food choice.
+**Why no guilt framing:** per the app's own rule (never make kids feel bad, never compare), the counter only ever counts up and celebrates — there's no target, no red/incomplete state, and missing a together-meal is never flagged.
+**Record:** migration `008_family_meal_together.sql` adds the `together` column to `meal_plan_items`.

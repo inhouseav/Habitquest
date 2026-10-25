@@ -134,6 +134,10 @@ async function handleApi(request, env, url) {
   if (mealVoteMatch && method === "POST") {
     return mealPlanRoutes.toggleVote(mealVoteMatch[1], request, familyId, env);
   }
+  const mealTogetherMatch = path.match(/^\/api\/meal-plan\/([^/]+)\/together$/);
+  if (mealTogetherMatch && method === "POST") {
+    return mealPlanRoutes.toggleTogether(mealTogetherMatch[1], familyId, env);
+  }
 
   if (path === "/api/shopping" && method === "GET") return shoppingRoutes.listShoppingItems(familyId, env);
   if (path === "/api/shopping" && method === "POST") return shoppingRoutes.addShoppingItem(request, familyId, env);

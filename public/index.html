@@ -296,6 +296,7 @@
     <div class="card">
       <h3>This week's meals 🥗</h3>
       <p class="muted">Propose an idea for any day this week — everyone can vote!</p>
+      <p id="togetherCountLine" class="muted hidden" style="font-weight:600;"></p>
       <label>Voting as</label>
       <select id="mealVoterSelect"></select>
       <div id="mealPlanList" style="margin-top: 10px;"><p class="loading-text">Loading...</p></div>
@@ -305,6 +306,10 @@
         <input id="newMealDay" type="date" />
         <label>Meal</label>
         <input id="newMealTitle" placeholder="e.g. Taco night" />
+        <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:8px;">
+          <input type="checkbox" id="newMealTogether" style="width:auto;" />
+          👨‍👩‍👧 We're all eating this together
+        </label>
         <button id="addMealBtn">Suggest</button>
       </div>
       <div class="error hidden" id="mealError"></div>
@@ -830,18 +835,34 @@ async function renderMealPlan() {
   const start = todayStr(); const end = addDays(start, 6);
   const data = await api(`/api/meal-plan?startDay=${start}&endDay=${end}`);
   const list = $("mealPlanList"); list.innerHTML = "";
+  const togetherLine = $("togetherCountLine");
+  if (data.togetherCount > 0) {
+    togetherLine.textContent = `👨‍👩‍👧 ${data.togetherCount} family meal${data.togetherCount === 1 ? "" : "s"} together this week!`;
+    show("togetherCountLine");
+  } else {
+    hide("togetherCountLine");
+  }
   if (!data.items.length) { list.innerHTML = '<p class="muted">No meals suggested yet for this week.</p>'; return; }
   data.items.forEach((item) => {
     const row = document.createElement("div"); row.className = "list-row";
     const addIngredientsBtn = item.recipeId
       ? `<button class="small secondary" data-add-ingredients="${item.id}" data-recipe="${item.recipeId}" style="margin:0;">🛒 Add ingredients</button>`
       : "";
-    row.innerHTML = `<span><strong>${item.title}</strong> <span class="muted">${item.day}</span></span>
+    row.innerHTML = `<span><strong>${item.title}</strong> <span class="muted">${item.day}</span>${item.together ? ' <span title="Family meal together">👨‍👩‍👧</span>' : ""}</span>
       <div style="display:flex; gap:6px; align-items:center;">
         ${addIngredientsBtn}
+        <button class="small secondary together-btn" data-together="${item.id}" style="margin:0;">${item.together ? "👨‍👩‍👧 Together" : "+ Mark together"}</button>
         <button class="small vote-btn" data-id="${item.id}">👍 ${item.votes.length}</button>
       </div>`;
     list.appendChild(row);
+  });
+  list.querySelectorAll("button[data-together]").forEach((btn) => {
+    btn.onclick = async () => {
+      try {
+        await api(`/api/meal-plan/${btn.getAttribute("data-together")}/together`, { method: "POST" });
+        await renderMealPlan();
+      } catch (err) { toast(err.message, true); }
+    };
   });
   list.querySelectorAll("button[data-id]").forEach((btn) => {
     btn.onclick = async () => {
@@ -874,8 +895,8 @@ $("showAddMealBtn").onclick = () => { $("newMealDay").value = todayStr(); show("
 $("addMealBtn").onclick = async () => {
   clearError("mealError");
   try {
-    await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day: $("newMealDay").value, title: $("newMealTitle").value })});
-    $("newMealTitle").value = ""; hide("addMealForm"); await renderMealPlan();
+    await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day: $("newMealDay").value, title: $("newMealTitle").value, together: $("newMealTogether").checked })});
+    $("newMealTitle").value = ""; $("newMealTogether").checked = false; hide("addMealForm"); await renderMealPlan();
   } catch (err) { showError("mealError", err.message); }
 };
 
@@ -1067,26 +1088,36 @@ $("testNotifyBtn").onclick = async () => {
 const PILLAR_LABELS = { fuel: "Fuel 🍎", move: "Move 🏃", grow: "Grow 🌱" };
 
 const IDEA_LISTS = {
-  hungry: [
-    "Apple slices + peanut butter",
-    "Veggie sticks + hummus",
-    "Cheese + wholegrain crackers",
-    "Greek yoghurt + berries",
-    "Yoghurt + muesli",
-    "Fruit + popcorn",
-    "Cottage cheese + fruit",
-    "Boiled egg + mandarin",
-    "Cheese + cherry tomatoes",
-    "Wholegrain toast + ricotta + tomato",
-    "Nuts + fresh fruit",
-    "Roasted chickpeas + pumpkin seeds",
-    "Crackers + cheese or tuna",
-    "Smoothie with milk + fruit + yoghurt",
-    "Rice crackers + cheese stick + fruit or cherry tomatoes",
-    "Mini banana muffin + yoghurt + berries",
-    "Corn chips + guacamole or hummus + fruit or baby cucumbers",
-    "Mini tuna sushi + milk",
-  ],
+  // Grouped the way the dietitian responses grouped them: protein+fruit,
+  // protein+veg, high-fibre, and crunchy — rather than one flat list.
+  hungry: {
+    "Protein + Fruit": [
+      "Apple slices + peanut butter",
+      "Greek yoghurt + berries",
+      "Cottage cheese + fruit",
+      "Boiled egg + mandarin",
+      "Mini banana muffin + yoghurt + berries",
+    ],
+    "Protein + Veggies": [
+      "Veggie sticks + hummus",
+      "Cheese + cherry tomatoes",
+      "Mini tuna sushi + milk",
+      "Crackers + cheese or tuna",
+      "Corn chips + guacamole or hummus + fruit or baby cucumbers",
+    ],
+    "High-Fibre": [
+      "Cheese + wholegrain crackers",
+      "Yoghurt + muesli",
+      "Wholegrain toast + ricotta + tomato",
+      "Roasted chickpeas + pumpkin seeds",
+      "Smoothie with milk + fruit + yoghurt",
+    ],
+    "Crunchy": [
+      "Fruit + popcorn",
+      "Nuts + fresh fruit",
+      "Rice crackers + cheese stick + fruit or cherry tomatoes",
+    ],
+  },
   energetic: [
     "10-minute dance party to your favourite songs",
     "Backyard obstacle course",
@@ -1150,11 +1181,24 @@ $("aiMood").onchange = () => {
   if (list) {
     $("ideaPickerLabel").textContent = IDEA_PICKER_LABEL[mood];
     ideaPicker.innerHTML = '<option value="">Choose...</option>';
-    list.forEach((item) => {
-      const opt = document.createElement("option");
-      opt.value = item; opt.textContent = item;
-      ideaPicker.appendChild(opt);
-    });
+    if (Array.isArray(list)) {
+      list.forEach((item) => {
+        const opt = document.createElement("option");
+        opt.value = item; opt.textContent = item;
+        ideaPicker.appendChild(opt);
+      });
+    } else {
+      Object.keys(list).forEach((groupName) => {
+        const group = document.createElement("optgroup");
+        group.label = groupName;
+        list[groupName].forEach((item) => {
+          const opt = document.createElement("option");
+          opt.value = item; opt.textContent = item;
+          group.appendChild(opt);
+        });
+        ideaPicker.appendChild(group);
+      });
+    }
     show("ideaPickerWrap"); hide("aiSuggestBtn");
   } else {
     hide("ideaPickerWrap"); show("aiSuggestBtn"); ideaPicker.value = "";
