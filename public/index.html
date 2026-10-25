@@ -73,6 +73,15 @@
   .cookbook-photo { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(24,63,53,0.08); }
   .cookbook-photo img { width: 100%; height: 120px; object-fit: cover; display: block; background: var(--sage); }
   .cookbook-photo .cap { padding: 6px 8px; font-size: 0.75rem; }
+  .memories-progress-track { height: 14px; border-radius: 999px; background: #f1eadc; overflow: hidden; }
+  .memories-progress-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #FF6B6B, #FFA94D, #FFD43B, #69DB7C, #4DABF7, #9775FA); }
+  .memories-slide { position: relative; width: 100%; max-width: 480px; height: 260px; border-radius: 20px; overflow: hidden; margin: 0 auto; box-shadow: 0 10px 24px rgba(24,63,53,0.15); }
+  .memories-slide img { width: 100%; height: 100%; object-fit: cover; display: block; background: var(--sage); }
+  .memories-slide .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px; background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.55)); color: #fff; }
+  .memories-slide .tag { display: inline-block; margin-bottom: 4px; background: rgba(0,0,0,0.3); font-size: 0.72rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+  .memories-dots { display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
+  .memories-dots button { width: 9px; height: 9px; border-radius: 50%; border: none; padding: 0; background: #e4dbc8; }
+  .memories-dots button.active { background: var(--terracotta); width: 12px; height: 12px; }
   @media print {
     body * { visibility: hidden; }
     #cookbookView, #cookbookView * { visibility: visible; }
@@ -280,6 +289,11 @@
     </div>
 
     <div class="card">
+      <h3>✨ Family Memories</h3>
+      <div id="memoriesView"><p class="loading-text">Loading...</p></div>
+    </div>
+
+    <div class="card">
       <h3>Family Cookbook 📸</h3>
       <p class="muted">Favourite recipes + photos of you making them, compiled together.</p>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -425,7 +439,7 @@ async function loadHome() {
   renderMembers();
   await Promise.all([
     renderEvents(), renderHabits(), renderRewards(), renderRecipes(),
-    renderMealPlan(), renderShopping(), loadMeeting(),
+    renderMealPlan(), renderShopping(), loadMeeting(), renderMemories(),
   ]);
   await refreshNotifyUi();
   await refreshGoogleCalUi();
@@ -608,10 +622,13 @@ async function renderHabits() {
       bodyHtml = `<p class="muted" style="margin:6px 0 0;">No habits picked yet — tap "Choose habits" to pick 3 things for this week.</p>`;
     } else {
       const habitsHtml = m.habits.map((h) => `
-        <button class="habit-row-btn ${h.completed ? 'done' : ''}" data-habit="${h.id}" ${h.completed ? 'disabled' : ''}>
-          <span class="habit-check">${h.completed ? '✓' : '○'}</span>
-          <span class="habit-title">${h.emoji ? h.emoji + ' ' : ''}${escapeHtml(h.title)}</span>
-        </button>`).join("");
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button class="habit-row-btn ${h.completed ? 'done' : ''}" data-habit="${h.id}" ${h.completed ? 'disabled' : ''} style="flex:1;">
+            <span class="habit-check">${h.completed ? '✓' : '○'}</span>
+            <span class="habit-title">${h.emoji ? h.emoji + ' ' : ''}${escapeHtml(h.title)}</span>
+          </button>
+          ${h.completed ? `<button class="small secondary" data-habit-photo="${h.id}" style="margin:0;" title="Add a photo of this moment">📷</button>` : ""}
+        </div>`).join("");
       bodyHtml = `<div class="habit-rows">${habitsHtml}</div>
         <p class="muted" style="margin:6px 0 0;">${m.completedCount} of ${m.totalHabits} practised today</p>`;
     }
@@ -627,6 +644,15 @@ async function renderHabits() {
         await renderHabits();
         toast("⭐ Nice work!");
       } catch (err) { toast(err.message, true); }
+    };
+  });
+
+  list.querySelectorAll("button[data-habit-photo]").forEach((btn) => {
+    btn.onclick = () => {
+      pendingPhotoHabitId = btn.getAttribute("data-habit-photo");
+      pendingPhotoRecipeId = null;
+      $("photoFileInput").value = "";
+      $("photoFileInput").click();
     };
   });
 
@@ -720,13 +746,18 @@ $("addRewardBtn").onclick = async () => {
 let recipesCache = [];
 let cookingRecipeId = null;
 let pendingPhotoRecipeId = null;
+let pendingPhotoHabitId = null;
 
 $("photoFileInput").onchange = async () => {
   const file = $("photoFileInput").files[0];
   const recipeId = pendingPhotoRecipeId;
-  if (!file || !recipeId) return;
+  const habitId = pendingPhotoHabitId;
+  if (!file || (!recipeId && !habitId)) return;
   try {
-    const qs = new URLSearchParams({ recipeId, day: todayStr() });
+    const qsParams = { day: todayStr() };
+    if (recipeId) qsParams.recipeId = recipeId;
+    if (habitId) qsParams.habitId = habitId;
+    const qs = new URLSearchParams(qsParams);
     const res = await fetch(`/api/photos?${qs}`, {
       method: "POST",
       headers: { "Content-Type": file.type, Authorization: "Bearer " + state.token },
@@ -734,7 +765,9 @@ $("photoFileInput").onchange = async () => {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.ok === false) throw new Error(data.error || "Upload failed.");
-    toast("📷 Photo added to your Family Cookbook!");
+    toast("📷 Photo added to your Family Memories!");
+    pendingPhotoRecipeId = null; pendingPhotoHabitId = null;
+    await renderMemories();
   } catch (err) { toast(err.message, true); }
 };
 
@@ -786,6 +819,7 @@ async function renderRecipes() {
   list.querySelectorAll("button[data-photo]").forEach((btn) => {
     btn.onclick = () => {
       pendingPhotoRecipeId = btn.getAttribute("data-photo");
+      pendingPhotoHabitId = null;
       $("photoFileInput").value = "";
       $("photoFileInput").click();
     };
@@ -984,6 +1018,57 @@ $("loadCookbookBtn").onclick = async () => {
 };
 
 $("printCookbookBtn").onclick = () => window.print();
+
+// --- Family Memories ---
+let memoriesSlides = [];
+let memoriesIndex = 0;
+
+async function renderMemories() {
+  const view = $("memoriesView");
+  try {
+    const data = await api("/api/memories");
+    if (!data.unlocked) {
+      const pct = Math.max(4, Math.min(100, Math.round((data.totalPhotos / data.threshold) * 100)));
+      const remaining = Math.max(0, data.threshold - data.totalPhotos);
+      view.innerHTML = `
+        <p class="muted">Add photos from a recipe or a completed habit to build your next Memories slideshow.</p>
+        <div class="memories-progress-track"><div class="memories-progress-fill" style="width:${pct}%;"></div></div>
+        <p class="muted" style="margin-top:6px;"><strong>${data.totalPhotos}</strong> of ${data.threshold} photos${remaining > 0 ? ` — ${remaining} more to go!` : " — ready!"}</p>`;
+      return;
+    }
+
+    memoriesSlides = data.slides;
+    memoriesIndex = Math.min(memoriesIndex, memoriesSlides.length - 1);
+    renderMemorySlide();
+  } catch (err) {
+    view.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+}
+
+function renderMemorySlide() {
+  const view = $("memoriesView");
+  if (!memoriesSlides.length) { view.innerHTML = '<p class="muted">No memories yet.</p>'; return; }
+  const s = memoriesSlides[memoriesIndex];
+  const dotsHtml = memoriesSlides.map((_, i) => `<button class="${i === memoriesIndex ? "active" : ""}" data-mem-dot="${i}" aria-label="Memory ${i + 1}"></button>`).join("");
+  view.innerHTML = `
+    <div style="display:flex; align-items:center; gap:10px;">
+      <button class="small secondary" id="memPrevBtn" style="margin:0;">‹</button>
+      <div class="memories-slide">
+        <img alt="${s.title}" />
+        <div class="cap"><span class="tag">${s.tag}</span><div style="font-weight:700;">${s.title}</div><div style="font-size:0.78rem; opacity:0.9;">${s.day}</div></div>
+      </div>
+      <button class="small secondary" id="memNextBtn" style="margin:0;">›</button>
+    </div>
+    <div class="memories-dots">${dotsHtml}</div>`;
+
+  fetchPhotoBlobUrl(s.id).then((url) => { const img = view.querySelector(".memories-slide img"); if (url && img) img.src = url; });
+
+  $("memPrevBtn").onclick = () => { memoriesIndex = memoriesIndex === 0 ? memoriesSlides.length - 1 : memoriesIndex - 1; renderMemorySlide(); };
+  $("memNextBtn").onclick = () => { memoriesIndex = memoriesIndex === memoriesSlides.length - 1 ? 0 : memoriesIndex + 1; renderMemorySlide(); };
+  view.querySelectorAll("button[data-mem-dot]").forEach((btn) => {
+    btn.onclick = () => { memoriesIndex = Number(btn.getAttribute("data-mem-dot")); renderMemorySlide(); };
+  });
+}
 
 $("addShoppingBtn").onclick = async () => {
   clearError("shoppingError");

@@ -20,10 +20,12 @@ function validDay(day) {
 }
 
 /**
- * POST /api/photos?recipeId=&memberId=&day=&caption= — body is the raw
- * image bytes (fetch with { method: "POST", body: file, headers: {
+ * POST /api/photos?recipeId=&habitId=&memberId=&day=&caption= — body is the
+ * raw image bytes (fetch with { method: "POST", body: file, headers: {
  * "Content-Type": file.type } }). Stores to R2, records a row, returns the
- * photo's id (fetch it back via GET /api/photos/:id).
+ * photo's id (fetch it back via GET /api/photos/:id). A photo can be tagged
+ * to a recipe (cooking) OR a habit (a Move Your Way / Grow It moment) — not
+ * both — so it can later show up correctly in the Memories slideshow.
  */
 export async function uploadPhoto(request, familyId, env) {
   if (!env.PHOTOS) {
@@ -41,6 +43,7 @@ export async function uploadPhoto(request, familyId, env) {
 
   const url = new URL(request.url);
   const recipeId = url.searchParams.get("recipeId") || null;
+  const habitId = url.searchParams.get("habitId") || null;
   const memberId = url.searchParams.get("memberId") || null;
   const day = validDay(url.searchParams.get("day")) ? url.searchParams.get("day") : todayStr();
   const caption = (url.searchParams.get("caption") || "").slice(0, 200);
@@ -50,6 +53,10 @@ export async function uploadPhoto(request, familyId, env) {
     const recipe = await db.prepare("SELECT id FROM recipes WHERE id = ? AND (family_id = ? OR family_id IS NULL)").bind(recipeId, familyId).first();
     if (!recipe) return errorResponse("Recipe not found.", 404);
   }
+  if (habitId) {
+    const habit = await db.prepare("SELECT id FROM weekly_habits WHERE id = ? AND family_id = ?").bind(habitId, familyId).first();
+    if (!habit) return errorResponse("Habit not found.", 404);
+  }
 
   const photoId = newId();
   const r2Key = `${familyId}/${photoId}.${extFor(contentType)}`;
@@ -58,9 +65,9 @@ export async function uploadPhoto(request, familyId, env) {
 
   await db
     .prepare(
-      "INSERT INTO cookbook_photos (id, family_id, recipe_id, member_id, r2_key, content_type, source, caption, day) VALUES (?, ?, ?, ?, ?, ?, 'upload', ?, ?)"
+      "INSERT INTO cookbook_photos (id, family_id, recipe_id, habit_id, member_id, r2_key, content_type, source, caption, day) VALUES (?, ?, ?, ?, ?, ?, ?, 'upload', ?, ?)"
     )
-    .bind(photoId, familyId, recipeId, memberId, r2Key, contentType, caption, day)
+    .bind(photoId, familyId, recipeId, habitId, memberId, r2Key, contentType, caption, day)
     .run();
 
   return json({ ok: true, photoId });
@@ -104,11 +111,13 @@ export async function getCookbook(request, familyId, env) {
   const db = env.DB;
   const photos = await db
     .prepare(
-      `SELECT p.id, p.recipe_id, p.member_id, p.source, p.caption, p.day,
-              r.title as recipe_title, m.display_name as member_name
+      `SELECT p.id, p.recipe_id, p.habit_id, p.member_id, p.source, p.caption, p.day,
+              r.title as recipe_title, m.display_name as member_name,
+              h.title as habit_title, h.emoji as habit_emoji
        FROM cookbook_photos p
        LEFT JOIN recipes r ON r.id = p.recipe_id
        LEFT JOIN members m ON m.id = p.member_id
+       LEFT JOIN weekly_habits h ON h.id = p.habit_id
        WHERE p.family_id = ? AND p.day BETWEEN ? AND ?
        ORDER BY p.day ASC, p.created_at ASC`
     )
@@ -121,4 +130,44 @@ export async function getCookbook(request, familyId, env) {
     .all();
 
   return json({ ok: true, photos: photos.results || [], favorites: favorites.results || [] });
+}
+
+const MEMORIES_THRESHOLD = 5; // photos needed to unlock the next Memories slideshow
+
+/**
+ * GET /api/memories — a rainbow-themed slideshow of recent cooking AND
+ * activity photos, once the family has uploaded enough of them. Below the
+ * threshold, returns progress so the UI can show "X of Y photos" instead.
+ */
+export async function getMemories(familyId, env) {
+  const db = env.DB;
+  const countRow = await db.prepare("SELECT COUNT(*) as n FROM cookbook_photos WHERE family_id = ?").bind(familyId).first();
+  const totalPhotos = countRow ? countRow.n : 0;
+  const unlocked = totalPhotos >= MEMORIES_THRESHOLD;
+
+  let slides = [];
+  if (unlocked) {
+    const rows = await db
+      .prepare(
+        `SELECT p.id, p.recipe_id, p.habit_id, p.day,
+                r.title as recipe_title, h.title as habit_title, h.emoji as habit_emoji
+         FROM cookbook_photos p
+         LEFT JOIN recipes r ON r.id = p.recipe_id
+         LEFT JOIN weekly_habits h ON h.id = p.habit_id
+         WHERE p.family_id = ?
+         ORDER BY p.created_at DESC
+         LIMIT 12`
+      )
+      .bind(familyId)
+      .all();
+
+    slides = (rows.results || []).map((r) => {
+      const kind = r.recipe_id ? "recipe" : r.habit_id ? "habit" : "photo";
+      const title = r.recipe_title || r.habit_title || "Family moment";
+      const tag = kind === "recipe" ? "🍳 Recipe" : kind === "habit" ? `${r.habit_emoji || "⚡"} Habit` : "📸 Family moment";
+      return { id: r.id, kind, title, tag, day: r.day };
+    });
+  }
+
+  return json({ ok: true, totalPhotos, threshold: MEMORIES_THRESHOLD, unlocked, slides });
 }

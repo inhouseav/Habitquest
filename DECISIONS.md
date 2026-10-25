@@ -76,3 +76,11 @@ Each entry: date, decision, why, alternatives considered.
 2. **Added a "family meal together" tracker** — a checkbox when suggesting a meal ("We're all eating this together 👨‍👩‍👧"), a toggle on existing meal-plan rows, and a weekly counter ("X family meals together this week!"). Several dietitian responses named eating together regularly as one of the highest-impact habits — more so than any single food choice.
 **Why no guilt framing:** per the app's own rule (never make kids feel bad, never compare), the counter only ever counts up and celebrates — there's no target, no red/incomplete state, and missing a together-meal is never flagged.
 **Record:** migration `008_family_meal_together.sql` adds the `together` column to `meal_plan_items`.
+
+---
+
+## 2026-10-25 — Family Memories slideshow: sample first, then built for real
+**Decision:** Sketched a "rainbow Google-Photos-Memories"-style slideshow idea as a sample page first (not touching the live app), got feedback (mix in activity photos, not just recipes), then built the real feature once the direction was confirmed. `/api/memories` unlocks a slideshow once the family has 5+ photos total; below that, shows a gentle progress bar. Photos can now be tagged to a habit (habit_id on `cookbook_photos`, migration `009_memories.sql`), so a 📷 button appears on any ticked-off habit, not just recipe cards — the slideshow mixes cooking and activity moments.
+**Why 5 photos:** an arbitrary, easy-to-change starting threshold — not from the dietitian research, just a reasonable "enough to be worth a slideshow" number. Easy to tune later via `MEMORIES_THRESHOLD` in `photos.js`.
+**Deferred:** the idle/sleep-mode screensaver (so this becomes the default view on a future iPad mounted on the kitchen bench) — Maddie's call to build that separately once there's a real iPad to test against, rather than guessing at kiosk/idle-detection behaviour now.
+**Blocked:** same R2 bucket as the Family Cookbook.
