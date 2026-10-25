@@ -298,7 +298,10 @@
         <textarea id="newRecipeIngredients" placeholder="2 tortillas&#10;1 cup black beans&#10;..."></textarea>
         <label>Steps (one per line)</label>
         <textarea id="newRecipeSteps" placeholder="Warm the tortillas&#10;Mash the beans&#10;..."></textarea>
-        <button id="addRecipeBtn">Add recipe</button>
+        <div style="display:flex; gap:8px;">
+          <button id="addRecipeBtn" style="flex:1;">Add recipe</button>
+          <button class="secondary hidden" id="cancelEditRecipeBtn" type="button" style="flex:0; white-space:nowrap;">Cancel</button>
+        </div>
       </div>
       <div class="error hidden" id="recipeError"></div>
       <input type="file" id="photoFileInput" accept="image/*" class="hidden" />
@@ -761,6 +764,7 @@ $("addRewardBtn").onclick = async () => {
 
 // --- Recipes ---
 let recipesCache = [];
+let editingRecipeId = null;
 let recipeCategoryFilter = "all";
 const RECIPE_CATEGORY_META = {
   breakfast: { label: "Breakfast", emoji: "🥣" },
@@ -834,6 +838,7 @@ async function renderRecipes() {
         <span>${catMeta ? `<span title="${catMeta.label}">${catMeta.emoji}</span> ` : ""}<strong>${r.title}</strong> <span class="muted">(tap to view) · ${r.ingredients.length} ingredients, ${r.steps.length} steps</span></span>
         <div style="display:flex; gap:6px; flex-wrap:wrap;" onclick="event.stopPropagation()">
           <button class="small secondary" data-fav="${r.id}" style="margin:0;">${r.favorite ? "⭐ Favourited" : "☆ Favourite"}</button>
+          ${r.family_id ? `<button class="small secondary" data-edit-recipe="${r.id}" style="margin:0;">✏️ Edit</button>` : ""}
           <button class="small secondary" data-photo="${r.id}" style="margin:0;">📷 Add photo</button>
           <button class="small secondary" data-ai-photo="${r.id}" style="margin:0;">✨ AI photo</button>
           <button class="small secondary" data-cook="${r.id}" style="margin:0;">🍳 Cook this</button>
@@ -859,6 +864,18 @@ async function renderRecipes() {
         await api(`/api/recipes/${btn.getAttribute("data-fav")}/favorite`, { method: "POST", body: "{}" });
         await renderRecipes();
       } catch (err) { toast(err.message, true); }
+    };
+  });
+  list.querySelectorAll("button[data-edit-recipe]").forEach((btn) => {
+    btn.onclick = () => {
+      const recipe = recipesCache.find((r) => r.id === btn.getAttribute("data-edit-recipe"));
+      if (!recipe) return;
+      editingRecipeId = recipe.id;
+      fillRecipeForm(recipe);
+      $("addRecipeBtn").textContent = "Save changes";
+      show("cancelEditRecipeBtn");
+      show("addRecipeForm");
+      $("addRecipeForm").scrollIntoView({ behavior: "smooth", block: "nearest" });
     };
   });
   list.querySelectorAll("button[data-photo]").forEach((btn) => {
@@ -897,15 +914,28 @@ async function renderRecipes() {
     };
   });
 }
-$("showAddRecipeBtn").onclick = () => show("addRecipeForm");
+function resetRecipeForm() {
+  editingRecipeId = null;
+  $("newRecipeTitle").value = ""; $("newRecipeIngredients").value = ""; $("newRecipeSteps").value = ""; $("newRecipeCategory").value = "";
+  $("addRecipeBtn").textContent = "Add recipe";
+  hide("cancelEditRecipeBtn");
+}
+$("showAddRecipeBtn").onclick = () => { resetRecipeForm(); show("addRecipeForm"); };
+$("cancelEditRecipeBtn").onclick = () => { resetRecipeForm(); hide("addRecipeForm"); };
 $("addRecipeBtn").onclick = async () => {
   clearError("recipeError");
   try {
     const ingredients = $("newRecipeIngredients").value.split("\n").map((s) => s.trim()).filter(Boolean);
     const steps = $("newRecipeSteps").value.split("\n").map((s) => s.trim()).filter(Boolean);
     const category = $("newRecipeCategory").value || null;
-    await api("/api/recipes", { method: "POST", body: JSON.stringify({ title: $("newRecipeTitle").value, ingredients, steps, category })});
-    $("newRecipeTitle").value = ""; $("newRecipeIngredients").value = ""; $("newRecipeSteps").value = ""; $("newRecipeCategory").value = "";
+    const payload = JSON.stringify({ title: $("newRecipeTitle").value, ingredients, steps, category });
+    if (editingRecipeId) {
+      await api(`/api/recipes/${editingRecipeId}`, { method: "PUT", body: payload });
+      toast("Recipe updated!");
+    } else {
+      await api("/api/recipes", { method: "POST", body: payload });
+    }
+    resetRecipeForm();
     hide("addRecipeForm"); await renderRecipes();
   } catch (err) { showError("recipeError", err.message); }
 };

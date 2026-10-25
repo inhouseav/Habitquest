@@ -119,6 +119,8 @@ async function handleApi(request, env, url) {
 
   if (path === "/api/recipes" && method === "GET") return recipeRoutes.listRecipes(familyId, env);
   if (path === "/api/recipes" && method === "POST") return recipeRoutes.createRecipe(request, familyId, env);
+  const recipeIdMatch = path.match(/^\/api\/recipes\/([^/]+)$/);
+  if (recipeIdMatch && method === "PUT") return recipeRoutes.updateRecipe(recipeIdMatch[1], request, familyId, env);
   const recipeFavMatch = path.match(/^\/api\/recipes\/([^/]+)\/favorite$/);
   if (recipeFavMatch && method === "POST") return recipeRoutes.toggleFavorite(recipeFavMatch[1], familyId, env);
 
