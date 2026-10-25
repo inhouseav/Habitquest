@@ -19,6 +19,7 @@ import * as googleCalendarRoutes from "./routes/googleCalendarRoutes.js";
 import * as aiAssistantRoutes from "./routes/aiAssistant.js";
 import * as photoRoutes from "./routes/photos.js";
 import * as aiImageRoutes from "./routes/aiImage.js";
+import * as aiRecipeIntakeRoutes from "./routes/aiRecipeIntake.js";
 
 async function handleHealth(env) {
   const hasDb = !!env.DB;
@@ -162,6 +163,8 @@ async function handleApi(request, env, url) {
   if (path === "/api/calendar/google/disconnect" && method === "POST") return googleCalendarRoutes.disconnect(familyId, env);
 
   if (path === "/api/ai/suggest" && method === "POST") return aiAssistantRoutes.suggest(request, familyId, env);
+  if (path === "/api/ai/recipe-from-photo" && method === "POST") return aiRecipeIntakeRoutes.recipeFromPhoto(request, familyId, env);
+  if (path === "/api/ai/recipe-from-name" && method === "POST") return aiRecipeIntakeRoutes.recipeFromName(request, familyId, env);
 
   return errorResponse("Not found.", 404);
 }

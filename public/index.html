@@ -273,11 +273,27 @@
 
     <div class="card">
       <h3>Recipes 🍳</h3>
+      <div id="recipeCategoryTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
       <div id="recipesList"><p class="loading-text">Loading...</p></div>
-      <button class="secondary" id="showAddRecipeBtn">+ Add a recipe</button>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+        <button class="secondary" id="showAddRecipeBtn">+ Add a recipe</button>
+        <button class="secondary" id="scanRecipeBtn">📷 Scan a recipe photo</button>
+      </div>
       <div id="addRecipeForm" class="hidden" style="margin-top: 12px;">
         <label>Title</label>
-        <input id="newRecipeTitle" placeholder="e.g. Veggie tacos" />
+        <div style="display:flex; gap:6px;">
+          <input id="newRecipeTitle" placeholder="e.g. Veggie tacos" style="flex:1;" />
+          <button class="small secondary" id="aiFillRecipeBtn" type="button" style="margin:0; white-space:nowrap;">✨ AI fill</button>
+        </div>
+        <label>Category</label>
+        <select id="newRecipeCategory">
+          <option value="">Choose...</option>
+          <option value="breakfast">🥣 Breakfast</option>
+          <option value="lunch">🥪 Lunch</option>
+          <option value="dinner">🍽️ Dinner</option>
+          <option value="snacks">🍎 Snacks</option>
+          <option value="lunchboxes">🎒 Lunchboxes</option>
+        </select>
         <label>Ingredients (one per line)</label>
         <textarea id="newRecipeIngredients" placeholder="2 tortillas&#10;1 cup black beans&#10;..."></textarea>
         <label>Steps (one per line)</label>
@@ -286,6 +302,7 @@
       </div>
       <div class="error hidden" id="recipeError"></div>
       <input type="file" id="photoFileInput" accept="image/*" class="hidden" />
+      <input type="file" id="recipeScanInput" accept="image/*" class="hidden" />
     </div>
 
     <div class="card">
@@ -744,6 +761,14 @@ $("addRewardBtn").onclick = async () => {
 
 // --- Recipes ---
 let recipesCache = [];
+let recipeCategoryFilter = "all";
+const RECIPE_CATEGORY_META = {
+  breakfast: { label: "Breakfast", emoji: "🥣" },
+  lunch: { label: "Lunch", emoji: "🥪" },
+  dinner: { label: "Dinner", emoji: "🍽️" },
+  snacks: { label: "Snacks", emoji: "🍎" },
+  lunchboxes: { label: "Lunchboxes", emoji: "🎒" },
+};
 let cookingRecipeId = null;
 let pendingPhotoRecipeId = null;
 let pendingPhotoHabitId = null;
@@ -774,9 +799,28 @@ $("photoFileInput").onchange = async () => {
 async function renderRecipes() {
   const data = await api("/api/recipes");
   recipesCache = data.recipes;
+
+  const tabsWrap = $("recipeCategoryTabs");
+  const tabDefs = [{ key: "all", label: "All", emoji: "🍳" }, ...Object.keys(RECIPE_CATEGORY_META).map((k) => ({ key: k, ...RECIPE_CATEGORY_META[k] }))];
+  tabsWrap.innerHTML = tabDefs.map((t) => {
+    const count = t.key === "all" ? recipesCache.length : recipesCache.filter((r) => r.category === t.key).length;
+    const active = recipeCategoryFilter === t.key;
+    return `<button class="small ${active ? "" : "secondary"}" data-recipe-tab="${t.key}" style="margin:0;">${t.emoji} ${t.label}${count ? ` (${count})` : ""}</button>`;
+  }).join("");
+  tabsWrap.querySelectorAll("button[data-recipe-tab]").forEach((btn) => {
+    btn.onclick = () => { recipeCategoryFilter = btn.getAttribute("data-recipe-tab"); renderRecipes(); };
+  });
+
+  const visibleRecipes = recipeCategoryFilter === "all" ? recipesCache : recipesCache.filter((r) => r.category === recipeCategoryFilter);
+
   const list = $("recipesList"); list.innerHTML = "";
-  if (!data.recipes.length) { list.innerHTML = '<p class="muted">No recipes yet — add your family\'s favorite below!</p>'; return; }
-  data.recipes.forEach((r) => {
+  if (!visibleRecipes.length) {
+    list.innerHTML = recipesCache.length
+      ? '<p class="muted">No recipes in this category yet.</p>'
+      : '<p class="muted">No recipes yet — add your family\'s favorite below!</p>';
+    return;
+  }
+  visibleRecipes.forEach((r) => {
     const row = document.createElement("div"); row.className = "event-row recipe-row";
     const cookFormHtml = cookingRecipeId === r.id
       ? `<div style="display:flex; gap:6px; margin-top:8px;" onclick="event.stopPropagation()">
@@ -785,8 +829,9 @@ async function renderRecipes() {
            <button class="small secondary" data-cook-cancel style="margin:0;">Cancel</button>
          </div>`
       : "";
+    const catMeta = RECIPE_CATEGORY_META[r.category];
     row.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-        <span><strong>${r.title}</strong> <span class="muted">(tap to view) · ${r.ingredients.length} ingredients, ${r.steps.length} steps</span></span>
+        <span>${catMeta ? `<span title="${catMeta.label}">${catMeta.emoji}</span> ` : ""}<strong>${r.title}</strong> <span class="muted">(tap to view) · ${r.ingredients.length} ingredients, ${r.steps.length} steps</span></span>
         <div style="display:flex; gap:6px; flex-wrap:wrap;" onclick="event.stopPropagation()">
           <button class="small secondary" data-fav="${r.id}" style="margin:0;">${r.favorite ? "⭐ Favourited" : "☆ Favourite"}</button>
           <button class="small secondary" data-photo="${r.id}" style="margin:0;">📷 Add photo</button>
@@ -858,10 +903,57 @@ $("addRecipeBtn").onclick = async () => {
   try {
     const ingredients = $("newRecipeIngredients").value.split("\n").map((s) => s.trim()).filter(Boolean);
     const steps = $("newRecipeSteps").value.split("\n").map((s) => s.trim()).filter(Boolean);
-    await api("/api/recipes", { method: "POST", body: JSON.stringify({ title: $("newRecipeTitle").value, ingredients, steps })});
-    $("newRecipeTitle").value = ""; $("newRecipeIngredients").value = ""; $("newRecipeSteps").value = "";
+    const category = $("newRecipeCategory").value || null;
+    await api("/api/recipes", { method: "POST", body: JSON.stringify({ title: $("newRecipeTitle").value, ingredients, steps, category })});
+    $("newRecipeTitle").value = ""; $("newRecipeIngredients").value = ""; $("newRecipeSteps").value = ""; $("newRecipeCategory").value = "";
     hide("addRecipeForm"); await renderRecipes();
   } catch (err) { showError("recipeError", err.message); }
+};
+
+function fillRecipeForm(recipe) {
+  if (recipe.title) $("newRecipeTitle").value = recipe.title;
+  $("newRecipeIngredients").value = (recipe.ingredients || []).join("\n");
+  $("newRecipeSteps").value = (recipe.steps || []).join("\n");
+  if (recipe.category) $("newRecipeCategory").value = recipe.category;
+}
+
+$("scanRecipeBtn").onclick = () => {
+  show("addRecipeForm");
+  $("recipeScanInput").value = "";
+  $("recipeScanInput").click();
+};
+$("recipeScanInput").onchange = async () => {
+  const file = $("recipeScanInput").files[0];
+  if (!file) return;
+  clearError("recipeError");
+  toast("📷 Reading your recipe photo...");
+  try {
+    const res = await fetch("/api/ai/recipe-from-photo", {
+      method: "POST",
+      headers: { "Content-Type": file.type, Authorization: "Bearer " + state.token },
+      body: file,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) throw new Error(data.error || "Couldn't read that photo.");
+    fillRecipeForm(data.recipe);
+    toast("✨ Recipe drafted — check it over before saving!");
+  } catch (err) { showError("recipeError", err.message); }
+};
+
+$("aiFillRecipeBtn").onclick = async () => {
+  const name = $("newRecipeTitle").value.trim();
+  if (!name) { showError("recipeError", "Type a dish name first (e.g. \"veggie tacos\")."); return; }
+  clearError("recipeError");
+  const btn = $("aiFillRecipeBtn");
+  btn.disabled = true; btn.textContent = "✨ Thinking...";
+  try {
+    const data = await api("/api/ai/recipe-from-name", { method: "POST", body: JSON.stringify({ name }) });
+    $("newRecipeIngredients").value = (data.recipe.ingredients || []).join("\n");
+    $("newRecipeSteps").value = (data.recipe.steps || []).join("\n");
+    if (data.recipe.category) $("newRecipeCategory").value = data.recipe.category;
+    toast("✨ Recipe drafted — check it over before saving!");
+  } catch (err) { showError("recipeError", err.message); }
+  finally { btn.disabled = false; btn.textContent = "✨ AI fill"; }
 };
 
 // --- Meal plan ---

@@ -84,3 +84,11 @@ Each entry: date, decision, why, alternatives considered.
 **Why 5 photos:** an arbitrary, easy-to-change starting threshold — not from the dietitian research, just a reasonable "enough to be worth a slideshow" number. Easy to tune later via `MEMORIES_THRESHOLD` in `photos.js`.
 **Deferred:** the idle/sleep-mode screensaver (so this becomes the default view on a future iPad mounted on the kitchen bench) — Maddie's call to build that separately once there's a real iPad to test against, rather than guessing at kiosk/idle-detection behaviour now.
 **Blocked:** same R2 bucket as the Family Cookbook.
+
+---
+
+## 2026-10-25 — AI recipe intake: photo scan + "AI fill" from a dish name, plus categories
+**Decision:** Split Maddie's "AI search and upload, or upload an image and search for it" idea into two concrete things, confirmed via quick questions before building: (1) 📷 Scan a recipe photo — upload a photo of a cookbook page, handwritten card, or packet, and Claude's vision reads it into a draft recipe card; (2) ✨ AI fill — type just a dish name and Claude drafts the ingredients/steps. Both also bring back an AI-picked category, so the Recipe Library sample's category tabs (Breakfast/Lunch/Dinner/Snacks/Lunchboxes) came into the real Recipes card too — otherwise "AI categorise" would have nowhere to put the result.
+**Why it never auto-saves:** both routes only fill the add-recipe form; a parent/child still reviews and taps "Add recipe" themselves, same pattern as the "Need an idea?" AI assistant — AI drafts, a person decides.
+**Why vision and not a separate OCR tool:** Claude's API already accepts images directly in the same `/v1/messages` call used for the AI assistant, so no extra service or key was needed — same `ANTHROPIC_API_KEY`, same gating, same "not set up yet" honesty if it's missing.
+**Record:** migration `010_recipe_categories.sql` adds `category` to `recipes`.
