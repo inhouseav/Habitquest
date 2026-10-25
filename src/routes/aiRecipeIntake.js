@@ -16,9 +16,13 @@ function arrayBufferToBase64(buffer) {
 }
 
 function parseRecipeJson(text) {
+  // Claude sometimes wraps JSON in a markdown code fence (```json ... ```)
+  // even when told not to — strip that before parsing instead of failing.
+  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+
   let parsed;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(cleaned);
   } catch (err) {
     return null;
   }

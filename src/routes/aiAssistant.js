@@ -80,10 +80,13 @@ export async function suggest(request, familyId, env) {
 
   const data = await aiRes.json();
   const text = (data.content || []).map((block) => block.text || "").join("").trim();
+  // Claude sometimes wraps JSON in a markdown code fence even when told not
+  // to — strip that before parsing instead of failing.
+  const cleanedText = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
 
   let suggestion;
   try {
-    suggestion = JSON.parse(text);
+    suggestion = JSON.parse(cleanedText);
   } catch (err) {
     return errorResponse("The AI gave back something we couldn't understand. Try again.", 502);
   }
