@@ -57,7 +57,6 @@ export async function generateImage(request, familyId, env) {
         prompt,
         size: "1024x1024",
         quality: "standard",
-        response_format: "b64_json",
         n: 1,
       }),
     });
@@ -71,10 +70,21 @@ export async function generateImage(request, familyId, env) {
   }
 
   const data = await aiRes.json();
-  const b64 = data.data && data.data[0] && data.data[0].b64_json;
-  if (!b64) return errorResponse("The image service didn't return an image. Try again.", 502);
+  const result = data.data && data.data[0];
+  if (!result) return errorResponse("The image service didn't return an image. Try again.", 502);
 
-  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  // Without response_format, dall-e-3 sends back a temporary download link
+  // (data[0].url) instead of the image bytes directly — fetch it.
+  let bytes;
+  if (result.b64_json) {
+    bytes = Uint8Array.from(atob(result.b64_json), (c) => c.charCodeAt(0));
+  } else if (result.url) {
+    const imgRes = await fetch(result.url).catch(() => null);
+    if (!imgRes || !imgRes.ok) return errorResponse("Couldn't download the generated image. Try again.", 502);
+    bytes = new Uint8Array(await imgRes.arrayBuffer());
+  } else {
+    return errorResponse("The image service didn't return an image. Try again.", 502);
+  }
 
   const photoId = newId();
   const r2Key = `${familyId}/${photoId}.png`;
