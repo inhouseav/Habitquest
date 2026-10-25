@@ -13,7 +13,7 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 | Cloudflare Worker project | ✅ | Live at https://habitquest.ihav.workers.dev — deployed, public URL enabled, confirmed working 2026-10-24 |
 | Static site + API scaffold | ✅ | `src/worker.js` serves `public/` and handles `/api/health` — tested live, returned `{"ok": true, ...}` on 2026-10-24 |
 | D1 database | ✅ | Real database `habitquest-db` (id `2fa8326b-db8d-4a92-99c0-83a24b7d2a86`) created, bound, and schema applied via the Cloudflare D1 console on 2026-10-24. All 5 tables confirmed present (`families`, `members`, `events`, `star_ledger`, `recipes`). Live `/api/health` check confirmed `db_binding_present: true` and `db_reachable: true`. |
-| R2 bucket (photos) | ⛔ | Not started; binding commented out for the same reason as D1 |
+| R2 bucket (photos) | ✅ | Real bucket `habitquest-photos` created via the Cloudflare dashboard on 2026-10-25, binding uncommented in `wrangler.toml` and deployed. Not yet confirmed by a live photo upload test. |
 
 ## Core features (Sessions 1–5 scope)
 | Item | Status | Notes |
