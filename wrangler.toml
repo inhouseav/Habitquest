@@ -19,9 +19,7 @@ binding = "DB"
 database_name = "habitquest-db"
 database_id = "2fa8326b-db8d-4a92-99c0-83a24b7d2a86"
 
-# R2 bucket (family photos) — not created yet, so this stays commented out
-# until it exists (see README "Setup" steps). An uncommented binding to a
-# non-existent bucket blocks deploy.
-# [[r2_buckets]]
-# binding = "PHOTOS"
-# bucket_name = "habitquest-photos"
+# R2 bucket (family photos) — created 2026-10-25 via the Cloudflare dashboard.
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "habitquest-photos"
