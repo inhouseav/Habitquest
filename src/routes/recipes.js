@@ -8,7 +8,7 @@ export async function listRecipes(familyId, env) {
   const db = env.DB;
   const recipes = await db
     .prepare(
-      "SELECT id, family_id, title, ingredients, steps, tags, created_at FROM recipes WHERE family_id = ? OR family_id IS NULL ORDER BY created_at DESC"
+      "SELECT id, family_id, title, ingredients, steps, tags, favorite, created_at FROM recipes WHERE family_id = ? OR family_id IS NULL ORDER BY created_at DESC"
     )
     .bind(familyId)
     .all();
@@ -19,6 +19,7 @@ export async function listRecipes(familyId, env) {
       ingredients: safeParse(r.ingredients, []),
       steps: safeParse(r.steps, []),
       tags: safeParse(r.tags, []),
+      favorite: !!r.favorite,
     })),
   });
 }
@@ -55,4 +56,16 @@ export async function createRecipe(request, familyId, env) {
     .run();
 
   return json({ ok: true, recipe: { id: recipeId, title, ingredients, steps, tags } });
+}
+
+/** POST /api/recipes/:id/favorite — toggle a recipe as a family favourite. */
+export async function toggleFavorite(recipeId, familyId, env) {
+  const db = env.DB;
+  const recipe = await db.prepare("SELECT id, favorite FROM recipes WHERE id = ? AND (family_id = ? OR family_id IS NULL)").bind(recipeId, familyId).first();
+  if (!recipe) return errorResponse("Recipe not found.", 404);
+
+  const nextValue = recipe.favorite ? 0 : 1;
+  await db.prepare("UPDATE recipes SET favorite = ? WHERE id = ?").bind(nextValue, recipeId).run();
+
+  return json({ ok: true, favorite: !!nextValue });
 }

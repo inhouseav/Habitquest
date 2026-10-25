@@ -69,6 +69,15 @@
   .habit-row-btn.done { background: #eef4e8; border-color: var(--sage); opacity: 0.85; }
   .habit-row-btn.done .habit-title { text-decoration: line-through; }
   .habit-row-btn:disabled { cursor: default; }
+  .cookbook-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .cookbook-photo { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(24,63,53,0.08); }
+  .cookbook-photo img { width: 100%; height: 120px; object-fit: cover; display: block; background: var(--sage); }
+  .cookbook-photo .cap { padding: 6px 8px; font-size: 0.75rem; }
+  @media print {
+    body * { visibility: hidden; }
+    #cookbookView, #cookbookView * { visibility: visible; }
+    #cookbookView { position: absolute; top: 0; left: 0; width: 100%; }
+  }
   .event-row { padding: 10px 0; border-bottom: 1px solid #eee3cf; }
   .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .cal-header h3 { margin: 0; }
@@ -267,6 +276,21 @@
         <button id="addRecipeBtn">Add recipe</button>
       </div>
       <div class="error hidden" id="recipeError"></div>
+      <input type="file" id="photoFileInput" accept="image/*" class="hidden" />
+    </div>
+
+    <div class="card">
+      <h3>Family Cookbook 📸</h3>
+      <p class="muted">Favourite recipes + photos of you making them, compiled together.</p>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <label style="width:auto; margin:0;">From</label>
+        <input type="date" id="cookbookStart" style="width:auto;" />
+        <label style="width:auto; margin:0;">To</label>
+        <input type="date" id="cookbookEnd" style="width:auto;" />
+        <button class="small" id="loadCookbookBtn" style="margin:0;">Load</button>
+        <button class="small secondary" id="printCookbookBtn" style="margin:0;">🖨️ Print</button>
+      </div>
+      <div id="cookbookView" style="margin-top:14px;"><p class="muted">Pick a date range and tap Load.</p></div>
     </div>
 
     <div class="card">
@@ -690,6 +714,24 @@ $("addRewardBtn").onclick = async () => {
 // --- Recipes ---
 let recipesCache = [];
 let cookingRecipeId = null;
+let pendingPhotoRecipeId = null;
+
+$("photoFileInput").onchange = async () => {
+  const file = $("photoFileInput").files[0];
+  const recipeId = pendingPhotoRecipeId;
+  if (!file || !recipeId) return;
+  try {
+    const qs = new URLSearchParams({ recipeId, day: todayStr() });
+    const res = await fetch(`/api/photos?${qs}`, {
+      method: "POST",
+      headers: { "Content-Type": file.type, Authorization: "Bearer " + state.token },
+      body: file,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) throw new Error(data.error || "Upload failed.");
+    toast("📷 Photo added to your Family Cookbook!");
+  } catch (err) { toast(err.message, true); }
+};
 
 async function renderRecipes() {
   const data = await api("/api/recipes");
@@ -707,7 +749,12 @@ async function renderRecipes() {
       : "";
     row.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
         <span><strong>${r.title}</strong> <span class="muted">(tap to view) · ${r.ingredients.length} ingredients, ${r.steps.length} steps</span></span>
-        <button class="small secondary" data-cook="${r.id}" style="margin:0;" onclick="event.stopPropagation()">🍳 Cook this</button>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;" onclick="event.stopPropagation()">
+          <button class="small secondary" data-fav="${r.id}" style="margin:0;">${r.favorite ? "⭐ Favourited" : "☆ Favourite"}</button>
+          <button class="small secondary" data-photo="${r.id}" style="margin:0;">📷 Add photo</button>
+          <button class="small secondary" data-ai-photo="${r.id}" style="margin:0;">✨ AI photo</button>
+          <button class="small secondary" data-cook="${r.id}" style="margin:0;">🍳 Cook this</button>
+        </div>
       </div>
       <div class="recipe-detail hidden">
         <strong>Ingredients</strong>
@@ -722,6 +769,31 @@ async function renderRecipes() {
 
   list.querySelectorAll("button[data-cook]").forEach((btn) => {
     btn.onclick = () => { cookingRecipeId = btn.getAttribute("data-cook"); renderRecipes(); };
+  });
+  list.querySelectorAll("button[data-fav]").forEach((btn) => {
+    btn.onclick = async () => {
+      try {
+        await api(`/api/recipes/${btn.getAttribute("data-fav")}/favorite`, { method: "POST", body: "{}" });
+        await renderRecipes();
+      } catch (err) { toast(err.message, true); }
+    };
+  });
+  list.querySelectorAll("button[data-photo]").forEach((btn) => {
+    btn.onclick = () => {
+      pendingPhotoRecipeId = btn.getAttribute("data-photo");
+      $("photoFileInput").value = "";
+      $("photoFileInput").click();
+    };
+  });
+  list.querySelectorAll("button[data-ai-photo]").forEach((btn) => {
+    btn.onclick = async () => {
+      btn.disabled = true; btn.textContent = "✨ Generating...";
+      try {
+        await api("/api/ai/image", { method: "POST", body: JSON.stringify({ recipeId: btn.getAttribute("data-ai-photo") })});
+        toast("✨ AI photo added to your Family Cookbook!");
+      } catch (err) { toast(err.message, true); }
+      finally { btn.disabled = false; btn.textContent = "✨ AI photo"; }
+    };
   });
   list.querySelectorAll("button[data-cook-cancel]").forEach((btn) => {
     btn.onclick = () => { cookingRecipeId = null; renderRecipes(); };
@@ -842,6 +914,56 @@ $("copyShoppingBtn").onclick = async () => {
     }
   } catch (err) { toast(err.message, true); }
 };
+
+// --- Family Cookbook ---
+(function initCookbookDates() {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  $("cookbookStart").value = first.toISOString().slice(0, 10);
+  $("cookbookEnd").value = last.toISOString().slice(0, 10);
+})();
+
+async function fetchPhotoBlobUrl(photoId) {
+  const res = await fetch(`/api/photos/${photoId}`, { headers: { Authorization: "Bearer " + state.token } });
+  if (!res.ok) return null;
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
+$("loadCookbookBtn").onclick = async () => {
+  const start = $("cookbookStart").value;
+  const end = $("cookbookEnd").value;
+  const view = $("cookbookView");
+  view.innerHTML = '<p class="loading-text">Loading...</p>';
+  try {
+    const data = await api(`/api/cookbook?start=${start}&end=${end}`);
+    const bits = [];
+
+    if (data.favorites && data.favorites.length) {
+      bits.push(`<p class="muted" style="margin-bottom:8px;">⭐ Favourites: ${data.favorites.map((f) => f.title).join(", ")}</p>`);
+    }
+
+    if (!data.photos.length) {
+      bits.push('<p class="muted">No photos yet for this range — add one from a recipe card!</p>');
+      view.innerHTML = bits.join("");
+      return;
+    }
+
+    view.innerHTML = `${bits.join("")}<div class="cookbook-grid" id="cookbookGrid"></div>`;
+    const grid = $("cookbookGrid");
+    for (const p of data.photos) {
+      const cell = document.createElement("div"); cell.className = "cookbook-photo";
+      const caption = `${p.recipe_title || "Photo"}${p.source === "ai" ? " · ✨ AI" : ""} · ${p.day}`;
+      cell.innerHTML = `<img alt="${caption}" /><div class="cap">${caption}</div>`;
+      grid.appendChild(cell);
+      fetchPhotoBlobUrl(p.id).then((url) => { if (url) cell.querySelector("img").src = url; });
+    }
+  } catch (err) { view.innerHTML = `<p class="error">${err.message}</p>`; }
+};
+
+$("printCookbookBtn").onclick = () => window.print();
+
 $("addShoppingBtn").onclick = async () => {
   clearError("shoppingError");
   const name = $("newShoppingItem").value.trim();

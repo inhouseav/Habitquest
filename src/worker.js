@@ -17,6 +17,8 @@ import * as meetingRoutes from "./routes/meetings.js";
 import * as pushRoutes from "./routes/push.js";
 import * as googleCalendarRoutes from "./routes/googleCalendarRoutes.js";
 import * as aiAssistantRoutes from "./routes/aiAssistant.js";
+import * as photoRoutes from "./routes/photos.js";
+import * as aiImageRoutes from "./routes/aiImage.js";
 
 async function handleHealth(env) {
   const hasDb = !!env.DB;
@@ -116,6 +118,15 @@ async function handleApi(request, env, url) {
 
   if (path === "/api/recipes" && method === "GET") return recipeRoutes.listRecipes(familyId, env);
   if (path === "/api/recipes" && method === "POST") return recipeRoutes.createRecipe(request, familyId, env);
+  const recipeFavMatch = path.match(/^\/api\/recipes\/([^/]+)\/favorite$/);
+  if (recipeFavMatch && method === "POST") return recipeRoutes.toggleFavorite(recipeFavMatch[1], familyId, env);
+
+  if (path === "/api/photos" && method === "POST") return photoRoutes.uploadPhoto(request, familyId, env);
+  const photoGetMatch = path.match(/^\/api\/photos\/([^/]+)$/);
+  if (photoGetMatch && method === "GET") return photoRoutes.getPhoto(photoGetMatch[1], familyId, env);
+  if (photoGetMatch && method === "DELETE") return photoRoutes.deletePhoto(photoGetMatch[1], familyId, env);
+  if (path === "/api/cookbook" && method === "GET") return photoRoutes.getCookbook(request, familyId, env);
+  if (path === "/api/ai/image" && method === "POST") return aiImageRoutes.generateImage(request, familyId, env);
 
   if (path === "/api/meal-plan" && method === "GET") return mealPlanRoutes.listMealPlan(request, familyId, env);
   if (path === "/api/meal-plan" && method === "POST") return mealPlanRoutes.proposeMeal(request, familyId, env);
