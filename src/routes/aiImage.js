@@ -1,10 +1,13 @@
 import { errorResponse, json } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
 
-// Cheapest OpenAI image tier at the time this was written — "low" quality,
-// 1024x1024. Check current pricing before relying on this: providers
-// change prices and model names often.
-const MODEL = "gpt-image-1";
+// dall-e-3, standard quality, 1024x1024 — ~4c/image at current (2026-10)
+// OpenAI pricing. We originally used gpt-image-1, but that model requires
+// an extra "organization verification" (ID check) step most accounts
+// haven't done, and errors with "model does not exist" until that's done.
+// dall-e-3 needs just billing set up, no extra verification. Check current
+// pricing/model names before relying on this: providers change these often.
+const MODEL = "dall-e-3";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -53,7 +56,8 @@ export async function generateImage(request, familyId, env) {
         model: MODEL,
         prompt,
         size: "1024x1024",
-        quality: "low",
+        quality: "standard",
+        response_format: "b64_json",
         n: 1,
       }),
     });
