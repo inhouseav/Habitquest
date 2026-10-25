@@ -28,8 +28,8 @@ Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠�
 ## Extended features (Sessions 6–14 scope)
 | Item | Status | Notes |
 |---|---|---|
-| Meal planning / voting | 🚧 | `/api/meal-plan` built: propose a meal for a day, anyone can vote (toggle). Not yet tested live. |
-| Shopping lists | 🚧 | `/api/shopping` built: add, check off, delete, shared across the family. Not yet tested live. |
+| Meal planning / voting | 🚧 | `/api/meal-plan` built: propose a meal for a day, anyone can vote (toggle). Recipes now connect in — each recipe card has a "🍳 Cook this" button that adds it straight to the meal plan for a chosen day. Not yet tested live. |
+| Shopping lists | 🚧 | `/api/shopping` built: add, check off, delete, shared across the family. Any meal plan item linked to a recipe now has a "🛒 Add ingredients" button that pushes that recipe's ingredients onto the list (skips ones already there). A "📋 Copy list for Woolworths/Coles" button copies the unchecked items as plain text to paste into either app — **honest limit:** neither supermarket has a public way to add items automatically from another app, so this is copy/paste, not a real one-tap export. Not yet tested live. |
 | Weekly family meetings | 🚧 | `/api/meetings` built: one notes doc per family per week (Monday-starting). Not yet tested live. |
 | Reward shop | 🚧 | `/api/rewards` built: parents add rewards with a star cost, any member can redeem (spends stars via the same ledger, can't go negative). Not yet tested live. |
 | Photo memory books | ⛔ | Not started — needs an R2 bucket, which Maddie hasn't created yet (same process as the D1 database) |

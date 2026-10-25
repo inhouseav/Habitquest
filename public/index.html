@@ -293,6 +293,8 @@
         <input id="newShoppingItem" placeholder="Add an item..." style="flex:1" />
         <button class="small" id="addShoppingBtn" style="margin-top:0;">Add</button>
       </div>
+      <button class="secondary" id="copyShoppingBtn" style="margin-top:10px;">📋 Copy list for Woolworths/Coles</button>
+      <p class="muted" style="margin-top:6px; font-size:0.82rem;">Woolworths and Coles don't offer a one-tap way to add items from another app, so this copies your list as text — paste it into their app's search or list screen.</p>
       <div class="error hidden" id="shoppingError"></div>
     </div>
 
@@ -686,21 +688,57 @@ $("addRewardBtn").onclick = async () => {
 };
 
 // --- Recipes ---
+let recipesCache = [];
+let cookingRecipeId = null;
+
 async function renderRecipes() {
   const data = await api("/api/recipes");
+  recipesCache = data.recipes;
   const list = $("recipesList"); list.innerHTML = "";
   if (!data.recipes.length) { list.innerHTML = '<p class="muted">No recipes yet — add your family\'s favorite below!</p>'; return; }
   data.recipes.forEach((r) => {
     const row = document.createElement("div"); row.className = "event-row recipe-row";
-    row.innerHTML = `<strong>${r.title}</strong> <span class="muted">(tap to view) · ${r.ingredients.length} ingredients, ${r.steps.length} steps</span>
+    const cookFormHtml = cookingRecipeId === r.id
+      ? `<div style="display:flex; gap:6px; margin-top:8px;" onclick="event.stopPropagation()">
+           <input type="date" class="cook-day-input" value="${todayStr()}" style="flex:1;" />
+           <button class="small" data-cook-confirm="${r.id}" style="margin:0;">Add to meal plan</button>
+           <button class="small secondary" data-cook-cancel style="margin:0;">Cancel</button>
+         </div>`
+      : "";
+    row.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+        <span><strong>${r.title}</strong> <span class="muted">(tap to view) · ${r.ingredients.length} ingredients, ${r.steps.length} steps</span></span>
+        <button class="small secondary" data-cook="${r.id}" style="margin:0;" onclick="event.stopPropagation()">🍳 Cook this</button>
+      </div>
       <div class="recipe-detail hidden">
         <strong>Ingredients</strong>
         <ul>${r.ingredients.map((i) => `<li>${i}</li>`).join("")}</ul>
         <strong>Steps</strong>
         <ol>${r.steps.map((s) => `<li>${s}</li>`).join("")}</ol>
-      </div>`;
+      </div>
+      ${cookFormHtml}`;
     row.onclick = () => row.querySelector(".recipe-detail").classList.toggle("hidden");
     list.appendChild(row);
+  });
+
+  list.querySelectorAll("button[data-cook]").forEach((btn) => {
+    btn.onclick = () => { cookingRecipeId = btn.getAttribute("data-cook"); renderRecipes(); };
+  });
+  list.querySelectorAll("button[data-cook-cancel]").forEach((btn) => {
+    btn.onclick = () => { cookingRecipeId = null; renderRecipes(); };
+  });
+  list.querySelectorAll("button[data-cook-confirm]").forEach((btn) => {
+    btn.onclick = async () => {
+      const recipeId = btn.getAttribute("data-cook-confirm");
+      const recipe = recipesCache.find((r) => r.id === recipeId);
+      const day = btn.parentElement.querySelector(".cook-day-input").value || todayStr();
+      try {
+        await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day, title: recipe.title, recipeId })});
+        cookingRecipeId = null;
+        await renderRecipes();
+        await renderMealPlan();
+        toast(`Added "${recipe.title}" to the meal plan!`);
+      } catch (err) { toast(err.message, true); }
+    };
   });
 }
 $("showAddRecipeBtn").onclick = () => show("addRecipeForm");
@@ -723,8 +761,14 @@ async function renderMealPlan() {
   if (!data.items.length) { list.innerHTML = '<p class="muted">No meals suggested yet for this week.</p>'; return; }
   data.items.forEach((item) => {
     const row = document.createElement("div"); row.className = "list-row";
+    const addIngredientsBtn = item.recipeId
+      ? `<button class="small secondary" data-add-ingredients="${item.id}" data-recipe="${item.recipeId}" style="margin:0;">🛒 Add ingredients</button>`
+      : "";
     row.innerHTML = `<span><strong>${item.title}</strong> <span class="muted">${item.day}</span></span>
-      <button class="small vote-btn" data-id="${item.id}">👍 ${item.votes.length}</button>`;
+      <div style="display:flex; gap:6px; align-items:center;">
+        ${addIngredientsBtn}
+        <button class="small vote-btn" data-id="${item.id}">👍 ${item.votes.length}</button>
+      </div>`;
     list.appendChild(row);
   });
   list.querySelectorAll("button[data-id]").forEach((btn) => {
@@ -734,6 +778,22 @@ async function renderMealPlan() {
       try {
         await api(`/api/meal-plan/${btn.getAttribute("data-id")}/vote`, { method: "POST", body: JSON.stringify({ memberId })});
         await renderMealPlan();
+      } catch (err) { toast(err.message, true); }
+    };
+  });
+  list.querySelectorAll("button[data-add-ingredients]").forEach((btn) => {
+    btn.onclick = async () => {
+      const recipe = recipesCache.find((r) => r.id === btn.getAttribute("data-recipe"));
+      if (!recipe || !recipe.ingredients.length) { toast("That recipe has no ingredients listed.", true); return; }
+      try {
+        const existing = await api("/api/shopping");
+        const existingNames = new Set((existing.items || []).map((i) => i.name.trim().toLowerCase()));
+        const toAdd = recipe.ingredients.filter((ing) => !existingNames.has(ing.trim().toLowerCase()));
+        for (const ing of toAdd) {
+          await api("/api/shopping", { method: "POST", body: JSON.stringify({ name: ing })});
+        }
+        await renderShopping();
+        toast(toAdd.length ? `Added ${toAdd.length} ingredient(s) to the shopping list!` : "Already on the list!");
       } catch (err) { toast(err.message, true); }
     };
   });
@@ -767,6 +827,21 @@ async function renderShopping() {
     btn.onclick = async () => { await api(`/api/shopping/${btn.getAttribute("data-delete")}`, { method: "DELETE" }); await renderShopping(); };
   });
 }
+
+$("copyShoppingBtn").onclick = async () => {
+  try {
+    const data = await api("/api/shopping");
+    const unchecked = (data.items || []).filter((i) => !i.checked).map((i) => i.name);
+    if (!unchecked.length) { toast("Nothing left to copy — list is empty or all checked off!", true); return; }
+    const text = unchecked.join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("📋 Copied! Paste it into Woolworths or Coles.");
+    } catch (clipErr) {
+      window.prompt("Copy this list (Ctrl/Cmd+C, then paste into Woolworths or Coles):", text);
+    }
+  } catch (err) { toast(err.message, true); }
+};
 $("addShoppingBtn").onclick = async () => {
   clearError("shoppingError");
   const name = $("newShoppingItem").value.trim();
