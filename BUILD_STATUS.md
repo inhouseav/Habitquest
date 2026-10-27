@@ -4,6 +4,9 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## Compact dashboard redesign (2026-10-27)
+Reworked the home screen layout for density/hierarchy per Maddie's written spec — no features removed, no rebuild, same APIs/IDs. Habits moved to the top, join code/notifications/Google Calendar collapsed into a settings row, family members compacted, Reward Shop/Recipes/Meals/Shopping/Memories/Cookbook paired into 2-column groups on wide screens, recipe actions moved behind a ••• menu, Family Cookbook and Weekly Check-in (renamed from "Family meeting") collapsed by default, meals shown as a compact Mon-Sun row list. Syntax-checked and pushed 2026-10-27 — **not yet confirmed live by Maddie**, needs a real look-over on her end.
+
 ---
 
 ## Infrastructure
