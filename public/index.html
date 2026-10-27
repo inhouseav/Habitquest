@@ -455,18 +455,29 @@ function toast(msg, isError = false) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
 }
-function todayStr() { return new Date().toISOString().slice(0, 10); }
+// Turns a Date into its own calendar-day string (YYYY-MM-DD) using the
+// browser's LOCAL date fields — not toISOString(), which converts to UTC
+// first and rolls the date back a day for any timezone ahead of UTC (e.g.
+// Rome, UTC+1): local midnight on the 30th becomes 23:00 on the 29th UTC,
+// so toISOString() would report "29" for a cell meant to be the 30th.
+function ymd(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function todayStr() { return ymd(new Date()); }
 function mondayOfWeek(d = new Date()) {
   const date = new Date(d);
   const day = date.getDay();
   const diff = date.getDate() - day + (day === 0 ? -6 : 1);
   date.setDate(diff);
-  return date.toISOString().slice(0, 10);
+  return ymd(date);
 }
 function addDays(dayStr, n) {
   const d = new Date(dayStr + "T00:00:00");
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return ymd(d);
 }
 
 async function api(path, options = {}) {
@@ -623,7 +634,7 @@ function renderCalendarGrid() {
   const todayKey = todayStr();
   const eventsByDay = {};
   allEvents.forEach((e) => {
-    const key = new Date(e.starts_at).toISOString().slice(0, 10);
+    const key = ymd(new Date(e.starts_at));
     if (!eventsByDay[key]) eventsByDay[key] = [];
     eventsByDay[key].push(e);
   });
@@ -635,7 +646,7 @@ function renderCalendarGrid() {
   }
   // This month's real days.
   for (let d = 1; d <= daysInMonth; d++) {
-    const key = new Date(year, month, d).toISOString().slice(0, 10);
+    const key = ymd(new Date(year, month, d));
     cells.push({ day: d, otherMonth: false, key });
   }
   // Trailing days to fill the last week.
@@ -1218,8 +1229,8 @@ $("copyShoppingBtn").onclick = async () => {
   const now = new Date();
   const first = new Date(now.getFullYear(), now.getMonth(), 1);
   const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  $("cookbookStart").value = first.toISOString().slice(0, 10);
-  $("cookbookEnd").value = last.toISOString().slice(0, 10);
+  $("cookbookStart").value = ymd(first);
+  $("cookbookEnd").value = ymd(last);
 })();
 
 async function fetchPhotoBlobUrl(photoId) {
