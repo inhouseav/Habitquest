@@ -66,7 +66,15 @@ export async function generateImage(request, familyId, env) {
 
   if (!aiRes.ok) {
     const errData = await aiRes.json().catch(() => ({}));
-    return errorResponse(errData.error?.message || "The image service had a problem. Try again in a bit.", 502);
+    const rawMessage = errData.error?.message || "";
+    // "model does not exist" from OpenAI, on a brand-new account, really
+    // means the organization hasn't done OpenAI's own ID-verification step
+    // yet (required before any image model works) — surface that plainly
+    // instead of the confusing raw message.
+    const friendlyMessage = /model .* does not exist/i.test(rawMessage)
+      ? "AI photos need one more step on OpenAI's side (a quick ID check by a parent, done on platform.openai.com under Organization settings). Real uploaded photos work right now, for free, with no extra steps!"
+      : rawMessage || "The image service had a problem. Try again in a bit.";
+    return errorResponse(friendlyMessage, 502);
   }
 
   const data = await aiRes.json();
