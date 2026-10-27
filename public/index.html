@@ -24,11 +24,14 @@
     color: var(--text);
     font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
     min-height: 100vh;
-    padding: 24px 16px 100px;
+    padding: 20px 16px 100px;
   }
   h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; margin: 0 0 8px; }
+  h1 { font-size: 1.6rem; }
   .wrap { max-width: 560px; margin: 0 auto; }
-  .card { background: var(--card); border-radius: 20px; padding: 24px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(24, 63, 53, 0.06); }
+  .card { background: var(--card); border-radius: 18px; padding: 16px 18px; margin-bottom: 12px; box-shadow: 0 2px 12px rgba(24, 63, 53, 0.06); }
+  .card.compact-empty { padding: 14px 18px; }
+  .card h3 { font-size: 1.05rem; }
   .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
   .tab { flex: 1; text-align: center; padding: 10px; border-radius: 999px; background: var(--sage); cursor: pointer; font-weight: 600; }
   .tab.active { background: var(--terracotta); color: #fff; }
@@ -118,9 +121,44 @@
      On phones (below 900px) everything stays exactly as a single column. */
   @media (min-width: 900px) {
     .wrap { max-width: 920px; }
-    #homeScreen { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    #homeScreen { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
     #homeScreen .card { margin-bottom: 0; }
     #homeScreen .top-bar, #homeScreen .full-width { grid-column: 1 / -1; }
+  }
+
+  /* Compact settings row: small text-link buttons under the family heading
+     instead of big always-open cards for join code / notifications / Google
+     Calendar. Clicking one opens its panel; clicking another swaps it. */
+  .settings-row { display: flex; gap: 6px; flex-wrap: wrap; margin: -4px 0 14px; grid-column: 1 / -1; }
+  .settings-link { width: auto; margin: 0; background: var(--sage); color: var(--text); padding: 6px 14px; font-size: 0.82rem; font-weight: 600; }
+  .settings-link.active { background: var(--terracotta); color: #fff; }
+
+  /* Collapsed summary row used by several cards (Family Cookbook, Weekly
+     Check-in, Shopping list info, recipe row menu): a one-line preview that
+     expands into the full content on tap, instead of always showing it. */
+  .summary-row { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: none; padding: 2px 0; margin: 0; color: var(--text); font-size: 0.95rem; cursor: pointer; text-align: left; }
+  .summary-row .chevron { opacity: 0.55; margin-left: 8px; }
+
+  /* Compact member row */
+  .member-row.compact { padding: 8px 12px; }
+
+  /* Recipe row: primary action + overflow ("...") menu for secondary actions */
+  .row-menu { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #eee3cf; }
+
+  /* Weekly meal planner: compact day rows instead of one card per item */
+  .meal-day-row { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; border-bottom: 1px solid #f1ead9; }
+  .meal-day-row:last-of-type { border-bottom: none; }
+  .meal-day-label { width: 34px; font-weight: 700; font-size: 0.78rem; opacity: 0.65; flex-shrink: 0; padding-top: 6px; }
+  .meal-day-items { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; flex: 1; }
+  .meal-chip { background: #fff; border: 1px solid #eee3cf; border-radius: 999px; padding: 5px 12px; font-size: 0.78rem; cursor: pointer; margin: 0; width: auto; }
+  .meal-chip.open { background: var(--sage); }
+  .meal-detail { padding: 2px 0 10px 44px; }
+
+  /* Pair rows: two cards side-by-side on wide screens, stacked on phones */
+  .pair-row { display: contents; }
+  @media (min-width: 900px) {
+    .pair-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; grid-column: 1 / -1; }
+    .pair-row .card { margin-bottom: 0; }
   }
 </style>
 </head>
@@ -165,13 +203,19 @@
       <button class="secondary small" id="logoutBtn">Log out</button>
     </div>
 
-    <div class="card full-width">
-      <h3>Your family's join code</h3>
+    <div class="settings-row">
+      <button class="settings-link" data-settings-toggle="invite">Invite family ›</button>
+      <button class="settings-link" data-settings-toggle="notify">Notifications ›</button>
+      <button class="settings-link" data-settings-toggle="google">Google Calendar ›</button>
+    </div>
+
+    <div class="card full-width hidden" id="invitePanel">
+      <h3>Invite family</h3>
       <p class="muted">Share this so other family members can log in from their own device.</p>
       <div class="join-code" id="joinCodeDisplay">------</div>
     </div>
 
-    <div class="card full-width">
+    <div class="card full-width hidden" id="notifyPanel">
       <h3>Notifications 🔔</h3>
       <p class="muted">Turn on notifications for this device so it pings you about new events — pick who's using this device first.</p>
       <select id="notifyMemberSelect"></select>
@@ -181,6 +225,14 @@
       </div>
       <p class="muted" id="notifyStatus" style="margin-top:8px;"></p>
       <div class="error hidden" id="notifyError"></div>
+    </div>
+
+    <div class="card full-width hidden" id="googlePanel">
+      <h3>Google Calendar 📅</h3>
+      <p class="muted" id="googleCalStatus">Checking Google Calendar connection...</p>
+      <button class="small secondary" id="connectGoogleBtn" style="display:none;">Connect Google Calendar</button>
+      <button class="small secondary" id="disconnectGoogleBtn" style="display:none;">Disconnect Google Calendar</button>
+      <div class="error hidden" id="googleCalError"></div>
     </div>
 
     <div class="card">
@@ -214,7 +266,7 @@
     <div class="card">
       <h3>Family members</h3>
       <div id="membersList"><p class="loading-text">Loading...</p></div>
-      <button class="secondary" id="showAddMemberBtn">+ Add a family member</button>
+      <button class="small secondary" id="showAddMemberBtn">+ Add family member</button>
       <div id="addMemberForm" class="hidden" style="margin-top: 12px;">
         <label>Name</label>
         <input id="newMemberName" placeholder="e.g. Jamie" />
@@ -235,7 +287,7 @@
       </div>
       <div class="cal-grid" id="calWeekdayRow"></div>
       <div class="cal-grid" id="calDaysGrid"></div>
-      <button class="secondary" id="showAddEventBtn">+ Add an event</button>
+      <button class="small secondary" id="showAddEventBtn">+ Add an event</button>
       <div id="addEventForm" class="hidden" style="margin-top: 12px;">
         <label>Title</label>
         <input id="newEventTitle" placeholder="e.g. Bike ride in the park" />
@@ -248,19 +300,13 @@
         <button id="addEventBtn">Add event</button>
       </div>
       <div class="error hidden" id="eventError"></div>
-
-      <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #eee3cf;">
-        <p class="muted" id="googleCalStatus">Checking Google Calendar connection...</p>
-        <button class="small secondary" id="connectGoogleBtn" style="display:none;">Connect Google Calendar</button>
-        <button class="small secondary" id="disconnectGoogleBtn" style="display:none;">Disconnect Google Calendar</button>
-        <div class="error hidden" id="googleCalError"></div>
-      </div>
     </div>
 
+    <div class="pair-row">
     <div class="card">
       <h3>Reward shop 🎁</h3>
       <div id="rewardsList"><p class="loading-text">Loading...</p></div>
-      <button class="secondary" id="showAddRewardBtn">+ Add a reward</button>
+      <button class="small secondary" id="showAddRewardBtn">+ Add a reward</button>
       <div id="addRewardForm" class="hidden" style="margin-top: 12px;">
         <label>Reward</label>
         <input id="newRewardTitle" placeholder="e.g. Pick the movie night film" />
@@ -276,8 +322,8 @@
       <div id="recipeCategoryTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
       <div id="recipesList"><p class="loading-text">Loading...</p></div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-        <button class="secondary" id="showAddRecipeBtn">+ Add a recipe</button>
-        <button class="secondary" id="scanRecipeBtn">📷 Scan a recipe photo</button>
+        <button class="small secondary" id="showAddRecipeBtn">+ Add a recipe</button>
+        <button class="small secondary" id="scanRecipeBtn">📷 Scan a recipe photo</button>
       </div>
       <div id="addRecipeForm" class="hidden" style="margin-top: 12px;">
         <label>Title</label>
@@ -307,34 +353,18 @@
       <input type="file" id="photoFileInput" accept="image/*" class="hidden" />
       <input type="file" id="recipeScanInput" accept="image/*" class="hidden" />
     </div>
-
-    <div class="card">
-      <h3>✨ Family Memories</h3>
-      <div id="memoriesView"><p class="loading-text">Loading...</p></div>
     </div>
 
-    <div class="card">
-      <h3>Family Cookbook 📸</h3>
-      <p class="muted">Favourite recipes + photos of you making them, compiled together.</p>
-      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-        <label style="width:auto; margin:0;">From</label>
-        <input type="date" id="cookbookStart" style="width:auto;" />
-        <label style="width:auto; margin:0;">To</label>
-        <input type="date" id="cookbookEnd" style="width:auto;" />
-        <button class="small" id="loadCookbookBtn" style="margin:0;">Load</button>
-        <button class="small secondary" id="printCookbookBtn" style="margin:0;">🖨️ Print</button>
-      </div>
-      <div id="cookbookView" style="margin-top:14px;"><p class="muted">Pick a date range and tap Load.</p></div>
-    </div>
-
+    <div class="pair-row">
     <div class="card">
       <h3>This week's meals 🥗</h3>
-      <p class="muted">Propose an idea for any day this week — everyone can vote!</p>
       <p id="togetherCountLine" class="muted hidden" style="font-weight:600;"></p>
-      <label>Voting as</label>
-      <select id="mealVoterSelect"></select>
-      <div id="mealPlanList" style="margin-top: 10px;"><p class="loading-text">Loading...</p></div>
-      <button class="secondary" id="showAddMealBtn">+ Suggest a meal</button>
+      <div id="mealPlanList" style="margin-top: 4px;"><p class="loading-text">Loading...</p></div>
+      <div style="display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;">
+        <button class="small secondary" id="showAddMealBtn">+ Suggest a meal</button>
+        <label style="width:auto; margin:0; font-weight:normal;" class="muted">Voting as</label>
+        <select id="mealVoterSelect" style="width:auto;"></select>
+      </div>
       <div id="addMealForm" class="hidden" style="margin-top: 12px;">
         <label>Day</label>
         <input id="newMealDay" type="date" />
@@ -356,17 +386,50 @@
         <input id="newShoppingItem" placeholder="Add an item..." style="flex:1" />
         <button class="small" id="addShoppingBtn" style="margin-top:0;">Add</button>
       </div>
-      <button class="secondary" id="copyShoppingBtn" style="margin-top:10px;">📋 Copy list for Woolworths/Coles</button>
-      <p class="muted" style="margin-top:6px; font-size:0.82rem;">Woolworths and Coles don't offer a one-tap way to add items from another app, so this copies your list as text — paste it into their app's search or list screen.</p>
+      <div style="display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap;">
+        <button class="small secondary" id="copyShoppingBtn" style="margin:0;">📋 Copy list</button>
+        <button class="small secondary" id="shoppingInfoBtn" style="margin:0;" type="button">ℹ️ How this works</button>
+      </div>
+      <p class="muted hidden" id="shoppingInfoText" style="margin-top:8px; font-size:0.82rem;">Woolworths and Coles don't offer a one-tap way to add items from another app, so "Copy list" copies your list as text — paste it into their app's search or list screen.</p>
       <div class="error hidden" id="shoppingError"></div>
+    </div>
+    </div>
+
+    <div class="pair-row">
+    <div class="card">
+      <h3>✨ Family Memories</h3>
+      <div id="memoriesView"><p class="loading-text">Loading...</p></div>
     </div>
 
     <div class="card">
-      <h3>Family meeting 📝</h3>
-      <p class="muted">Notes for this week's family meeting (Monday-starting week).</p>
-      <textarea id="meetingNotes" placeholder="What went well this week? What should we try next?"></textarea>
-      <button id="saveMeetingBtn">Save notes</button>
-      <div class="error hidden" id="meetingError"></div>
+      <h3>Family Cookbook 📸</h3>
+      <p class="muted" style="margin-bottom:8px;">Favourite recipes + photos of you making them.</p>
+      <button class="summary-row" id="cookbookToggleBtn" type="button"><span>View cookbook</span><span class="chevron">›</span></button>
+      <div id="cookbookPanel" class="hidden" style="margin-top:10px;">
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <label style="width:auto; margin:0;">From</label>
+          <input type="date" id="cookbookStart" style="width:auto;" />
+          <label style="width:auto; margin:0;">To</label>
+          <input type="date" id="cookbookEnd" style="width:auto;" />
+          <button class="small" id="loadCookbookBtn" style="margin:0;">Load</button>
+          <button class="small secondary" id="printCookbookBtn" style="margin:0;">🖨️ Print</button>
+        </div>
+        <div id="cookbookView" style="margin-top:14px;"><p class="muted">Pick a date range and tap Load.</p></div>
+      </div>
+    </div>
+    </div>
+
+    <div class="card full-width">
+      <button class="summary-row" id="checkinToggleBtn" type="button">
+        <span><strong>Weekly Family Check-in 📝</strong><br><span class="muted" style="font-weight:normal;">What went well? What should we change?</span></span>
+        <span class="chevron">Start check-in ›</span>
+      </button>
+      <div id="checkinPanel" class="hidden" style="margin-top:12px;">
+        <p class="muted">Notes for this week's family meeting (Monday-starting week).</p>
+        <textarea id="meetingNotes" placeholder="What went well this week? What should we try next?"></textarea>
+        <button id="saveMeetingBtn">Save notes</button>
+        <div class="error hidden" id="meetingError"></div>
+      </div>
     </div>
 
   </div>
@@ -473,9 +536,9 @@ function renderMembers() {
   const mealVoterSelect = $("mealVoterSelect"); mealVoterSelect.innerHTML = "";
   state.members.forEach((m) => {
     const row = document.createElement("div");
-    row.className = "member-row";
+    row.className = "member-row compact";
     row.innerHTML = `<span><span class="member-dot" style="background:${m.color || '#ccc'}"></span>${m.display_name}<span class="pill">${m.role}</span></span>
-      <span><span id="stars-${m.id}" class="muted">⭐ ...</span> <button class="small" data-member="${m.id}">Give a star</button></span>`;
+      <span><span id="stars-${m.id}" class="muted">⭐ ...</span> <button class="small" data-member="${m.id}">Give Kudos</button></span>`;
     list.appendChild(row);
     loadStars(m.id);
     const opt = document.createElement("option"); opt.value = m.id; opt.textContent = m.display_name;
@@ -729,18 +792,28 @@ function escapeHtml(s) {
 function escapeAttr(s) { return escapeHtml(s); }
 
 // --- Rewards ---
+let rewardsExpanded = false;
 async function renderRewards() {
   const data = await api("/api/rewards");
   const list = $("rewardsList"); list.innerHTML = "";
   if (!data.rewards.length) { list.innerHTML = '<p class="muted">No rewards yet — add one below!</p>'; return; }
+  const REWARD_PREVIEW = 3;
+  const visible = rewardsExpanded ? data.rewards : data.rewards.slice(0, REWARD_PREVIEW);
   const memberOptions = state.members.map((m) => `<option value="${m.id}">${m.display_name}</option>`).join("");
-  data.rewards.forEach((r) => {
+  visible.forEach((r) => {
     const row = document.createElement("div"); row.className = "list-row";
     row.innerHTML = `<span>${r.title} <span class="pill">${r.star_cost} ⭐</span></span>
       <span><select class="small" style="width:auto; display:inline-block;" id="redeemer-${r.id}">${memberOptions}</select>
       <button class="small" data-reward="${r.id}">Redeem</button></span>`;
     list.appendChild(row);
   });
+  if (data.rewards.length > REWARD_PREVIEW) {
+    const moreBtn = document.createElement("button");
+    moreBtn.className = "summary-row"; moreBtn.style.marginTop = "4px";
+    moreBtn.innerHTML = rewardsExpanded ? "<span>Show fewer</span><span class=\"chevron\">⌄</span>" : `<span>View all (${data.rewards.length})</span><span class="chevron">›</span>`;
+    moreBtn.onclick = () => { rewardsExpanded = !rewardsExpanded; renderRewards(); };
+    list.appendChild(moreBtn);
+  }
   list.querySelectorAll("button[data-reward]").forEach((btn) => {
     btn.onclick = async () => {
       const rewardId = btn.getAttribute("data-reward");
@@ -774,6 +847,7 @@ const RECIPE_CATEGORY_META = {
   lunchboxes: { label: "Lunchboxes", emoji: "🎒" },
 };
 let cookingRecipeId = null;
+let recipeMenuOpenId = null;
 let pendingPhotoRecipeId = null;
 let pendingPhotoHabitId = null;
 
@@ -834,14 +908,12 @@ async function renderRecipes() {
          </div>`
       : "";
     const catMeta = RECIPE_CATEGORY_META[r.category];
+    const menuOpen = recipeMenuOpenId === r.id;
     row.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-        <span>${catMeta ? `<span title="${catMeta.label}">${catMeta.emoji}</span> ` : ""}<strong>${r.title}</strong> <span class="muted">(tap to view) · ${r.ingredients.length} ingredients, ${r.steps.length} steps</span></span>
+        <span>${catMeta ? `<span title="${catMeta.label}">${catMeta.emoji}</span> ` : ""}<strong>${r.title}</strong> <span class="muted">${r.ingredients.length} ingredients · ${r.steps.length} steps</span></span>
         <div style="display:flex; gap:6px; flex-wrap:wrap;" onclick="event.stopPropagation()">
-          <button class="small secondary" data-fav="${r.id}" style="margin:0;">${r.favorite ? "⭐ Favourited" : "☆ Favourite"}</button>
-          ${r.family_id ? `<button class="small secondary" data-edit-recipe="${r.id}" style="margin:0;">✏️ Edit</button>` : ""}
-          <button class="small secondary" data-photo="${r.id}" style="margin:0;">📷 Add photo</button>
-          <button class="small secondary" data-ai-photo="${r.id}" style="margin:0;">✨ AI photo</button>
           <button class="small secondary" data-cook="${r.id}" style="margin:0;">🍳 Cook this</button>
+          <button class="small secondary" data-recipe-menu="${r.id}" style="margin:0;">•••</button>
         </div>
       </div>
       <div class="recipe-detail hidden">
@@ -850,11 +922,20 @@ async function renderRecipes() {
         <strong>Steps</strong>
         <ol>${r.steps.map((s) => `<li>${s}</li>`).join("")}</ol>
       </div>
+      <div class="row-menu ${menuOpen ? "" : "hidden"}" onclick="event.stopPropagation()">
+        <button class="small secondary" data-fav="${r.id}" style="margin:0;">${r.favorite ? "⭐ Favourited" : "☆ Favourite"}</button>
+        ${r.family_id ? `<button class="small secondary" data-edit-recipe="${r.id}" style="margin:0;">✏️ Edit</button>` : ""}
+        <button class="small secondary" data-photo="${r.id}" style="margin:0;">📷 Add photo</button>
+        <button class="small secondary" data-ai-photo="${r.id}" style="margin:0;">✨ AI photo</button>
+      </div>
       ${cookFormHtml}`;
     row.onclick = () => row.querySelector(".recipe-detail").classList.toggle("hidden");
     list.appendChild(row);
   });
 
+  list.querySelectorAll("button[data-recipe-menu]").forEach((btn) => {
+    btn.onclick = () => { const id = btn.getAttribute("data-recipe-menu"); recipeMenuOpenId = recipeMenuOpenId === id ? null : id; renderRecipes(); };
+  });
   list.querySelectorAll("button[data-cook]").forEach((btn) => {
     btn.onclick = () => { cookingRecipeId = btn.getAttribute("data-cook"); renderRecipes(); };
   });
@@ -987,8 +1068,11 @@ $("aiFillRecipeBtn").onclick = async () => {
 };
 
 // --- Meal plan ---
+let expandedMealItemId = null;
+const MEAL_DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
 async function renderMealPlan() {
-  const start = todayStr(); const end = addDays(start, 6);
+  const start = mondayOfWeek(); const end = addDays(start, 6);
   const data = await api(`/api/meal-plan?startDay=${start}&endDay=${end}`);
   const list = $("mealPlanList"); list.innerHTML = "";
   const togetherLine = $("togetherCountLine");
@@ -998,19 +1082,56 @@ async function renderMealPlan() {
   } else {
     hide("togetherCountLine");
   }
-  if (!data.items.length) { list.innerHTML = '<p class="muted">No meals suggested yet for this week.</p>'; return; }
-  data.items.forEach((item) => {
-    const row = document.createElement("div"); row.className = "list-row";
-    const addIngredientsBtn = item.recipeId
-      ? `<button class="small secondary" data-add-ingredients="${item.id}" data-recipe="${item.recipeId}" style="margin:0;">🛒 Add ingredients</button>`
-      : "";
-    row.innerHTML = `<span><strong>${item.title}</strong> <span class="muted">${item.day}</span>${item.together ? ' <span title="Family meal together">👨‍👩‍👧</span>' : ""}</span>
-      <div style="display:flex; gap:6px; align-items:center;">
-        ${addIngredientsBtn}
-        <button class="small secondary together-btn" data-together="${item.id}" style="margin:0;">${item.together ? "👨‍👩‍👧 Together" : "+ Mark together"}</button>
-        <button class="small vote-btn" data-id="${item.id}">👍 ${item.votes.length}</button>
-      </div>`;
-    list.appendChild(row);
+
+  for (let i = 0; i < 7; i++) {
+    const day = addDays(start, i);
+    const dayItems = data.items.filter((it) => it.day === day);
+    const dayRow = document.createElement("div");
+    dayRow.className = "meal-day-row";
+    const chipsHtml = dayItems.map((item) => {
+      const open = expandedMealItemId === item.id;
+      return `<button class="meal-chip ${open ? "open" : ""}" data-meal-chip="${item.id}">${escapeHtml(item.title)}${item.together ? " 👨‍👩‍👧" : ""} · 👍${item.votes.length}</button>`;
+    }).join("");
+    dayRow.innerHTML = `<div class="meal-day-label">${MEAL_DAY_LABELS[i]}</div>
+      <div class="meal-day-items">${chipsHtml || '<span class="muted">—</span>'}<button class="small secondary" data-meal-add-day="${day}" style="margin:0;">＋</button></div>`;
+    list.appendChild(dayRow);
+
+    dayItems.forEach((item) => {
+      if (expandedMealItemId !== item.id) return;
+      const detail = document.createElement("div");
+      detail.className = "meal-detail";
+      const addIngredientsBtn = item.recipeId
+        ? `<button class="small secondary" data-add-ingredients="${item.id}" data-recipe="${item.recipeId}" style="margin:0;">🛒 Add ingredients</button>`
+        : "";
+      detail.innerHTML = `<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          ${addIngredientsBtn}
+          <button class="small secondary together-btn" data-together="${item.id}" style="margin:0;">${item.together ? "👨‍👩‍👧 Together" : "+ Mark together"}</button>
+          <button class="small vote-btn" data-id="${item.id}">👍 Vote (${item.votes.length})</button>
+        </div>`;
+      list.appendChild(detail);
+    });
+  }
+
+  if (!data.items.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted"; empty.style.marginTop = "6px";
+    empty.textContent = "No meals suggested yet this week — tap ＋ on a day, or \"Suggest a meal\" below.";
+    list.appendChild(empty);
+  }
+
+  list.querySelectorAll("button[data-meal-chip]").forEach((btn) => {
+    btn.onclick = () => {
+      const id = btn.getAttribute("data-meal-chip");
+      expandedMealItemId = expandedMealItemId === id ? null : id;
+      renderMealPlan();
+    };
+  });
+  list.querySelectorAll("button[data-meal-add-day]").forEach((btn) => {
+    btn.onclick = () => {
+      $("newMealDay").value = btn.getAttribute("data-meal-add-day");
+      show("addMealForm");
+      $("addMealForm").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    };
   });
   list.querySelectorAll("button[data-together]").forEach((btn) => {
     btn.onclick = async () => {
@@ -1153,9 +1274,9 @@ async function renderMemories() {
       const pct = Math.max(4, Math.min(100, Math.round((data.totalPhotos / data.threshold) * 100)));
       const remaining = Math.max(0, data.threshold - data.totalPhotos);
       view.innerHTML = `
-        <p class="muted">Add photos from a recipe or a completed habit to build your next Memories slideshow.</p>
+        <p class="muted">Add a cooking photo or a completed-habit photo whenever you like — they'll build into a slideshow here.</p>
         <div class="memories-progress-track"><div class="memories-progress-fill" style="width:${pct}%;"></div></div>
-        <p class="muted" style="margin-top:6px;"><strong>${data.totalPhotos}</strong> of ${data.threshold} photos${remaining > 0 ? ` — ${remaining} more to go!` : " — ready!"}</p>`;
+        <p class="muted" style="margin-top:6px; font-size:0.8rem;">${data.totalPhotos} photo${data.totalPhotos === 1 ? "" : "s"} added${remaining > 0 ? ` so far` : " — slideshow ready!"}</p>`;
       return;
     }
 
@@ -1476,6 +1597,32 @@ $("disconnectGoogleBtn").onclick = async () => {
     await refreshGoogleCalUi();
   } catch (err) { showError("googleCalError", err.message); }
 };
+
+// --- Compact settings row (Invite family / Notifications / Google Calendar) ---
+const SETTINGS_PANELS = { invite: "invitePanel", notify: "notifyPanel", google: "googlePanel" };
+document.querySelectorAll(".settings-link[data-settings-toggle]").forEach((btn) => {
+  btn.onclick = () => {
+    const key = btn.getAttribute("data-settings-toggle");
+    const willOpen = $(SETTINGS_PANELS[key]).classList.contains("hidden");
+    Object.entries(SETTINGS_PANELS).forEach(([k, id]) => { hide(id); });
+    document.querySelectorAll(".settings-link").forEach((b) => b.classList.remove("active"));
+    if (willOpen) { show(SETTINGS_PANELS[key]); btn.classList.add("active"); }
+  };
+});
+
+// --- Family Cookbook: collapsed by default ---
+$("cookbookToggleBtn").onclick = () => {
+  $("cookbookPanel").classList.toggle("hidden");
+  $("cookbookToggleBtn").querySelector("span:last-child").textContent = $("cookbookPanel").classList.contains("hidden") ? "›" : "⌄";
+};
+
+// --- Weekly Family Check-in: collapsed by default ---
+$("checkinToggleBtn").onclick = () => {
+  $("checkinPanel").classList.toggle("hidden");
+};
+
+// --- Shopping list: "How this works" explanation collapsed by default ---
+$("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("hidden"); };
 
 // --- Boot ---
 (async function boot() {
