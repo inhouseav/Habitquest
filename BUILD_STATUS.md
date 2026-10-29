@@ -4,6 +4,9 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## Demo family for presentations (2026-10-29)
+Added a separate demo family ("The Johnsons", join code `NJ6KB9`, PIN `2468`) via hand-written SQL run through the Cloudflare D1 console, so Maddie can show the app working without touching her real "The Walkers" data. Includes 4 members with interests/colors, 3 weekly habits each, some habits ticked off today with real star-ledger entries (plus a few bonus kudos stars), 8 calendar events over the next two weeks, 4 reward shop items, 3 recipes, 5 meal plan items for the current week (with votes and one "together" meal), and a 5-item shopping list (2 checked). Schema-verified against every relevant migration file and the real route code before handing over; PIN hash verified by recomputing PBKDF2 in Python and checking it matches. Not yet confirmed by Maddie logging in and looking.
+
 ## Compact dashboard redesign (2026-10-27)
 Reworked the home screen layout for density/hierarchy per Maddie's written spec — no features removed, no rebuild, same APIs/IDs. Habits moved to the top, join code/notifications/Google Calendar collapsed into a settings row, family members compacted, Reward Shop/Recipes/Meals/Shopping/Memories/Cookbook paired into 2-column groups on wide screens, recipe actions moved behind a ••• menu, Family Cookbook and Weekly Check-in (renamed from "Family meeting") collapsed by default, meals shown as a compact Mon-Sun row list. Syntax-checked and pushed 2026-10-27 — **not yet confirmed live by Maddie**, needs a real look-over on her end.
 
