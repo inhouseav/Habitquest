@@ -25,6 +25,7 @@
     font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
     min-height: 100vh;
     padding: 20px 16px 100px;
+    overflow-x: hidden;
   }
   h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; margin: 0 0 8px; }
   h1 { font-size: 1.6rem; }
@@ -94,9 +95,9 @@
   .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .cal-header h3 { margin: 0; }
   .cal-header button { width: auto; margin: 0; padding: 6px 14px; }
-  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
   .cal-weekday { text-align: center; font-size: 0.7rem; font-weight: 700; opacity: 0.6; padding: 4px 0; }
-  .cal-day { min-height: 64px; border-radius: 10px; background: #fff; padding: 4px; font-size: 0.7rem; display: flex; flex-direction: column; gap: 2px; }
+  .cal-day { min-height: 64px; min-width: 0; border-radius: 10px; background: #fff; padding: 4px; font-size: 0.7rem; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
   .cal-day.other-month { background: transparent; opacity: 0.35; }
   .cal-day.today { outline: 2px solid var(--terracotta); }
   .cal-day-num { font-weight: 700; font-size: 0.75rem; }
