@@ -101,7 +101,7 @@
   .cal-day.other-month { background: transparent; opacity: 0.35; }
   .cal-day.today { outline: 2px solid var(--terracotta); }
   .cal-day-num { font-weight: 700; font-size: 0.75rem; }
-  .cal-event-chip { border-radius: 6px; padding: 1px 4px; color: #183F35; font-size: 0.62rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-event-chip { border-radius: 6px; padding: 2px 4px; color: #183F35; font-size: 0.62rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
   .cal-grid + button { margin-top: 12px; }
   .event-row:last-child { border-bottom: none; }
   .muted { opacity: 0.65; font-size: 0.85rem; }
@@ -288,6 +288,7 @@
       </div>
       <div class="cal-grid" id="calWeekdayRow"></div>
       <div class="cal-grid" id="calDaysGrid"></div>
+      <div id="eventDetailPanel" class="hidden" style="margin-top: 10px; padding: 12px; background: #fff; border-radius: 12px;"></div>
       <button class="small secondary" id="showAddEventBtn">+ Add an event</button>
       <div id="addEventForm" class="hidden" style="margin-top: 12px;">
         <label>Title</label>
@@ -657,6 +658,7 @@ function renderCalendarGrid() {
 
   const grid = $("calDaysGrid");
   grid.innerHTML = "";
+  hide("eventDetailPanel");
   cells.forEach((cell) => {
     const div = document.createElement("div");
     div.className = "cal-day" + (cell.otherMonth ? " other-month" : "") + (cell.key === todayKey ? " today" : "");
@@ -667,13 +669,58 @@ function renderCalendarGrid() {
           const bg = memberColorFor(e.member_id) || (e.pillar && PILLAR_COLORS[e.pillar]) || "#E4EAD9";
           const who = memberNameFor(e.member_id);
           const label = who ? `${who}: ${e.title}` : e.title;
-          return `<div class="cal-event-chip" style="background:${bg}" title="${label}">${label}</div>`;
+          return `<div class="cal-event-chip" style="background:${bg}" data-event-id="${e.id}" title="${label}">${label}</div>`;
         }).join("")
       : "";
     div.innerHTML = `<div class="cal-day-num">${cell.day}</div>${chips}`;
     grid.appendChild(div);
   });
 }
+
+function showEventDetail(eventId) {
+  const e = allEvents.find((ev) => ev.id === eventId);
+  const panel = $("eventDetailPanel");
+  if (!e) { hide("eventDetailPanel"); return; }
+
+  const who = memberNameFor(e.member_id) || "Whole family";
+  const when = new Date(e.starts_at).toLocaleString([], {
+    weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+  });
+  const pillar = e.pillar && PILLAR_LABELS[e.pillar] ? `<span class="muted">${PILLAR_LABELS[e.pillar]}</span>` : "";
+
+  panel.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+      <div>
+        <strong style="font-size:1.05rem;">${e.title}</strong><br>
+        <span class="muted">${when}</span><br>
+        <span class="muted">${who}</span> ${pillar}
+      </div>
+      <button class="small secondary" id="closeEventDetailBtn" style="margin:0; width:auto;">✕</button>
+    </div>
+    <button class="small secondary" id="deleteEventBtn" style="margin-top:10px; background:#fde2de;">🗑 Delete event</button>
+    <div class="error hidden" id="eventDetailError"></div>
+  `;
+  show("eventDetailPanel");
+
+  $("closeEventDetailBtn").onclick = () => hide("eventDetailPanel");
+  $("deleteEventBtn").onclick = async () => {
+    if (!confirm(`Delete "${e.title}"?`)) return;
+    try {
+      await api(`/api/events/${e.id}`, { method: "DELETE" });
+      hide("eventDetailPanel");
+      await renderEvents();
+    } catch (err) {
+      $("eventDetailError").textContent = err.message || "Couldn't delete that event.";
+      $("eventDetailError").classList.remove("hidden");
+    }
+  };
+}
+
+$("calDaysGrid").addEventListener("click", (evt) => {
+  const chip = evt.target.closest(".cal-event-chip");
+  if (!chip) return;
+  showEventDetail(chip.getAttribute("data-event-id"));
+});
 
 $("calPrevBtn").onclick = () => { calendarMonth.setMonth(calendarMonth.getMonth() - 1); renderCalendarGrid(); };
 $("calNextBtn").onclick = () => { calendarMonth.setMonth(calendarMonth.getMonth() + 1); renderCalendarGrid(); };
