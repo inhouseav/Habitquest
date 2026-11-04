@@ -318,7 +318,8 @@
 
     <div class="card">
       <h3>This Week's Habits 🌟</h3>
-      <p class="muted">Everyone picks 3 things they want to do this week — tick them off as you go.</p>
+      <p class="muted" style="margin-bottom:8px;">Everyone picks 3 things they want to do this week.</p>
+      <div style="margin-bottom:10px;"><span style="background:var(--terracotta); color:#fff; border-radius:999px; padding:6px 13px; font-size:0.88rem; font-weight:700; display:inline-block;">🎯 Do all 3 to win the day!</span></div>
       <div id="habitsMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
       <div id="habitsList"><p class="loading-text">Loading...</p></div>
     </div>
@@ -401,7 +402,7 @@
       <p class="muted">Get a fun activity suggestion — or a healthy snack idea.</p>
       <label>For</label>
       <select id="aiMemberSelect"></select>
-      <label>How are they feeling / in the mood for?</label>
+      <label>How are you feeling / in the mood for?</label>
       <select id="aiMood">
         <option value="">Choose one...</option>
         <option value="hungry">🍎 Hungry</option>
@@ -1279,6 +1280,7 @@ const HABIT_SLOT_META = {
 let habitsActiveMemberId = null;
 let habitDayPlanItems = [];
 let habitPlanPicking = null; // { memberId, slot, title } — which chip is mid-pick-a-day
+let habitPlanExpandedMembers = new Set(); // memberIds whose "📅 Plan my week" is open — closed by default, kid's daily view stays to just the 3 habits
 async function renderHabits() {
   const data = await api("/api/habits?day=" + todayStr());
   const list = $("habitsList"); list.innerHTML = "";
@@ -1328,24 +1330,41 @@ async function renderHabits() {
         const slotMeta = HABIT_SLOT_META[slot];
         if (!h) {
           return `<div class="habit-row-empty" data-edit-member="${m.memberId}">
-            <span class="muted" style="font-size:0.68rem; font-weight:700;">${slotMeta.label.toUpperCase()}</span>
+            <span style="font-size:1rem; flex-shrink:0;">${slotMeta.emoji}</span>
             <span class="muted">+ Add a ${slotMeta.label.toLowerCase()} habit</span>
           </div>`;
         }
         return `
         <div style="display:flex; align-items:center; gap:6px;">
           <button class="habit-row-btn ${h.completed ? 'done' : ''}" data-habit="${h.id}" ${h.completed ? 'disabled' : ''} style="flex:1;">
-            <span class="habit-check">${h.completed ? '✓' : '○'}</span>
-            ${slotMeta ? `<span class="muted" style="font-size:0.68rem; font-weight:700; flex-shrink:0;">${slotMeta.label.toUpperCase()}</span>` : ""}
-            <span class="habit-title">${h.emoji ? h.emoji + ' ' : ''}${escapeHtml(h.title)}</span>
+            <span class="habit-check" style="font-size:1.1rem;">${h.completed ? '✓' : '○'}</span>
+            <span style="font-size:1rem; flex-shrink:0;">${h.emoji || slotMeta.emoji}</span>
+            <span class="habit-title" style="font-weight:600;">${escapeHtml(h.title)}</span>
           </button>
           ${h.completed ? `<button class="small secondary" data-habit-photo="${h.id}" style="margin:0;" title="Add a photo of this moment">📷</button>` : ""}
         </div>`;
       }).join("");
+
+      // Dots instead of a fraction — "●●○" reads instantly, no mental maths.
+      const progressDots = Array.from({ length: m.totalHabits || 3 }, (_, i) => i < m.completedCount
+        ? `<span style="width:16px; height:16px; border-radius:50%; background:var(--terracotta); display:inline-block;"></span>`
+        : `<span style="width:16px; height:16px; border-radius:50%; border:2px solid var(--terracotta); display:inline-block;"></span>`
+      ).join("");
+      const progressLine = m.totalHabits
+        ? `<div style="display:flex; align-items:center; gap:7px; margin-top:8px;">
+            <div style="display:flex; gap:5px;">${progressDots}</div>
+            <span class="muted" style="font-size:0.82rem; font-weight:600;">${m.dayWon ? "Day won! 🎉" : m.completedCount > 0 ? "So close!" : `${m.completedCount} of ${m.totalHabits}`}</span>
+          </div>`
+        : "";
+
+      const planExpanded = habitPlanExpandedMembers.has(m.memberId);
       bodyHtml = `<div class="habit-rows">${habitsHtml}</div>
-        <p class="muted" style="margin:6px 0 0;">${m.completedCount} of ${m.totalHabits} practised today</p>
+        ${progressLine}
         <div id="googleTodayItemsWrap" data-member="${m.memberId}" style="margin-top:6px;"></div>
-        ${habitWeekPlanHtml(m, planWeekStart)}`;
+        <div style="margin-top:12px; padding-top:10px; border-top:1px dashed #eee3cf;">
+          <button type="button" class="small secondary" data-toggle-habit-plan="${m.memberId}" style="margin:0;">📅 Plan my week ${planExpanded ? "▴" : "▾"}</button>
+          ${planExpanded ? habitWeekPlanHtml(m, planWeekStart) : ""}
+        </div>`;
     }
 
     row.innerHTML = headerHtml + bodyHtml;
@@ -1401,6 +1420,15 @@ async function renderHabits() {
 
   list.querySelectorAll("button[data-cancel-edit]").forEach((btn) => {
     btn.onclick = () => { habitEditingMemberId = null; renderHabits(); };
+  });
+
+  list.querySelectorAll("[data-toggle-habit-plan]").forEach((btn) => {
+    btn.onclick = () => {
+      const memberId = btn.getAttribute("data-toggle-habit-plan");
+      if (habitPlanExpandedMembers.has(memberId)) habitPlanExpandedMembers.delete(memberId);
+      else habitPlanExpandedMembers.add(memberId);
+      renderHabits();
+    };
   });
 
   // --- Plan the week: tap or drag a habit chip onto a day ---
@@ -1487,8 +1515,8 @@ function habitWeekPlanHtml(m, weekStart) {
     </div>`;
   }).join("");
 
-  return `<div class="habit-week-plan" style="margin-top:10px; padding-top:10px; border-top:1px dashed #eee3cf;">
-    <p class="muted" style="font-size:0.72rem; font-weight:700; margin:0 0 6px;">PLAN THE WEEK — drag or tap onto a day</p>
+  return `<div class="habit-week-plan" style="margin-top:10px;">
+    <p class="muted" style="font-size:0.72rem; font-weight:700; margin:0 0 6px;">Drag or tap a habit onto a day</p>
     <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px;">${paletteHtml}</div>
     ${pickerHtml}
     <div>${weekListHtml}</div>

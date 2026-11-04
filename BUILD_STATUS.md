@@ -4,6 +4,16 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 🚧 Habit card redesign: "win the day" is now stated up front (2026-11-04)
+Maddie reviewed a before/after mockup and approved it — now built into the real app:
+- A "🎯 Do all 3 to win the day!" badge sits right under the card title, so the goal is visible before you start, not just celebrated after.
+- "2 of 3 practised today" (a fraction) replaced with filled/empty dots (●●○) plus a short line ("So close!" / "Day won! 🎉") — reads instantly, no mental maths.
+- Habit rows and empty slots now lead with a bigger emoji instead of a tiny all-caps MOVE/COOK/HOME label.
+- "Plan my week" (the drag/tap-a-habit-onto-a-day feature from earlier today) is now collapsed behind a "📅 Plan my week ▾" toggle per person, closed by default — keeps the daily view to just the 3 habits + win celebration, since planning is a once-a-week task not a daily one.
+- "Need an idea?" now asks "How are **you** feeling?" instead of "How are **they** feeling?" — it's usually the kid tapping it themselves.
+
+Purely a display/copy change — same API data, same completion/streak logic underneath. Verified with the same headless-browser approach as the last two changes (loaded the page, called the new render logic directly with fake data) — no crashes. Still worth a quick live look once the migrations below are run.
+
 ## 🚧 Calendar view switcher: 1 week / 2 weeks / month (2026-11-04)
 The big Calendar card now defaults to showing just **this week** (Mon–Sun) instead of jumping straight to a full month grid — much less overwhelming, and "Month Year" with no real content on a fresh account was confusing. Three small tabs above the grid ("1 Week" / "2 Weeks" / "Month") switch between them; ‹ › still step forward/back, by whatever the current view's size is (a week, two weeks, or a month). Switching into a week view always re-centres on today's week. Purely a display change — no new data, no schema change. Verified directly (headless browser, calling the render function in all 3 modes + stepping forward/back) rather than just checked for syntax errors, so this one's more trustworthy than most of today's 🚧 items, but still worth a quick look live.
 
