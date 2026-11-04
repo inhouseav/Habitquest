@@ -873,6 +873,15 @@ $("addEventBtn").onclick = async () => {
 
 // --- Personal weekly habits ---
 let habitEditingMemberId = null;
+// The 3 weekly habit slots are a soft framing (kids still type their own
+// specific habit), tied to what the dietitian research flagged as the
+// biggest-impact areas: daily movement, hands-on involvement with food,
+// and a real-world alternative to screen time.
+const HABIT_SLOT_META = {
+  1: { label: "Move", emoji: "🏃", placeholder: "e.g. Walk Benji for 20 mins" },
+  2: { label: "Cook", emoji: "🍳", placeholder: "e.g. Help make dinner" },
+  3: { label: "Home", emoji: "🏡", placeholder: "e.g. 30 min off screens" },
+};
 
 async function renderHabits() {
   const data = await api("/api/habits?day=" + todayStr());
@@ -895,14 +904,18 @@ async function renderHabits() {
     } else if (!m.totalHabits) {
       bodyHtml = `<p class="muted" style="margin:6px 0 0;">No habits picked yet — tap "Choose habits" to pick 3 things for this week.</p>`;
     } else {
-      const habitsHtml = m.habits.map((h) => `
+      const habitsHtml = m.habits.map((h) => {
+        const slotMeta = HABIT_SLOT_META[h.slot];
+        return `
         <div style="display:flex; align-items:center; gap:6px;">
           <button class="habit-row-btn ${h.completed ? 'done' : ''}" data-habit="${h.id}" ${h.completed ? 'disabled' : ''} style="flex:1;">
             <span class="habit-check">${h.completed ? '✓' : '○'}</span>
+            ${slotMeta ? `<span class="muted" style="font-size:0.68rem; font-weight:700; flex-shrink:0;">${slotMeta.label.toUpperCase()}</span>` : ""}
             <span class="habit-title">${h.emoji ? h.emoji + ' ' : ''}${escapeHtml(h.title)}</span>
           </button>
           ${h.completed ? `<button class="small secondary" data-habit-photo="${h.id}" style="margin:0;" title="Add a photo of this moment">📷</button>` : ""}
-        </div>`).join("");
+        </div>`;
+      }).join("");
       bodyHtml = `<div class="habit-rows">${habitsHtml}</div>
         <p class="muted" style="margin:6px 0 0;">${m.completedCount} of ${m.totalHabits} practised today</p>`;
     }
@@ -963,9 +976,11 @@ async function renderHabits() {
 function habitEditFormHtml(m) {
   const slots = [1, 2, 3].map((slot) => {
     const existing = m.habits.find((h) => h.slot === slot);
-    return `<div style="display:flex; gap:6px; margin-top:6px;">
+    const meta = HABIT_SLOT_META[slot];
+    return `<label style="margin-top:8px; font-size:0.78rem; font-weight:700; opacity:0.7;">${meta.emoji} ${meta.label}</label>
+    <div style="display:flex; gap:6px; margin-top:4px;">
       <input name="emoji${slot}" placeholder="🙂" maxlength="4" value="${existing ? escapeAttr(existing.emoji) : ''}" style="width:48px; text-align:center;" />
-      <input name="title${slot}" placeholder="Habit ${slot} (e.g. Walk Benji for 20 mins)" value="${existing ? escapeAttr(existing.title) : ''}" style="flex:1;" />
+      <input name="title${slot}" placeholder="${meta.placeholder}" value="${existing ? escapeAttr(existing.title) : ''}" style="flex:1;" />
     </div>`;
   }).join("");
   return `<form data-habit-form="${m.memberId}">
