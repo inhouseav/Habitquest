@@ -9,6 +9,47 @@ function validDay(day) {
   return typeof day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(day);
 }
 
+function addDaysStr(day, n) {
+  const d = new Date(day + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Call after a habit completion is recorded. If this member has now ticked
+ * off every one of their habits for `day` (i.e. "won the day"), advances
+ * their streak — +1 if yesterday was also won, back to 1 if there's a gap.
+ * Safe to call more than once for the same day (idempotent via last_won_day).
+ */
+async function maybeAdvanceStreak(db, memberId, day, completedCount, totalHabits) {
+  if (totalHabits === 0 || completedCount < totalHabits) return null;
+
+  const existing = await db
+    .prepare("SELECT current_streak, longest_streak, last_won_day FROM habit_streaks WHERE member_id = ?")
+    .bind(memberId)
+    .first();
+  if (existing && existing.last_won_day === day) {
+    return { currentStreak: existing.current_streak, longestStreak: existing.longest_streak, justWon: false };
+  }
+
+  const yesterday = addDaysStr(day, -1);
+  const newStreak = existing && existing.last_won_day === yesterday ? existing.current_streak + 1 : 1;
+  const newLongest = Math.max(newStreak, existing ? existing.longest_streak : 0);
+
+  if (existing) {
+    await db
+      .prepare("UPDATE habit_streaks SET current_streak = ?, longest_streak = ?, last_won_day = ? WHERE member_id = ?")
+      .bind(newStreak, newLongest, day, memberId)
+      .run();
+  } else {
+    await db
+      .prepare("INSERT INTO habit_streaks (member_id, current_streak, longest_streak, last_won_day) VALUES (?, ?, ?, ?)")
+      .bind(memberId, newStreak, newLongest, day)
+      .run();
+  }
+  return { currentStreak: newStreak, longestStreak: newLongest, justWon: true };
+}
+
 /**
  * GET /api/habits?day=YYYY-MM-DD (defaults to today)
  * Returns, for every family member, their own 3 chosen weekly habits
@@ -37,6 +78,16 @@ export async function getHabits(request, familyId, env) {
     .all();
   const completedHabitIds = new Set((completionsRes.results || []).map((r) => r.habit_id));
 
+  const streaksRes = await db
+    .prepare(
+      `SELECT hs.member_id, hs.current_streak, hs.longest_streak FROM habit_streaks hs
+       INNER JOIN members m ON m.id = hs.member_id WHERE m.family_id = ?`
+    )
+    .bind(familyId)
+    .all();
+  const streakByMember = {};
+  for (const s of streaksRes.results || []) streakByMember[s.member_id] = s;
+
   const habitsByMember = {};
   for (const h of habitsRes.results || []) {
     if (!habitsByMember[h.member_id]) habitsByMember[h.member_id] = [];
@@ -52,6 +103,7 @@ export async function getHabits(request, familyId, env) {
   const result = (members.results || []).map((m) => {
     const habits = (habitsByMember[m.id] || []).sort((a, b) => a.slot - b.slot);
     const completedCount = habits.filter((h) => h.completed).length;
+    const streak = streakByMember[m.id];
     return {
       memberId: m.id,
       displayName: m.display_name,
@@ -60,6 +112,9 @@ export async function getHabits(request, familyId, env) {
       habits,
       completedCount,
       totalHabits: habits.length,
+      currentStreak: streak ? streak.current_streak : 0,
+      longestStreak: streak ? streak.longest_streak : 0,
+      dayWon: habits.length > 0 && completedCount === habits.length,
     };
   });
 
@@ -193,11 +248,18 @@ export async function completeHabit(habitId, request, familyId, env) {
     .bind(habit.member_id)
     .first();
 
+  const completedCount = (allToday.results || []).length;
+  const totalCount = totalHabits ? totalHabits.n : 0;
+  const streakResult = await maybeAdvanceStreak(db, habit.member_id, day, completedCount, totalCount);
+
   return json({
     ok: true,
     completionId,
     day,
-    completedCount: (allToday.results || []).length,
-    totalHabits: totalHabits ? totalHabits.n : 0,
+    completedCount,
+    totalHabits: totalCount,
+    dayWon: completedCount === totalCount && totalCount > 0,
+    justWonStreak: !!(streakResult && streakResult.justWon),
+    currentStreak: streakResult ? streakResult.currentStreak : null,
   });
 }

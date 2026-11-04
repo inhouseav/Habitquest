@@ -76,6 +76,9 @@
   .habit-row-btn.done { background: #eef4e8; border-color: var(--sage); opacity: 0.85; }
   .habit-row-btn.done .habit-title { text-decoration: line-through; }
   .habit-row-btn:disabled { cursor: default; }
+  .habit-row-empty { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; border: 1px dashed #ddd3c0; border-radius: 12px; padding: 10px 14px; font-size: 0.9rem; cursor: pointer; }
+  .habit-row-empty:hover { background: #fffaf0; }
+  .day-won-badge { background: var(--gold); border-radius: 999px; padding: 2px 10px; font-size: 0.72rem; font-weight: 700; }
   .cookbook-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
   .cookbook-photo { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(24,63,53,0.08); }
   .cookbook-photo img { width: 100%; height: 120px; object-fit: cover; display: block; background: var(--sage); }
@@ -906,7 +909,8 @@ async function scheduleRecipeForDay(recipeId, day) {
   try {
     await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day, title: recipe.title, recipeId, mealType: mealTypeForRecipe(recipe) })});
     await renderMealPlan();
-    toast(`Added "${recipe.title}" to the meal plan for ${day}!`);
+    const added = await addRecipeIngredientsToShoppingList(recipe).catch(() => 0);
+    toast(`Added "${recipe.title}" to the meal plan for ${day}!${added ? ` 🛒 +${added} to shopping list.` : ""}`);
   } catch (err) { toast(err.message, true); }
 }
 
@@ -1025,19 +1029,28 @@ async function renderHabits() {
     row.style.flexDirection = "column";
     row.style.alignItems = "stretch";
 
-    const headerHtml = `<div style="display:flex; align-items:center; justify-content:space-between;">
-      <div><span class="member-dot" style="background:${m.color || '#ccc'}"></span><strong>${m.displayName}</strong></div>
+    const streakBadge = m.currentStreak > 0 ? `<span class="muted" title="Current streak">🔥 ${m.currentStreak} day${m.currentStreak === 1 ? "" : "s"}</span>` : "";
+    const wonBadge = m.dayWon ? `<span class="day-won-badge">🎉 Day won!</span>` : "";
+    const headerHtml = `<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+      <div><span class="member-dot" style="background:${m.color || '#ccc'}"></span><strong>${m.displayName}</strong> ${streakBadge} ${wonBadge}</div>
       <button class="small secondary" data-edit-member="${m.memberId}">${m.totalHabits ? 'Edit' : 'Choose'} habits ✏️</button>
     </div>`;
 
     let bodyHtml;
     if (habitEditingMemberId === m.memberId) {
       bodyHtml = habitEditFormHtml(m);
-    } else if (!m.totalHabits) {
-      bodyHtml = `<p class="muted" style="margin:6px 0 0;">No habits picked yet — tap "Choose habits" to pick 3 things for this week.</p>`;
     } else {
-      const habitsHtml = m.habits.map((h) => {
-        const slotMeta = HABIT_SLOT_META[h.slot];
+      // Always show all 3 slots — an empty one prompts to fill it in,
+      // instead of just silently not appearing.
+      const habitsHtml = [1, 2, 3].map((slot) => {
+        const h = m.habits.find((hh) => hh.slot === slot);
+        const slotMeta = HABIT_SLOT_META[slot];
+        if (!h) {
+          return `<div class="habit-row-empty" data-edit-member="${m.memberId}">
+            <span class="muted" style="font-size:0.68rem; font-weight:700;">${slotMeta.label.toUpperCase()}</span>
+            <span class="muted">+ Add a ${slotMeta.label.toLowerCase()} habit</span>
+          </div>`;
+        }
         return `
         <div style="display:flex; align-items:center; gap:6px;">
           <button class="habit-row-btn ${h.completed ? 'done' : ''}" data-habit="${h.id}" ${h.completed ? 'disabled' : ''} style="flex:1;">
@@ -1049,19 +1062,23 @@ async function renderHabits() {
         </div>`;
       }).join("");
       bodyHtml = `<div class="habit-rows">${habitsHtml}</div>
-        <p class="muted" style="margin:6px 0 0;">${m.completedCount} of ${m.totalHabits} practised today</p>`;
+        <p class="muted" style="margin:6px 0 0;">${m.completedCount} of ${m.totalHabits} practised today</p>
+        <div id="googleTodayItemsWrap" data-member="${m.memberId}" style="margin-top:6px;"></div>`;
     }
 
     row.innerHTML = headerHtml + bodyHtml;
     list.appendChild(row);
   });
 
+  if ($("googleTodayItemsWrap")) loadGoogleTodayItems($("googleTodayItemsWrap"));
+
   list.querySelectorAll("button[data-habit]").forEach((btn) => {
     btn.onclick = async () => {
       try {
-        await api(`/api/habits/${btn.getAttribute("data-habit")}/complete`, { method: "POST", body: JSON.stringify({}) });
+        const res = await api(`/api/habits/${btn.getAttribute("data-habit")}/complete`, { method: "POST", body: JSON.stringify({}) });
         await renderHabits();
-        toast("⭐ Nice work!");
+        if (res.justWonStreak) toast(`🎉 Day won! 🔥 ${res.currentStreak} day streak!`);
+        else toast("⭐ Nice work!");
       } catch (err) { toast(err.message, true); }
     };
   });
@@ -1075,7 +1092,7 @@ async function renderHabits() {
     };
   });
 
-  list.querySelectorAll("button[data-edit-member]").forEach((btn) => {
+  list.querySelectorAll("[data-edit-member]").forEach((btn) => {
     btn.onclick = () => {
       habitEditingMemberId = habitEditingMemberId === btn.getAttribute("data-edit-member") ? null : btn.getAttribute("data-edit-member");
       renderHabits();
@@ -1103,6 +1120,38 @@ async function renderHabits() {
   list.querySelectorAll("button[data-cancel-edit]").forEach((btn) => {
     btn.onclick = () => { habitEditingMemberId = null; renderHabits(); };
   });
+}
+
+// Google Calendar items as bonus tickable items alongside the 3 typed
+// habits — best-effort: if Google isn't connected, or the fetch fails,
+// this section just quietly stays empty (never shows an error toast, since
+// it's a bonus, not a core part of the habits card).
+async function loadGoogleTodayItems(wrap) {
+  const memberId = wrap.getAttribute("data-member");
+  try {
+    const data = await api(`/api/calendar/google/today-items?day=${todayStr()}&memberId=${memberId}`);
+    if (!data.connected || !data.items.length) { wrap.innerHTML = ""; return; }
+    wrap.innerHTML = `<p class="muted" style="margin:10px 0 4px; font-size:0.75rem; font-weight:700;">FROM YOUR GOOGLE CALENDAR TODAY</p>` +
+      data.items.map((it) => `
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+          <button class="habit-row-btn ${it.completed ? 'done' : ''}" data-cal-item="${it.id}" data-cal-item-title="${escapeHtml(it.title)}" ${it.completed ? 'disabled' : ''} style="flex:1;">
+            <span class="habit-check">${it.completed ? '✓' : '○'}</span>
+            <span class="habit-title">📅 ${escapeHtml(it.title)}</span>
+          </button>
+        </div>`).join("");
+    wrap.querySelectorAll("[data-cal-item]").forEach((btn) => {
+      btn.onclick = async () => {
+        try {
+          await api(`/api/calendar/google/today-items/${encodeURIComponent(btn.getAttribute("data-cal-item"))}/complete`, {
+            method: "POST",
+            body: JSON.stringify({ memberId, day: todayStr(), title: btn.getAttribute("data-cal-item-title") }),
+          });
+          toast("⭐ Nice work!");
+          await renderHabits();
+        } catch (err) { toast(err.message, true); }
+      };
+    });
+  } catch (err) { wrap.innerHTML = ""; } // quietly give up — bonus feature, not core
 }
 
 function habitEditFormHtml(m) {
@@ -1411,7 +1460,8 @@ function showRecipeDetail(recipeId) {
         await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day, title: r.title, recipeId: r.id, mealType: mealTypeForRecipe(r) })});
         cookingRecipeId = null;
         await renderMealPlan();
-        toast(`Added "${r.title}" to the meal plan!`);
+        const added = await addRecipeIngredientsToShoppingList(r).catch(() => 0);
+        toast(`Added "${r.title}" to the meal plan!${added ? ` 🛒 +${added} to shopping list.` : ""}`);
         showRecipeDetail(r.id);
       } catch (err) {
         $("recipeDetailError").textContent = err.message || "Couldn't add that to the meal plan.";
@@ -1696,19 +1746,31 @@ async function renderMealPlan() {
   list.querySelectorAll("button[data-add-ingredients]").forEach((btn) => {
     btn.onclick = async () => {
       const recipe = recipesCache.find((r) => r.id === btn.getAttribute("data-recipe"));
-      if (!recipe || !recipe.ingredients.length) { toast("That recipe has no ingredients listed.", true); return; }
+      if (!recipe) return;
       try {
-        const existing = await api("/api/shopping");
-        const existingNames = new Set((existing.items || []).map((i) => i.name.trim().toLowerCase()));
-        const toAdd = recipe.ingredients.filter((ing) => !existingNames.has(ing.trim().toLowerCase()));
-        for (const ing of toAdd) {
-          await api("/api/shopping", { method: "POST", body: JSON.stringify({ name: ing })});
-        }
-        await renderShopping();
-        toast(toAdd.length ? `Added ${toAdd.length} ingredient(s) to the shopping list!` : "Already on the list!");
+        const added = await addRecipeIngredientsToShoppingList(recipe);
+        toast(added ? `Added ${added} ingredient(s) to the shopping list!` : "Already on the list!");
       } catch (err) { toast(err.message, true); }
     };
   });
+}
+
+// Adds a recipe's ingredients to the shopping list, skipping anything
+// already on it. Shared by: the manual "🛒 Add ingredients" button, and
+// automatically whenever a recipe is scheduled onto the weekly meal plan
+// (dragged onto the calendar, or "Cook this" → Add to meal plan), so the
+// shopping list stays in sync with what's actually planned without an
+// extra step. Returns how many ingredients were actually added.
+async function addRecipeIngredientsToShoppingList(recipe) {
+  if (!recipe || !recipe.ingredients.length) return 0;
+  const existing = await api("/api/shopping");
+  const existingNames = new Set((existing.items || []).map((i) => i.name.trim().toLowerCase()));
+  const toAdd = recipe.ingredients.filter((ing) => !existingNames.has(ing.trim().toLowerCase()));
+  for (const ing of toAdd) {
+    await api("/api/shopping", { method: "POST", body: JSON.stringify({ name: ing }) });
+  }
+  if (toAdd.length) await renderShopping();
+  return toAdd.length;
 }
 $("addWeekIngredientsBtn").onclick = async () => {
   const btn = $("addWeekIngredientsBtn");

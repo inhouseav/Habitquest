@@ -4,6 +4,15 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 🚧 Habit streaks, "day won", always-3-slots, Google Calendar bonus items, auto shopping list (2026-11-04)
+Several related changes to This Week's Habits and the shopping list:
+- **Always 3 slots**: a person's habit card always shows all 3 slots now, even unfilled ones — an empty slot shows a dashed "+ Add a [Move/Cook/Home] habit" row instead of just not appearing, so it's obvious 3 are expected.
+- **Day won + streaks**: ticking off all 3 habits in a day now shows a "🎉 Day won!" badge and a toast, and advances a running streak (🔥 shown next to the person's name) — +1 if yesterday was also won, back to 1 after a gap. New `habit_streaks` table (one row per person), updated inside `completeHabit`.
+- **Google Calendar items as bonus checklist items**: if the family has Google Calendar connected, today's events from that calendar show up under the habits as extra tickable items (📅 icon), separate from the 3 typed habits. New `GET /api/calendar/google/today-items` + `POST .../complete`, backed by a new `calendar_item_completions` table. Deliberately does **not** count toward "day won"/streaks — the Google connection is family-wide, not per-person, so attributing it cleanly to one person's streak felt like guessing; typed habits stay the sole win condition. Gracefully shows nothing (no error) if Google isn't connected.
+- **Shopping list now updates automatically**: scheduling a recipe onto the weekly meal plan (drag onto the calendar, or "Cook this" → Add to meal plan) now adds its ingredients to the shopping list automatically, instead of needing a separate "🛒 Add ingredients" tap afterward (that button still exists too, for re-adding).
+
+Needs migration `013_streaks_and_calendar_items.sql` run on the real DB. Not yet tested live — needs a full pass: tick all 3 of a person's habits and confirm the streak badge appears, check an empty slot's "+ Add" prompt, and (if Google Calendar is connected) confirm today's events show up and tick off correctly.
+
 ## 🚧 Per-person tabs + tag-everyone on events and habits (2026-11-04)
 Two related changes:
 - **This Week's Habits** now shows one person at a time via tabs above the list, instead of every family member's habits stacked in one long card — scales properly once a family has more than one member.

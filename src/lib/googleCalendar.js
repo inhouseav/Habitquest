@@ -77,6 +77,32 @@ export async function pushEventToGoogle(accessToken, calendarId, event) {
   return res.json();
 }
 
+/** Lists events on a given day from the family's connected Google Calendar. */
+export async function listEventsFromGoogle(accessToken, calendarId, day) {
+  const params = new URLSearchParams({
+    timeMin: new Date(`${day}T00:00:00`).toISOString(),
+    timeMax: new Date(`${day}T23:59:59`).toISOString(),
+    singleEvents: "true",
+    orderBy: "startTime",
+  });
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error?.message || "Failed to fetch Google Calendar events.");
+  }
+  const data = await res.json();
+  return (data.items || [])
+    .filter((e) => e.status !== "cancelled")
+    .map((e) => ({
+      id: e.id,
+      title: e.summary || "(untitled)",
+      start: (e.start && (e.start.dateTime || e.start.date)) || null,
+    }));
+}
+
 function addOneHour(isoString) {
   const d = new Date(isoString);
   d.setHours(d.getHours() + 1);

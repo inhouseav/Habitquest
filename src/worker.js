@@ -165,6 +165,11 @@ async function handleApi(request, env, url) {
 
   if (path === "/api/calendar/google/status" && method === "GET") return googleCalendarRoutes.status(familyId, env);
   if (path === "/api/calendar/google/disconnect" && method === "POST") return googleCalendarRoutes.disconnect(familyId, env);
+  if (path === "/api/calendar/google/today-items" && method === "GET") return googleCalendarRoutes.todayItems(request, familyId, env);
+  const todayItemCompleteMatch = path.match(/^\/api\/calendar\/google\/today-items\/([^/]+)\/complete$/);
+  if (todayItemCompleteMatch && method === "POST") {
+    return googleCalendarRoutes.completeTodayItem(todayItemCompleteMatch[1], request, familyId, env);
+  }
 
   if (path === "/api/ai/suggest" && method === "POST") return aiAssistantRoutes.suggest(request, familyId, env);
   if (path === "/api/ai/recipe-from-photo" && method === "POST") return aiRecipeIntakeRoutes.recipeFromPhoto(request, familyId, env);

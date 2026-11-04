@@ -1,6 +1,10 @@
 import { json, errorResponse } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
-import { buildAuthUrl, exchangeCodeForTokens, refreshAccessToken, pushEventToGoogle } from "../lib/googleCalendar.js";
+import { buildAuthUrl, exchangeCodeForTokens, refreshAccessToken, pushEventToGoogle, listEventsFromGoogle } from "../lib/googleCalendar.js";
+
+function validDay(day) {
+  return typeof day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(day);
+}
 
 function redirectUriFor(url) {
   // Must exactly match what's registered in the Google Cloud Console.
@@ -87,6 +91,88 @@ function htmlResult(message, success = false) {
 /** POST /api/calendar/google/disconnect */
 export async function disconnect(familyId, env) {
   await env.DB.prepare("DELETE FROM google_calendar_connections WHERE family_id = ?").bind(familyId).run();
+  return json({ ok: true });
+}
+
+/**
+ * GET /api/calendar/google/today-items?day=&memberId= — today's Google
+ * Calendar events (family-wide calendar), with a `completed` flag for
+ * whichever member you pass, so they can show as bonus tickable items
+ * alongside that person's 3 typed habits. Returns connected:false (not an
+ * error) when Google Calendar isn't connected — nothing to show, not a
+ * problem.
+ */
+export async function todayItems(request, familyId, env) {
+  const url = new URL(request.url);
+  const day = url.searchParams.get("day") || new Date().toISOString().slice(0, 10);
+  const memberId = url.searchParams.get("memberId");
+  if (!validDay(day)) return errorResponse("day must be formatted YYYY-MM-DD.");
+  if (!memberId) return errorResponse("memberId is required.");
+
+  const db = env.DB;
+  const conn = await db
+    .prepare("SELECT refresh_token, google_calendar_id FROM google_calendar_connections WHERE family_id = ?")
+    .bind(familyId)
+    .first();
+  if (!conn) return json({ ok: true, connected: false, items: [] });
+
+  let items;
+  try {
+    const accessToken = await refreshAccessToken(env, conn.refresh_token);
+    items = await listEventsFromGoogle(accessToken, conn.google_calendar_id, day);
+  } catch (err) {
+    // Best-effort — a Google hiccup shouldn't break the habits card.
+    return json({ ok: true, connected: true, items: [], error: err.message });
+  }
+
+  const completedRes = await db
+    .prepare("SELECT google_event_id FROM calendar_item_completions WHERE member_id = ? AND day = ?")
+    .bind(memberId, day)
+    .all();
+  const completedIds = new Set((completedRes.results || []).map((r) => r.google_event_id));
+
+  return json({
+    ok: true,
+    connected: true,
+    items: items.map((it) => ({ ...it, completed: completedIds.has(it.id) })),
+  });
+}
+
+/**
+ * POST /api/calendar/google/today-items/:eventId/complete — ticks one
+ * Google Calendar item off for a member/day, awarding 1 star (same as a
+ * typed habit). Protected by the (member, event, day) unique constraint,
+ * so it can't be double-awarded on a double click or retry.
+ */
+export async function completeTodayItem(eventId, request, familyId, env) {
+  const body = (await readJson(request)) || {};
+  const day = validDay(body.day) ? body.day : new Date().toISOString().slice(0, 10);
+  const memberId = body.memberId;
+  const title = (body.title || "This item").slice(0, 100);
+  if (!memberId) return errorResponse("memberId is required.");
+
+  const db = env.DB;
+  const member = await db.prepare("SELECT id FROM members WHERE id = ? AND family_id = ?").bind(memberId, familyId).first();
+  if (!member) return errorResponse("Family member not found.", 404);
+
+  const idempotencyKey = `calitem:${memberId}:${eventId}:${day}`;
+  const ledgerId = newId();
+  try {
+    await db
+      .prepare("INSERT INTO star_ledger (id, family_id, member_id, delta, reason, idempotency_key) VALUES (?, ?, ?, 1, ?, ?)")
+      .bind(ledgerId, familyId, memberId, `Did "${title}" on ${day}`, idempotencyKey)
+      .run();
+  } catch (err) {
+    if (String(err.message || err).includes("UNIQUE")) return errorResponse("Already ticked off for today.", 409);
+    throw err;
+  }
+
+  const id = newId();
+  await db
+    .prepare("INSERT INTO calendar_item_completions (id, family_id, member_id, google_event_id, day) VALUES (?, ?, ?, ?, ?)")
+    .bind(id, familyId, memberId, eventId, day)
+    .run();
+
   return json({ ok: true });
 }
 
