@@ -4,6 +4,9 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## Polaroid-style recipe cards + Family Cookbook (2026-11-04)
+Redesigned the Recipes list as a wall of polaroid-style cards: a photo on top (uploaded via 📷 or generated via ✨ AI), a handwritten-style caption with the recipe title below, slight alternating tilt per card. Tapping a card opens a detail panel (ingredients, steps, Cook this/Favourite/Edit/Add photo/AI photo) — same actions as before, just moved out of the cramped row menu. Added a new `/api/recipes/cover-photos` endpoint (most recent photo per recipe) so cards can show a real cover image without an extra request per card. The Family Cookbook photo grid got the same polaroid treatment (photo + handwritten caption of the recipe or activity + who/when), so recipes and "photos of us cooking it" now share one consistent look. No existing recipe/photo/meal-plan functionality removed. Syntax-checked, not yet confirmed live by Maddie.
+
 ## Demo family for presentations (2026-10-29)
 Added a separate demo family ("The Johnsons", join code `NJ6KB9`, PIN `2468`) via hand-written SQL run through the Cloudflare D1 console, so Maddie can show the app working without touching her real "The Walkers" data. Includes 4 members with interests/colors, 3 weekly habits each, some habits ticked off today with real star-ledger entries (plus a few bonus kudos stars), 8 calendar events over the next two weeks, 4 reward shop items, 3 recipes, 5 meal plan items for the current week (with votes and one "together" meal), and a 5-item shopping list (2 checked). Schema-verified against every relevant migration file and the real route code before handing over; PIN hash verified by recomputing PBKDF2 in Python and checking it matches. Not yet confirmed by Maddie logging in and looking.
 

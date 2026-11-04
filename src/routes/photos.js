@@ -101,6 +101,33 @@ export async function deletePhoto(photoId, familyId, env) {
   return json({ ok: true });
 }
 
+/**
+ * GET /api/recipes/cover-photos — the most recent photo id for every recipe
+ * that has one, scoped to this family. Lets the Recipes list show a real
+ * "cover photo" on each polaroid-style card without fetching every photo
+ * for every recipe one at a time.
+ */
+export async function getRecipeCoverPhotos(familyId, env) {
+  const rows = await env.DB
+    .prepare(
+      `SELECT p.recipe_id, p.id as photo_id
+       FROM cookbook_photos p
+       INNER JOIN (
+         SELECT recipe_id, MAX(created_at) as latest
+         FROM cookbook_photos
+         WHERE family_id = ? AND recipe_id IS NOT NULL
+         GROUP BY recipe_id
+       ) latest ON latest.recipe_id = p.recipe_id AND latest.latest = p.created_at
+       WHERE p.family_id = ?`
+    )
+    .bind(familyId, familyId)
+    .all();
+
+  const covers = {};
+  for (const r of rows.results || []) covers[r.recipe_id] = r.photo_id;
+  return json({ ok: true, covers });
+}
+
 /** GET /api/cookbook?start=YYYY-MM-DD&end=YYYY-MM-DD — photos + favourite recipes for the period. */
 export async function getCookbook(request, familyId, env) {
   const url = new URL(request.url);

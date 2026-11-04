@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Fuel the Fun 🌱</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap" rel="stylesheet" />
 <style>
   :root {
     --bg: #FAF6ED;
@@ -77,6 +80,25 @@
   .cookbook-photo { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(24,63,53,0.08); }
   .cookbook-photo img { width: 100%; height: 120px; object-fit: cover; display: block; background: var(--sage); }
   .cookbook-photo .cap { padding: 6px 8px; font-size: 0.75rem; }
+
+  /* Polaroid-style photo cards, used for both the Recipes grid and the
+     Family Cookbook grid — a photo on top (uploaded or AI), a handwritten
+     caption below, slight alternating tilt like photos pinned to a board. */
+  .polaroid-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 18px 14px; padding: 6px 4px; }
+  .polaroid { background: #fff; padding: 8px 8px 6px; border-radius: 2px; box-shadow: 0 4px 10px rgba(24,63,53,0.18); cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .polaroid:hover, .polaroid:focus-visible { transform: rotate(0deg) scale(1.04); box-shadow: 0 6px 16px rgba(24,63,53,0.26); z-index: 2; position: relative; }
+  .polaroid:nth-child(5n+1) { transform: rotate(-2.5deg); }
+  .polaroid:nth-child(5n+2) { transform: rotate(1.5deg); }
+  .polaroid:nth-child(5n+3) { transform: rotate(-1deg); }
+  .polaroid:nth-child(5n+4) { transform: rotate(2deg); }
+  .polaroid:nth-child(5n+5) { transform: rotate(-1.5deg); }
+  .polaroid-photo { width: 100%; aspect-ratio: 1 / 1; background: var(--sage); border-radius: 1px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
+  .polaroid-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .polaroid-photo .polaroid-placeholder { font-size: 1.8rem; opacity: 0.55; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .polaroid-photo .polaroid-placeholder span.hint { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 0.62rem; opacity: 0.8; }
+  .polaroid-cap { font-family: "Kalam", cursive; text-align: center; padding-top: 8px; font-size: 0.95rem; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .polaroid-meta { text-align: center; font-size: 0.68rem; opacity: 0.6; margin-top: 1px; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  .polaroid-badge { position: absolute; top: 4px; right: 4px; background: rgba(255,255,255,0.85); border-radius: 999px; padding: 1px 6px; font-size: 0.6rem; font-weight: 700; }
   .memories-progress-track { height: 14px; border-radius: 999px; background: #f1eadc; overflow: hidden; }
   .memories-progress-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #FF6B6B, #FFA94D, #FFD43B, #69DB7C, #4DABF7, #9775FA); }
   .memories-slide { position: relative; width: 100%; max-width: 480px; height: 260px; border-radius: 20px; overflow: hidden; margin: 0 auto; box-shadow: 0 10px 24px rgba(24,63,53,0.15); }
@@ -323,6 +345,7 @@
       <h3>Recipes 🍳</h3>
       <div id="recipeCategoryTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
       <div id="recipesList"><p class="loading-text">Loading...</p></div>
+      <div id="recipeDetailPanel" class="hidden" style="margin-top:12px; padding:12px; background:#fff; border-radius:12px;"></div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
         <button class="small secondary" id="showAddRecipeBtn">+ Add a recipe</button>
         <button class="small secondary" id="scanRecipeBtn">📷 Scan a recipe photo</button>
@@ -930,12 +953,20 @@ $("photoFileInput").onchange = async () => {
     toast("📷 Photo added to your Family Memories!");
     pendingPhotoRecipeId = null; pendingPhotoHabitId = null;
     await renderMemories();
+    if (recipeId) await renderRecipes();
   } catch (err) { toast(err.message, true); }
 };
+
+let recipeCoverPhotos = {}; // recipeId -> photoId, for the polaroid cover image
+let openRecipeDetailId = null;
 
 async function renderRecipes() {
   const data = await api("/api/recipes");
   recipesCache = data.recipes;
+  try {
+    const coverData = await api("/api/recipes/cover-photos");
+    recipeCoverPhotos = coverData.covers || {};
+  } catch (err) { recipeCoverPhotos = {}; }
 
   const tabsWrap = $("recipeCategoryTabs");
   const tabDefs = [{ key: "all", label: "All", emoji: "🍳" }, ...Object.keys(RECIPE_CATEGORY_META).map((k) => ({ key: k, ...RECIPE_CATEGORY_META[k] }))];
@@ -955,104 +986,136 @@ async function renderRecipes() {
     list.innerHTML = recipesCache.length
       ? '<p class="muted">No recipes in this category yet.</p>'
       : '<p class="muted">No recipes yet — add your family\'s favorite below!</p>';
+    hide("recipeDetailPanel");
     return;
   }
-  visibleRecipes.forEach((r) => {
-    const row = document.createElement("div"); row.className = "event-row recipe-row";
-    const cookFormHtml = cookingRecipeId === r.id
-      ? `<div style="display:flex; gap:6px; margin-top:8px;" onclick="event.stopPropagation()">
-           <input type="date" class="cook-day-input" value="${todayStr()}" style="flex:1;" />
-           <button class="small" data-cook-confirm="${r.id}" style="margin:0;">Add to meal plan</button>
-           <button class="small secondary" data-cook-cancel style="margin:0;">Cancel</button>
-         </div>`
-      : "";
-    const catMeta = RECIPE_CATEGORY_META[r.category];
-    const menuOpen = recipeMenuOpenId === r.id;
-    row.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-        <span>${catMeta ? `<span title="${catMeta.label}">${catMeta.emoji}</span> ` : ""}<strong>${r.title}</strong> <span class="muted">${r.ingredients.length} ingredients · ${r.steps.length} steps</span></span>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;" onclick="event.stopPropagation()">
-          <button class="small secondary" data-cook="${r.id}" style="margin:0;">🍳 Cook this</button>
-          <button class="small secondary" data-recipe-menu="${r.id}" style="margin:0;">•••</button>
-        </div>
-      </div>
-      <div class="recipe-detail hidden">
-        <strong>Ingredients</strong>
-        <ul>${r.ingredients.map((i) => `<li>${i}</li>`).join("")}</ul>
-        <strong>Steps</strong>
-        <ol>${r.steps.map((s) => `<li>${s}</li>`).join("")}</ol>
-      </div>
-      <div class="row-menu ${menuOpen ? "" : "hidden"}" onclick="event.stopPropagation()">
-        <button class="small secondary" data-fav="${r.id}" style="margin:0;">${r.favorite ? "⭐ Favourited" : "☆ Favourite"}</button>
-        ${r.family_id ? `<button class="small secondary" data-edit-recipe="${r.id}" style="margin:0;">✏️ Edit</button>` : ""}
-        <button class="small secondary" data-photo="${r.id}" style="margin:0;">📷 Add photo</button>
-        <button class="small secondary" data-ai-photo="${r.id}" style="margin:0;">✨ AI photo</button>
-      </div>
-      ${cookFormHtml}`;
-    row.onclick = () => row.querySelector(".recipe-detail").classList.toggle("hidden");
-    list.appendChild(row);
-  });
 
-  list.querySelectorAll("button[data-recipe-menu]").forEach((btn) => {
-    btn.onclick = () => { const id = btn.getAttribute("data-recipe-menu"); recipeMenuOpenId = recipeMenuOpenId === id ? null : id; renderRecipes(); };
+  const grid = document.createElement("div"); grid.className = "polaroid-grid";
+  visibleRecipes.forEach((r) => {
+    const catMeta = RECIPE_CATEGORY_META[r.category];
+    const card = document.createElement("div"); card.className = "polaroid"; card.setAttribute("data-recipe-card", r.id);
+    const coverPhotoId = recipeCoverPhotos[r.id];
+    card.innerHTML = `
+      <div class="polaroid-photo">
+        ${catMeta ? `<span class="polaroid-badge" title="${catMeta.label}">${catMeta.emoji}</span>` : ""}
+        <div class="polaroid-placeholder"><span>📷</span><span class="hint">Tap to add</span></div>
+      </div>
+      <div class="polaroid-cap">${r.title}</div>
+      <div class="polaroid-meta">${r.ingredients.length} ingredients · ${r.steps.length} steps</div>
+    `;
+    card.onclick = () => showRecipeDetail(r.id);
+    grid.appendChild(card);
+    if (coverPhotoId) {
+      fetchPhotoBlobUrl(coverPhotoId).then((url) => {
+        if (!url) return;
+        const photoBox = card.querySelector(".polaroid-photo");
+        const placeholder = photoBox.querySelector(".polaroid-placeholder");
+        if (placeholder) placeholder.remove();
+        const img = document.createElement("img"); img.src = url; img.alt = r.title;
+        photoBox.appendChild(img);
+      });
+    }
   });
-  list.querySelectorAll("button[data-cook]").forEach((btn) => {
-    btn.onclick = () => { cookingRecipeId = btn.getAttribute("data-cook"); renderRecipes(); };
-  });
-  list.querySelectorAll("button[data-fav]").forEach((btn) => {
-    btn.onclick = async () => {
-      try {
-        await api(`/api/recipes/${btn.getAttribute("data-fav")}/favorite`, { method: "POST", body: "{}" });
-        await renderRecipes();
-      } catch (err) { toast(err.message, true); }
-    };
-  });
-  list.querySelectorAll("button[data-edit-recipe]").forEach((btn) => {
-    btn.onclick = () => {
-      const recipe = recipesCache.find((r) => r.id === btn.getAttribute("data-edit-recipe"));
-      if (!recipe) return;
-      editingRecipeId = recipe.id;
-      fillRecipeForm(recipe);
+  list.appendChild(grid);
+
+  if (openRecipeDetailId && visibleRecipes.some((r) => r.id === openRecipeDetailId)) {
+    showRecipeDetail(openRecipeDetailId);
+  } else {
+    openRecipeDetailId = null;
+    hide("recipeDetailPanel");
+  }
+}
+
+function showRecipeDetail(recipeId) {
+  const r = recipesCache.find((rc) => rc.id === recipeId);
+  const panel = $("recipeDetailPanel");
+  if (!r) { openRecipeDetailId = null; hide("recipeDetailPanel"); return; }
+  openRecipeDetailId = recipeId;
+
+  const catMeta = RECIPE_CATEGORY_META[r.category];
+  const cookFormHtml = cookingRecipeId === r.id
+    ? `<div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+         <input type="date" id="cookDayInput" value="${todayStr()}" style="flex:1; min-width:140px;" />
+         <button class="small" id="cookConfirmBtn" style="margin:0;">Add to meal plan</button>
+         <button class="small secondary" id="cookCancelBtn" style="margin:0;">Cancel</button>
+       </div>`
+    : "";
+
+  panel.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+      <div>
+        <strong style="font-size:1.05rem;">${catMeta ? `${catMeta.emoji} ` : ""}${r.title}</strong>
+      </div>
+      <button class="small secondary" id="closeRecipeDetailBtn" style="margin:0; width:auto;">✕</button>
+    </div>
+    <div style="margin-top:8px;">
+      <strong>Ingredients</strong>
+      <ul>${r.ingredients.map((i) => `<li>${i}</li>`).join("")}</ul>
+      <strong>Steps</strong>
+      <ol>${r.steps.map((s) => `<li>${s}</li>`).join("")}</ol>
+    </div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed #eee3cf;">
+      <button class="small secondary" id="cookThisBtn" style="margin:0;">🍳 Cook this</button>
+      <button class="small secondary" id="favThisBtn" style="margin:0;">${r.favorite ? "⭐ Favourited" : "☆ Favourite"}</button>
+      ${r.family_id ? `<button class="small secondary" id="editThisBtn" style="margin:0;">✏️ Edit</button>` : ""}
+      <button class="small secondary" id="photoThisBtn" style="margin:0;">📷 Add photo</button>
+      <button class="small secondary" id="aiPhotoThisBtn" style="margin:0;">✨ AI photo</button>
+    </div>
+    ${cookFormHtml}
+    <div class="error hidden" id="recipeDetailError"></div>
+  `;
+  show("recipeDetailPanel");
+
+  $("closeRecipeDetailBtn").onclick = () => { openRecipeDetailId = null; hide("recipeDetailPanel"); };
+  $("cookThisBtn").onclick = () => { cookingRecipeId = r.id; showRecipeDetail(r.id); };
+  $("favThisBtn").onclick = async () => {
+    try {
+      await api(`/api/recipes/${r.id}/favorite`, { method: "POST", body: "{}" });
+      await renderRecipes();
+    } catch (err) { toast(err.message, true); }
+  };
+  if ($("editThisBtn")) {
+    $("editThisBtn").onclick = () => {
+      editingRecipeId = r.id;
+      fillRecipeForm(r);
       $("addRecipeBtn").textContent = "Save changes";
       show("cancelEditRecipeBtn");
       show("addRecipeForm");
       $("addRecipeForm").scrollIntoView({ behavior: "smooth", block: "nearest" });
     };
-  });
-  list.querySelectorAll("button[data-photo]").forEach((btn) => {
-    btn.onclick = () => {
-      pendingPhotoRecipeId = btn.getAttribute("data-photo");
-      pendingPhotoHabitId = null;
-      $("photoFileInput").value = "";
-      $("photoFileInput").click();
-    };
-  });
-  list.querySelectorAll("button[data-ai-photo]").forEach((btn) => {
-    btn.onclick = async () => {
-      btn.disabled = true; btn.textContent = "✨ Generating...";
+  }
+  $("photoThisBtn").onclick = () => {
+    pendingPhotoRecipeId = r.id;
+    pendingPhotoHabitId = null;
+    $("photoFileInput").value = "";
+    $("photoFileInput").click();
+  };
+  $("aiPhotoThisBtn").onclick = async () => {
+    const btn = $("aiPhotoThisBtn");
+    btn.disabled = true; btn.textContent = "✨ Generating...";
+    try {
+      await api("/api/ai/image", { method: "POST", body: JSON.stringify({ recipeId: r.id })});
+      toast("✨ AI photo added to your Family Cookbook!");
+      await renderRecipes();
+    } catch (err) { toast(err.message, true); }
+    finally { if ($("aiPhotoThisBtn")) { btn.disabled = false; btn.textContent = "✨ AI photo"; } }
+  };
+  if ($("cookCancelBtn")) $("cookCancelBtn").onclick = () => { cookingRecipeId = null; showRecipeDetail(r.id); };
+  if ($("cookConfirmBtn")) {
+    $("cookConfirmBtn").onclick = async () => {
+      const day = $("cookDayInput").value || todayStr();
       try {
-        await api("/api/ai/image", { method: "POST", body: JSON.stringify({ recipeId: btn.getAttribute("data-ai-photo") })});
-        toast("✨ AI photo added to your Family Cookbook!");
-      } catch (err) { toast(err.message, true); }
-      finally { btn.disabled = false; btn.textContent = "✨ AI photo"; }
-    };
-  });
-  list.querySelectorAll("button[data-cook-cancel]").forEach((btn) => {
-    btn.onclick = () => { cookingRecipeId = null; renderRecipes(); };
-  });
-  list.querySelectorAll("button[data-cook-confirm]").forEach((btn) => {
-    btn.onclick = async () => {
-      const recipeId = btn.getAttribute("data-cook-confirm");
-      const recipe = recipesCache.find((r) => r.id === recipeId);
-      const day = btn.parentElement.querySelector(".cook-day-input").value || todayStr();
-      try {
-        await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day, title: recipe.title, recipeId })});
+        await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day, title: r.title, recipeId: r.id })});
         cookingRecipeId = null;
-        await renderRecipes();
         await renderMealPlan();
-        toast(`Added "${recipe.title}" to the meal plan!`);
-      } catch (err) { toast(err.message, true); }
+        toast(`Added "${r.title}" to the meal plan!`);
+        showRecipeDetail(r.id);
+      } catch (err) {
+        $("recipeDetailError").textContent = err.message || "Couldn't add that to the meal plan.";
+        $("recipeDetailError").classList.remove("hidden");
+      }
     };
-  });
+  }
 }
 function resetRecipeForm() {
   editingRecipeId = null;
@@ -1307,14 +1370,23 @@ $("loadCookbookBtn").onclick = async () => {
       return;
     }
 
-    view.innerHTML = `${bits.join("")}<div class="cookbook-grid" id="cookbookGrid"></div>`;
+    view.innerHTML = `${bits.join("")}<div class="polaroid-grid" id="cookbookGrid"></div>`;
     const grid = $("cookbookGrid");
     for (const p of data.photos) {
-      const cell = document.createElement("div"); cell.className = "cookbook-photo";
-      const caption = `${p.recipe_title || "Photo"}${p.source === "ai" ? " · ✨ AI" : ""} · ${p.day}`;
-      cell.innerHTML = `<img alt="${caption}" /><div class="cap">${caption}</div>`;
+      const title = p.recipe_title || (p.habit_title ? `${p.habit_emoji || ""} ${p.habit_title}`.trim() : "Family moment");
+      const who = p.member_name ? `${p.member_name} · ` : "";
+      const cell = document.createElement("div"); cell.className = "polaroid";
+      cell.innerHTML = `
+        <div class="polaroid-photo">${p.source === "ai" ? `<span class="polaroid-badge">✨ AI</span>` : ""}</div>
+        <div class="polaroid-cap">${title}</div>
+        <div class="polaroid-meta">${who}${p.day}</div>
+      `;
       grid.appendChild(cell);
-      fetchPhotoBlobUrl(p.id).then((url) => { if (url) cell.querySelector("img").src = url; });
+      fetchPhotoBlobUrl(p.id).then((url) => {
+        if (!url) return;
+        const img = document.createElement("img"); img.src = url; img.alt = title;
+        cell.querySelector(".polaroid-photo").appendChild(img);
+      });
     }
   } catch (err) { view.innerHTML = `<p class="error">${err.message}</p>`; }
 };

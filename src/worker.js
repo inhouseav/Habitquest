@@ -128,6 +128,7 @@ async function handleApi(request, env, url) {
   const photoGetMatch = path.match(/^\/api\/photos\/([^/]+)$/);
   if (photoGetMatch && method === "GET") return photoRoutes.getPhoto(photoGetMatch[1], familyId, env);
   if (photoGetMatch && method === "DELETE") return photoRoutes.deletePhoto(photoGetMatch[1], familyId, env);
+  if (path === "/api/recipes/cover-photos" && method === "GET") return photoRoutes.getRecipeCoverPhotos(familyId, env);
   if (path === "/api/cookbook" && method === "GET") return photoRoutes.getCookbook(request, familyId, env);
   if (path === "/api/memories" && method === "GET") return photoRoutes.getMemories(familyId, env);
   if (path === "/api/ai/image" && method === "POST") return aiImageRoutes.generateImage(request, familyId, env);
