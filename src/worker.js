@@ -20,6 +20,7 @@ import * as aiAssistantRoutes from "./routes/aiAssistant.js";
 import * as photoRoutes from "./routes/photos.js";
 import * as aiImageRoutes from "./routes/aiImage.js";
 import * as aiRecipeIntakeRoutes from "./routes/aiRecipeIntake.js";
+import * as movementIdeasRoutes from "./routes/movementIdeas.js";
 
 async function handleHealth(env) {
   const hasDb = !!env.DB;
@@ -103,6 +104,8 @@ async function handleApi(request, env, url) {
     return dailyThreeRoutes.completePillar(request, familyId, env);
   }
 
+  if (path === "/api/movement-ideas" && method === "GET") return movementIdeasRoutes.listMovementIdeas(familyId, env);
+  if (path === "/api/movement-ideas" && method === "POST") return movementIdeasRoutes.addMovementIdea(request, familyId, env);
   if (path === "/api/habits" && method === "GET") return habitRoutes.getHabits(request, familyId, env);
   if (path === "/api/habits/completions" && method === "GET") return habitRoutes.listCompletions(familyId, env);
   if (path === "/api/habits/set" && method === "POST") return habitRoutes.setHabits(request, familyId, env);

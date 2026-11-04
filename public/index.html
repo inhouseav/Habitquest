@@ -323,41 +323,38 @@
     </div>
 
     <div class="card">
-      <h3>Need an idea? 🤖</h3>
-      <p class="muted">Get a fun activity suggestion — or a healthy snack idea.</p>
-      <label>For</label>
-      <select id="aiMemberSelect"></select>
-      <label>How are they feeling / in the mood for?</label>
-      <select id="aiMood">
-        <option value="">Choose one...</option>
-        <option value="hungry">🍎 Hungry</option>
-        <option value="bored">😐 Bored</option>
-        <option value="energetic">⚡ Full of energy</option>
-        <option value="tired">😴 Tired / want something calm</option>
-      </select>
-      <div id="ideaPickerWrap" class="hidden">
-        <label id="ideaPickerLabel">Pick an idea</label>
-        <select id="ideaPicker"><option value="">Choose...</option></select>
+      <h3>📋 Planner</h3>
+      <p class="muted">Drag an idea onto the calendar below to plan it for that day — or tap one if you're on your phone.</p>
+      <div style="display:flex; gap:6px; margin-bottom:10px;">
+        <button class="small" data-planner-tab="movement" style="margin:0;">🏃 Movement</button>
+        <button class="small secondary" data-planner-tab="recipes" style="margin:0;">🍳 Favourite recipes</button>
       </div>
-      <button id="aiSuggestBtn">Get an idea</button>
-      <div id="aiSuggestionBox" class="hidden" style="margin-top: 12px; padding: 12px; border-radius: 12px; background: #fff;"></div>
-      <div class="error hidden" id="aiError"></div>
-    </div>
-
-    <div class="card">
-      <h3>Family members</h3>
-      <div id="membersList"><p class="loading-text">Loading...</p></div>
-      <button class="small secondary" id="showAddMemberBtn">+ Add family member</button>
-      <div id="addMemberForm" class="hidden" style="margin-top: 12px;">
-        <label>Name</label>
-        <input id="newMemberName" placeholder="e.g. Jamie" />
-        <label>Role</label>
-        <select id="newMemberRole"><option value="child">Child</option><option value="parent">Parent</option></select>
-        <label>What do they like? (optional, comma separated)</label>
-        <input id="newMemberInterests" placeholder="e.g. dinosaurs, gardening, soccer" />
-        <button id="addMemberBtn">Add</button>
+      <div id="plannerMovementPane">
+        <div id="plannerMovementPalette" class="lunchbox-palette"></div>
+        <div style="display:flex; gap:6px; margin-top:8px;">
+          <input id="plannerCustomMovement" placeholder="Add your own idea..." style="flex:1;" />
+          <button type="button" class="small secondary" id="plannerAddCustomMovementBtn" style="margin:0; white-space:nowrap;">+ Add</button>
+        </div>
       </div>
-      <div class="error hidden" id="memberError"></div>
+      <div id="plannerRecipesPane" class="hidden">
+        <div id="plannerRecipesPalette" class="lunchbox-palette"></div>
+        <p class="muted hidden" id="plannerNoFavRecipes" style="margin-top:6px;">No favourite recipes yet — ⭐ favourite one in Recipes below!</p>
+      </div>
+      <div id="plannerPickDayWrap" class="hidden" style="margin-top:10px; padding-top:10px; border-top:1px dashed #eee3cf;">
+        <label id="plannerPickDayLabel">Add to the calendar...</label>
+        <div style="display:flex; gap:6px;">
+          <input type="date" id="plannerPickDayInput" style="flex:1;" />
+          <input type="time" id="plannerPickTimeInput" style="flex:1;" />
+        </div>
+        <div id="plannerForMemberWrap">
+          <label>For</label>
+          <select id="plannerForMemberSelect"><option value="">🌍 Everyone</option></select>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="small" id="plannerPickDayConfirmBtn" style="flex:1;">Add to calendar</button>
+          <button class="small secondary" type="button" id="plannerPickDayCancelBtn" style="flex:0; white-space:nowrap;">Cancel</button>
+        </div>
+      </div>
     </div>
 
     <div class="card full-width">
@@ -692,7 +689,7 @@ async function loadHome() {
   const sections = [
     ["calendar", renderEvents], ["habits", renderHabits], ["reward shop", renderRewards],
     ["recipes", renderRecipes], ["this week's meals", renderMealPlan], ["shopping list", renderShopping],
-    ["weekly check-in", loadMeeting], ["family memories", renderMemories],
+    ["weekly check-in", loadMeeting], ["family memories", renderMemories], ["planner", loadPlannerMovementIdeas],
   ];
   await Promise.all(sections.map(([name, fn]) =>
     fn().catch((err) => { console.error(`Failed to load ${name}:`, err); toast(`Couldn't load ${name} — ${err.message}`, true); })
@@ -728,6 +725,7 @@ function renderMembers() {
   list.querySelectorAll("button[data-member]").forEach((btn) => { btn.onclick = () => giveStar(btn.getAttribute("data-member")); });
   renderEventMemberChecks();
   renderCalMemberTabs();
+  if ($("plannerForMemberSelect")) renderPlannerForMemberOptions();
 }
 
 // "For" field on the Add Event form: "Everyone" (a group activity — the
@@ -958,7 +956,9 @@ function wireCalendarDropTargets() {
       evt.preventDefault();
       cell.classList.remove("drag-over");
       const recipeId = evt.dataTransfer.getData("text/recipe-id");
-      if (recipeId) scheduleRecipeForDay(recipeId, cell.getAttribute("data-date-key"));
+      if (recipeId) { scheduleRecipeForDay(recipeId, cell.getAttribute("data-date-key")); return; }
+      const movementTitle = evt.dataTransfer.getData("text/movement-idea");
+      if (movementTitle) openPlannerPickPanel({ type: "movement", value: movementTitle }, cell.getAttribute("data-date-key"));
     };
   });
 }
@@ -1051,6 +1051,128 @@ $("addEventBtn").onclick = async () => {
     renderEventMemberChecks(); hide("addEventForm"); await renderEvents();
     toast(recurrence ? "🔁 Added — it'll repeat every week until then!" : "Event added!");
   } catch (err) { showError("eventError", err.message); }
+};
+
+// --- Planner: a remembered palette of movement ideas + favourite recipes
+// you drag (or tap, on a phone) onto the calendar. Movement ideas are
+// "remembered" per family — nothing hardcoded, the palette is just
+// whatever this family has added, growing over time via "+ Add".
+let plannerMovementIdeas = [];
+let plannerActiveTab = "movement";
+let plannerPendingItem = null; // { type: "movement"|"recipe", value }
+
+async function loadPlannerMovementIdeas() {
+  const data = await api("/api/movement-ideas");
+  plannerMovementIdeas = data.ideas || [];
+  renderPlannerMovementPalette();
+}
+
+function renderPlannerMovementPalette() {
+  const wrap = $("plannerMovementPalette");
+  if (!plannerMovementIdeas.length) {
+    wrap.innerHTML = '<p class="muted" style="margin:0;">No movement ideas yet — add your first one below!</p>';
+    return;
+  }
+  wrap.innerHTML = plannerMovementIdeas.map((idea) =>
+    `<button type="button" class="lunchbox-chip" draggable="true" data-planner-movement="${idea.id}" data-planner-title="${escapeHtml(idea.title)}">🏃 ${escapeHtml(idea.title)}</button>`
+  ).join("");
+  wrap.querySelectorAll("[data-planner-movement]").forEach((chip) => {
+    const title = chip.getAttribute("data-planner-title");
+    chip.onclick = () => openPlannerPickPanel({ type: "movement", value: title });
+    chip.ondragstart = (evt) => {
+      evt.dataTransfer.setData("text/movement-idea", title);
+      evt.dataTransfer.effectAllowed = "copy";
+    };
+  });
+}
+
+function renderPlannerRecipesPane() {
+  const wrap = $("plannerRecipesPalette");
+  const favRecipes = (recipesCache || []).filter((r) => r.favorite);
+  $("plannerNoFavRecipes").classList.toggle("hidden", favRecipes.length > 0);
+  wrap.innerHTML = favRecipes.map((r) =>
+    `<button type="button" class="lunchbox-chip" draggable="true" data-planner-recipe="${r.id}">🍳 ${escapeHtml(r.title)}</button>`
+  ).join("");
+  wrap.querySelectorAll("[data-planner-recipe]").forEach((chip) => {
+    const recipeId = chip.getAttribute("data-planner-recipe");
+    chip.onclick = () => openPlannerPickPanel({ type: "recipe", value: recipeId });
+    chip.ondragstart = (evt) => {
+      evt.dataTransfer.setData("text/recipe-id", recipeId);
+      evt.dataTransfer.effectAllowed = "copy";
+    };
+  });
+}
+
+function renderPlannerForMemberOptions() {
+  const select = $("plannerForMemberSelect");
+  const prevValue = select.value;
+  select.innerHTML = '<option value="">🌍 Everyone</option>' +
+    state.members.map((m) => `<option value="${m.id}">${m.display_name}</option>`).join("");
+  if (state.members.some((m) => m.id === prevValue)) select.value = prevValue;
+}
+
+document.querySelectorAll("[data-planner-tab]").forEach((btn) => {
+  btn.onclick = () => {
+    plannerActiveTab = btn.getAttribute("data-planner-tab");
+    document.querySelectorAll("[data-planner-tab]").forEach((b) => {
+      b.classList.toggle("secondary", b.getAttribute("data-planner-tab") !== plannerActiveTab);
+    });
+    $("plannerMovementPane").classList.toggle("hidden", plannerActiveTab !== "movement");
+    $("plannerRecipesPane").classList.toggle("hidden", plannerActiveTab !== "recipes");
+    if (plannerActiveTab === "recipes") renderPlannerRecipesPane();
+  };
+});
+
+$("plannerAddCustomMovementBtn").onclick = async () => {
+  const val = $("plannerCustomMovement").value.trim();
+  if (!val) return;
+  try {
+    await api("/api/movement-ideas", { method: "POST", body: JSON.stringify({ title: val }) });
+    $("plannerCustomMovement").value = "";
+    await loadPlannerMovementIdeas();
+    toast(`🏃 "${val}" added to your Planner!`);
+  } catch (err) { toast(err.message, true); }
+};
+$("plannerCustomMovement").addEventListener("keydown", (evt) => {
+  if (evt.key === "Enter") { evt.preventDefault(); $("plannerAddCustomMovementBtn").click(); }
+});
+
+function openPlannerPickPanel(item, presetDay) {
+  plannerPendingItem = item;
+  const isRecipe = item.type === "recipe";
+  $("plannerPickTimeInput").classList.toggle("hidden", isRecipe);
+  $("plannerForMemberWrap").classList.toggle("hidden", isRecipe);
+  $("plannerPickDayLabel").textContent = isRecipe ? "Add to this week's meals on..." : "Add to the calendar...";
+  $("plannerPickDayInput").value = presetDay || todayStr();
+  if (!isRecipe && !$("plannerPickTimeInput").value) $("plannerPickTimeInput").value = "16:00";
+  renderPlannerForMemberOptions();
+  show("plannerPickDayWrap");
+  $("plannerPickDayWrap").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+$("plannerPickDayCancelBtn").onclick = () => { plannerPendingItem = null; hide("plannerPickDayWrap"); };
+$("plannerPickDayConfirmBtn").onclick = async () => {
+  if (!plannerPendingItem) return;
+  const day = $("plannerPickDayInput").value;
+  if (!day) { toast("Pick a day first.", true); return; }
+  try {
+    if (plannerPendingItem.type === "recipe") {
+      await scheduleRecipeForDay(plannerPendingItem.value, day);
+    } else {
+      const time = $("plannerPickTimeInput").value || "16:00";
+      const memberId = $("plannerForMemberSelect").value || null;
+      await api("/api/events", { method: "POST", body: JSON.stringify({
+        title: plannerPendingItem.value,
+        startsAt: new Date(`${day}T${time}`).toISOString(),
+        pillar: "move",
+        memberIds: memberId ? [memberId] : [],
+      })});
+      await renderEvents();
+      toast(`🏃 "${plannerPendingItem.value}" added to the calendar!`);
+    }
+    plannerPendingItem = null;
+    hide("plannerPickDayWrap");
+  } catch (err) { toast(err.message, true); }
 };
 
 // --- Personal weekly habits ---
@@ -1349,6 +1471,7 @@ let openRecipeDetailId = null;
 async function renderRecipes() {
   const data = await api("/api/recipes");
   recipesCache = data.recipes;
+  if ($("plannerRecipesPalette")) renderPlannerRecipesPane();
   try {
     const coverData = await api("/api/recipes/cover-photos");
     recipeCoverPhotos = coverData.covers || {};

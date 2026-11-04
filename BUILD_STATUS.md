@@ -4,6 +4,15 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 🚧 Planner card (2026-11-04)
+New "📋 Planner" card, in the spot right between Habits and Calendar previously held by "Family members" and "Need an idea?" (those two moved down, now sitting right after the Calendar instead). The Planner has two tabs:
+- **🏃 Movement**: a palette of movement ideas you tap (mobile) or drag (desktop) onto the calendar below. This list isn't hardcoded — it starts empty and **remembers** whatever a family adds via the "+ Add" box, so it actually grows into this family's own list of things they do (a walk, netball, bike ride...), not a generic suggestion list. New `movement_ideas` table, one row per family per idea, de-duplicated by title.
+- **🍳 Favourite recipes**: shows whatever's been ⭐ favourited in Recipes — no new data, just a filtered view, so a family's go-to meals are one tap away from being scheduled.
+
+Dropping or tapping an idea always opens a small confirm panel asking for a day (and, for a movement idea, a time — recipes go straight onto a meal-plan day instead, no time needed, since meals already have a "when" of breakfast/lunch/dinner/snacks) and, for movement, who it's for: 🌍 Everyone (tags the whole family, shows on every member's calendar) or one specific person — matching the "family walk tags everyone, but my own 5k run stays just mine" example. Confirming a movement idea creates a normal calendar event; confirming a recipe reuses the exact same "schedule this recipe" flow as the Recipes card (including the automatic shopping-list sync).
+
+New migration `014_movement_ideas.sql` (not yet run by Maddie). Not yet tested live — needs a pass adding a custom movement idea, dragging/tapping it onto a day with a time and a "for" choice, and doing the same for a favourite recipe.
+
 ## 🚧 Weekly recurring events (2026-11-04)
 "+ Add an event" now has a simple 🔁 "This happens every week (like netball)" checkbox — tick it and an "Until when?" date appears (defaults to 3 months out, a typical season length, so a kid isn't stuck guessing a date). The calendar expands a repeating event into one chip per week, every week, up to that date — deliberately kept to one simple weekly-repeat-until-a-date model, not a full recurrence-rule picker, to stay usable for an 8-year-old. Deleting a repeating event deletes the whole series (the confirm dialog says so) — editing/deleting a single occurrence isn't supported, out of scope for now.
 
