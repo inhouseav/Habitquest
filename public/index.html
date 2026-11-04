@@ -192,6 +192,38 @@
     .pair-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; grid-column: 1 / -1; }
     .pair-row .card { margin-bottom: 0; }
   }
+
+  /* Dev note tool: a small floating lightbulb, unrelated to the app's own
+     design system on purpose, so it reads as a build tool, not a feature. */
+  #devNoteFab {
+    position: fixed; bottom: 18px; right: 18px; z-index: 2000;
+    width: 46px; height: 46px; border-radius: 50%; margin: 0; padding: 0;
+    background: #2b2b2b; color: #fff; font-size: 1.3rem; border: none;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3); opacity: 0.55; cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  #devNoteFab:hover { opacity: 1; transform: scale(1.08); }
+  #devNotePanel {
+    position: fixed; bottom: 74px; right: 18px; z-index: 2000;
+    width: min(360px, calc(100vw - 32px)); max-height: min(560px, calc(100vh - 110px));
+    overflow-y: auto; background: #fff; border-radius: 14px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.28); font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  #devNoteHeader {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 14px; background: #2b2b2b; color: #fff; border-radius: 14px 14px 0 0;
+  }
+  #devNoteHeader button { width: auto; margin: 0; background: none; color: #fff; border: none; font-size: 1rem; cursor: pointer; padding: 2px 4px; }
+  #devNoteBody { padding: 14px; }
+  #devNoteCaptureRow { display: flex; gap: 6px; flex-wrap: wrap; }
+  #devNoteCaptureRow button { margin: 0; }
+  #devNoteSelectHint { background: #fff6ee; border-radius: 8px; padding: 8px 10px; font-size: 0.82rem; margin: 10px 0 0; }
+  #devNotePreviewWrap { margin-top: 10px; }
+  #devNotePreviewImg { width: 100%; max-height: 160px; object-fit: contain; border-radius: 8px; border: 1px solid #eee3cf; background: #faf6ed; display: block; }
+  #devNoteBody label { margin-top: 12px; display: block; font-size: 0.85rem; font-weight: 600; }
+  #devNoteBody textarea { width: 100%; box-sizing: border-box; margin-top: 4px; font-family: inherit; }
+  #devNoteExportBtn { margin-top: 10px; background: #2b2b2b; }
+  .devnote-highlight { outline: 2px solid #e0a339 !important; outline-offset: 2px; cursor: crosshair !important; }
 </style>
 </head>
 <body>
@@ -480,6 +512,37 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- Dev note tool: click the lightbulb to capture a screenshot (a section
+     or the whole page) or upload your own image, write a note about what
+     you want changed, and export both files to drag into a Claude chat.
+     This is a build tool for you, not a family feature — nothing here
+     talks to the app's own API or touches any family data. -->
+<button id="devNoteFab" title="Note something for Claude" aria-label="Note something for Claude">💡</button>
+<div id="devNotePanel" class="hidden">
+  <div id="devNoteHeader">
+    <strong>💡 Note for Claude</strong>
+    <button id="devNoteCloseBtn" type="button">✕</button>
+  </div>
+  <div id="devNoteBody">
+    <div id="devNoteCaptureRow">
+      <button type="button" class="small secondary" id="devNoteSelectSectionBtn">📐 Capture a section</button>
+      <button type="button" class="small secondary" id="devNoteWholePageBtn">🖥️ Capture whole page</button>
+      <button type="button" class="small secondary" id="devNoteUploadBtn">📁 Upload image</button>
+      <input type="file" id="devNoteFileInput" accept="image/*" class="hidden" />
+    </div>
+    <p id="devNoteSelectHint" class="hidden">Click the part of the page you want to capture. (Esc to cancel.)</p>
+    <div id="devNotePreviewWrap" class="hidden">
+      <img id="devNotePreviewImg" alt="Captured preview" />
+      <button type="button" class="small secondary" id="devNoteClearImageBtn">✕ Remove image</button>
+    </div>
+    <label for="devNoteText">What should change?</label>
+    <textarea id="devNoteText" rows="4" placeholder="e.g. This card is too tall on mobile, can we shrink it?"></textarea>
+    <button type="button" id="devNoteExportBtn">⬇️ Export for Claude</button>
+    <p class="muted" id="devNoteExportHint" style="font-size:0.78rem;">Downloads a screenshot (if any) and a text note — drag both into your Claude chat.</p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 let state = { token: localStorage.getItem("ftf_token") || null, family: null, members: [] };
 
@@ -1905,6 +1968,135 @@ $("checkinToggleBtn").onclick = () => {
 
 // --- Shopping list: "How this works" explanation collapsed by default ---
 $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("hidden"); };
+
+// --- Dev note tool (build-time only — captures a screenshot/section or an
+// uploaded image plus a text note, and downloads both so they can be
+// dragged into a Claude chat). Self-contained; doesn't touch the app API. ---
+(function initDevNoteTool() {
+  let capturedDataUrl = null;
+  let capturedLabel = "";
+  let selecting = false;
+  let hoveredEl = null;
+
+  const fab = $("devNoteFab");
+  const panel = $("devNotePanel");
+
+  function openPanel() { panel.classList.remove("hidden"); }
+  function closePanel() { panel.classList.add("hidden"); stopSelecting(); }
+
+  fab.onclick = () => { panel.classList.toggle("hidden"); if (!panel.classList.contains("hidden")) openPanel(); };
+  $("devNoteCloseBtn").onclick = closePanel;
+
+  function showPreview(dataUrl, label) {
+    capturedDataUrl = dataUrl;
+    capturedLabel = label || "";
+    $("devNotePreviewImg").src = dataUrl;
+    $("devNotePreviewWrap").classList.remove("hidden");
+  }
+  $("devNoteClearImageBtn").onclick = () => {
+    capturedDataUrl = null; capturedLabel = "";
+    $("devNotePreviewImg").src = "";
+    $("devNotePreviewWrap").classList.add("hidden");
+  };
+
+  async function captureElement(el, label) {
+    if (!window.html2canvas) { toast("Screenshot tool didn't load — try Upload image instead.", true); return; }
+    panel.classList.add("hidden"); // don't capture the tool itself
+    await new Promise((r) => setTimeout(r, 50));
+    try {
+      const canvas = await html2canvas(el, { backgroundColor: "#ffffff", useCORS: true, scale: Math.min(window.devicePixelRatio || 1, 2) });
+      showPreview(canvas.toDataURL("image/png"), label);
+    } catch (err) {
+      toast("Couldn't capture that — try Upload image instead.", true);
+    }
+    panel.classList.remove("hidden");
+  }
+
+  $("devNoteWholePageBtn").onclick = () => captureElement(document.body, "Whole page");
+
+  function stopSelecting() {
+    selecting = false;
+    document.body.style.cursor = "";
+    $("devNoteSelectHint").classList.add("hidden");
+    if (hoveredEl) { hoveredEl.classList.remove("devnote-highlight"); hoveredEl = null; }
+    document.removeEventListener("mouseover", onHover, true);
+    document.removeEventListener("click", onSelectClick, true);
+    document.removeEventListener("keydown", onEscKey, true);
+  }
+
+  function onHover(evt) {
+    if (panel.contains(evt.target) || evt.target === fab) return;
+    if (hoveredEl) hoveredEl.classList.remove("devnote-highlight");
+    hoveredEl = evt.target;
+    hoveredEl.classList.add("devnote-highlight");
+  }
+
+  function onSelectClick(evt) {
+    if (panel.contains(evt.target) || evt.target === fab) return;
+    evt.preventDefault(); evt.stopPropagation();
+    const el = evt.target;
+    const label = (el.closest(".card") && el.closest(".card").querySelector("h3")?.textContent) || el.tagName.toLowerCase();
+    stopSelecting();
+    captureElement(el, label.trim());
+  }
+
+  function onEscKey(evt) { if (evt.key === "Escape") stopSelecting(); }
+
+  $("devNoteSelectSectionBtn").onclick = () => {
+    if (selecting) return;
+    selecting = true;
+    document.body.style.cursor = "crosshair";
+    $("devNoteSelectHint").classList.remove("hidden");
+    document.addEventListener("mouseover", onHover, true);
+    document.addEventListener("click", onSelectClick, true);
+    document.addEventListener("keydown", onEscKey, true);
+  };
+
+  $("devNoteUploadBtn").onclick = () => $("devNoteFileInput").click();
+  $("devNoteFileInput").onchange = () => {
+    const file = $("devNoteFileInput").files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => showPreview(reader.result, "Uploaded image");
+    reader.readAsDataURL(file);
+  };
+
+  function downloadDataUrl(dataUrl, filename) {
+    const a = document.createElement("a");
+    a.href = dataUrl; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  function downloadText(text, filename) {
+    const blob = new Blob([text], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    downloadDataUrl(url, filename);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  $("devNoteExportBtn").onclick = () => {
+    const note = $("devNoteText").value.trim();
+    if (!note && !capturedDataUrl) { toast("Add a note or a screenshot first.", true); return; }
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+
+    if (capturedDataUrl) downloadDataUrl(capturedDataUrl, `fuelthefun-note-${stamp}.png`);
+
+    const lines = [
+      "# Fuel the Fun — note for Claude",
+      "",
+      `Date: ${new Date().toLocaleString()}`,
+      `Page: ${location.href}`,
+      `Viewport: ${window.innerWidth}×${window.innerHeight}`,
+    ];
+    if (capturedLabel) lines.push(`Captured: ${capturedLabel}`);
+    lines.push("", "## What should change", note || "(no note written — see screenshot)");
+    setTimeout(() => downloadText(lines.join("\n"), `fuelthefun-note-${stamp}.md`), capturedDataUrl ? 300 : 0);
+
+    toast("Downloaded! Drag both files into your Claude chat.");
+    $("devNoteText").value = "";
+    $("devNoteClearImageBtn").onclick();
+    closePanel();
+  };
+})();
 
 // --- Boot ---
 (async function boot() {
