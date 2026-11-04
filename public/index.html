@@ -200,6 +200,7 @@
   .meal-type-label { font-size: 0.68rem; font-weight: 700; opacity: 0.55; flex-shrink: 0; }
   .meal-chip { background: #fff; color: var(--text); border: 1px solid #eee3cf; border-radius: 999px; padding: 5px 12px; font-size: 0.78rem; cursor: pointer; margin: 0; width: auto; }
   .meal-chip.open { background: var(--sage); color: var(--text); }
+  .habit-plan-day-row.drag-over { background: #fff6ee; border-radius: 10px; }
   .meal-detail { padding: 2px 0 10px 44px; }
 
   /* Pair rows: two cards side-by-side on wide screens, stacked on phones */
@@ -1226,9 +1227,18 @@ const HABIT_SLOT_META = {
 };
 
 let habitsActiveMemberId = null;
+let habitDayPlanItems = [];
+let habitPlanPicking = null; // { memberId, slot, title } — which chip is mid-pick-a-day
 async function renderHabits() {
   const data = await api("/api/habits?day=" + todayStr());
   const list = $("habitsList"); list.innerHTML = "";
+
+  const planWeekStart = mondayOfWeek();
+  const planWeekEnd = addDays(planWeekStart, 6);
+  try {
+    const planData = await api(`/api/habit-day-plan?startDay=${planWeekStart}&endDay=${planWeekEnd}`);
+    habitDayPlanItems = planData.items || [];
+  } catch (err) { habitDayPlanItems = []; } // the week plan is a nice-to-have, never blocks the habits card
 
   // Tabs — one person's habits shown at a time instead of everyone stacked
   // in one long list. Keeps whoever's already selected if they still exist.
@@ -1284,7 +1294,8 @@ async function renderHabits() {
       }).join("");
       bodyHtml = `<div class="habit-rows">${habitsHtml}</div>
         <p class="muted" style="margin:6px 0 0;">${m.completedCount} of ${m.totalHabits} practised today</p>
-        <div id="googleTodayItemsWrap" data-member="${m.memberId}" style="margin-top:6px;"></div>`;
+        <div id="googleTodayItemsWrap" data-member="${m.memberId}" style="margin-top:6px;"></div>
+        ${habitWeekPlanHtml(m, planWeekStart)}`;
     }
 
     row.innerHTML = headerHtml + bodyHtml;
@@ -1341,6 +1352,105 @@ async function renderHabits() {
   list.querySelectorAll("button[data-cancel-edit]").forEach((btn) => {
     btn.onclick = () => { habitEditingMemberId = null; renderHabits(); };
   });
+
+  // --- Plan the week: tap or drag a habit chip onto a day ---
+  list.querySelectorAll("[data-habit-plan-chip]").forEach((chip) => {
+    chip.ondragstart = (evt) => {
+      evt.dataTransfer.setData("text/habit-plan-slot", chip.getAttribute("data-plan-slot"));
+      evt.dataTransfer.setData("text/habit-plan-member", chip.getAttribute("data-plan-member"));
+    };
+    chip.onclick = () => {
+      habitPlanPicking = {
+        memberId: chip.getAttribute("data-plan-member"),
+        slot: Number(chip.getAttribute("data-plan-slot")),
+        title: chip.getAttribute("data-plan-title"),
+      };
+      renderHabits();
+    };
+  });
+  list.querySelectorAll("[data-habit-plan-pick-day]").forEach((btn) => {
+    btn.onclick = async () => {
+      if (!habitPlanPicking) return;
+      const { memberId, slot } = habitPlanPicking;
+      habitPlanPicking = null;
+      await assignHabitPlan(memberId, slot, btn.getAttribute("data-habit-plan-pick-day"));
+    };
+  });
+  list.querySelectorAll("[data-habit-plan-pick-cancel]").forEach((btn) => {
+    btn.onclick = () => { habitPlanPicking = null; renderHabits(); };
+  });
+  list.querySelectorAll("[data-habit-plan-remove]").forEach((btn) => {
+    btn.onclick = async () => {
+      try {
+        await api(`/api/habit-day-plan/${btn.getAttribute("data-habit-plan-remove")}`, { method: "DELETE" });
+        await renderHabits();
+      } catch (err) { toast(err.message, true); }
+    };
+  });
+  list.querySelectorAll(".habit-plan-day-row").forEach((row) => {
+    row.ondragover = (evt) => { evt.preventDefault(); row.classList.add("drag-over"); };
+    row.ondragleave = () => row.classList.remove("drag-over");
+    row.ondrop = async (evt) => {
+      evt.preventDefault();
+      row.classList.remove("drag-over");
+      const slot = evt.dataTransfer.getData("text/habit-plan-slot");
+      const memberId = evt.dataTransfer.getData("text/habit-plan-member");
+      if (!slot || !memberId) return;
+      await assignHabitPlan(memberId, Number(slot), row.getAttribute("data-habit-plan-day"));
+    };
+  });
+}
+
+// Builds the "Plan the week" palette + Mon-Sun list under a member's 3
+// habits — drag (desktop) or tap (phone) a habit onto a day to plan it
+// there, same pattern as the Planner card. Purely a visual plan; ticking a
+// habit "done today" still works the same regardless of what's planned.
+function habitWeekPlanHtml(m, weekStart) {
+  const myHabits = [1, 2, 3].map((slot) => m.habits.find((hh) => hh.slot === slot)).filter(Boolean);
+  if (!myHabits.length) return "";
+
+  const paletteHtml = myHabits.map((h) => {
+    const label = `${h.emoji ? h.emoji + " " : ""}${h.title}`;
+    return `<button type="button" class="lunchbox-chip" draggable="true" data-habit-plan-chip data-plan-slot="${h.slot}" data-plan-member="${m.memberId}" data-plan-title="${escapeAttr(label)}">${escapeHtml(label)}</button>`;
+  }).join("");
+
+  const pickerHtml = habitPlanPicking && habitPlanPicking.memberId === m.memberId
+    ? `<div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center; margin:6px 0; padding:6px 8px; background:#fff; border-radius:10px;">
+        <span class="muted" style="width:100%; font-size:0.72rem;">Add "${escapeHtml(habitPlanPicking.title)}" to...</span>
+        ${MEAL_DAY_LABELS.map((label, i) => `<button type="button" class="small secondary" data-habit-plan-pick-day="${addDays(weekStart, i)}" style="margin:0;">${label}</button>`).join("")}
+        <button type="button" class="small secondary" data-habit-plan-pick-cancel style="margin:0;">✕</button>
+      </div>`
+    : "";
+
+  const myPlanItems = habitDayPlanItems.filter((it) => it.memberId === m.memberId);
+  const weekListHtml = MEAL_DAY_LABELS.map((label, i) => {
+    const day = addDays(weekStart, i);
+    const dayItems = myPlanItems.filter((it) => it.day === day);
+    const chips = dayItems.map((it) => {
+      const h = myHabits.find((hh) => hh.slot === it.slot);
+      const title = h ? `${h.emoji ? h.emoji + " " : ""}${h.title}` : HABIT_SLOT_META[it.slot].label;
+      return `<button type="button" class="meal-chip" data-habit-plan-remove="${it.id}">${escapeHtml(title)} ✕</button>`;
+    }).join("");
+    return `<div class="meal-day-row habit-plan-day-row" data-habit-plan-day="${day}">
+      <div class="meal-day-label">${label}</div>
+      <div class="meal-day-items">${chips || '<span class="muted">—</span>'}</div>
+    </div>`;
+  }).join("");
+
+  return `<div class="habit-week-plan" style="margin-top:10px; padding-top:10px; border-top:1px dashed #eee3cf;">
+    <p class="muted" style="font-size:0.72rem; font-weight:700; margin:0 0 6px;">PLAN THE WEEK — drag or tap onto a day</p>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px;">${paletteHtml}</div>
+    ${pickerHtml}
+    <div>${weekListHtml}</div>
+  </div>`;
+}
+
+async function assignHabitPlan(memberId, slot, day) {
+  try {
+    await api("/api/habit-day-plan", { method: "POST", body: JSON.stringify({ memberId, slot, day }) });
+    await renderHabits();
+    toast("Added to your week plan!");
+  } catch (err) { toast(err.message, true); }
 }
 
 // Google Calendar items as bonus tickable items alongside the 3 typed

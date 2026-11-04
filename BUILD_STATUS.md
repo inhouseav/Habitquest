@@ -4,6 +4,12 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 🔧 Fixed: a broken deploy wiped the whole app (2026-11-04)
+The commit that relocated "Family members" and "Need an idea?" below the Calendar accidentally deleted their HTML instead of moving it, leaving `$("showAddMemberBtn")` pointing at nothing. That threw on page load and halted all script execution after it — breaking login, the Planner, and everything else wired up later in the file. This is also why login looked like it "wasn't remembering" sessions: the token was being saved fine the whole time, but `boot()` (the code that checks for a saved token on page load) never got to run. Restored both cards' markup. **Process change going forward**: before every push now, the page is loaded in a local headless browser to catch any JS crash like this one immediately, not just a syntax check — this exact bug would have been caught before reaching Maddie.
+
+## 🚧 Plan the week for habits (2026-11-04)
+Under each person's 3 chosen habits, a new "Plan the week" section: the habits they've chosen show as tappable/draggable chips, and a Mon–Sun list below (same style as This Week's Meals) is where you drop or tap one onto a specific day — e.g. "Move" planned for Tue/Thu only, not every day. Purely a planning aid — ticking a habit off "today" still works exactly the same regardless of what's planned for that day. New `habit_day_plan` table (migration 015, not yet run by Maddie). Not yet tested live.
+
 ## 🚧 Planner card (2026-11-04)
 New "📋 Planner" card, in the spot right between Habits and Calendar previously held by "Family members" and "Need an idea?" (those two moved down, now sitting right after the Calendar instead). The Planner has two tabs:
 - **🏃 Movement**: a palette of movement ideas you tap (mobile) or drag (desktop) onto the calendar below. This list isn't hardcoded — it starts empty and **remembers** whatever a family adds via the "+ Add" box, so it actually grows into this family's own list of things they do (a walk, netball, bike ride...), not a generic suggestion list. New `movement_ideas` table, one row per family per idea, de-duplicated by title.

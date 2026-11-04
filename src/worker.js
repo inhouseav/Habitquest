@@ -21,6 +21,7 @@ import * as photoRoutes from "./routes/photos.js";
 import * as aiImageRoutes from "./routes/aiImage.js";
 import * as aiRecipeIntakeRoutes from "./routes/aiRecipeIntake.js";
 import * as movementIdeasRoutes from "./routes/movementIdeas.js";
+import * as habitDayPlanRoutes from "./routes/habitDayPlan.js";
 
 async function handleHealth(env) {
   const hasDb = !!env.DB;
@@ -112,6 +113,13 @@ async function handleApi(request, env, url) {
   const habitCompleteMatch = path.match(/^\/api\/habits\/([^/]+)\/complete$/);
   if (habitCompleteMatch && method === "POST") {
     return habitRoutes.completeHabit(habitCompleteMatch[1], request, familyId, env);
+  }
+
+  if (path === "/api/habit-day-plan" && method === "GET") return habitDayPlanRoutes.listHabitDayPlan(request, familyId, env);
+  if (path === "/api/habit-day-plan" && method === "POST") return habitDayPlanRoutes.addHabitDayPlan(request, familyId, env);
+  const habitDayPlanDeleteMatch = path.match(/^\/api\/habit-day-plan\/([^/]+)$/);
+  if (habitDayPlanDeleteMatch && method === "DELETE") {
+    return habitDayPlanRoutes.deleteHabitDayPlan(habitDayPlanDeleteMatch[1], familyId, env);
   }
 
   if (path === "/api/rewards" && method === "GET") return rewardRoutes.listRewards(familyId, env);
