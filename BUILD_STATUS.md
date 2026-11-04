@@ -4,6 +4,13 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 🚧 Planner: 🏡 Home tab + popularity sorting (2026-11-04)
+Two additions to the Planner card:
+- A third **🏡 Home** tab, alongside Movement and Favourite recipes, for chores like "Tidy room" or "Set the table" — works exactly like Movement (remembered per family, drag/tap onto the calendar), just its own list and its own "+ Add". Dropping one creates a calendar event tagged with the Grow 🌱 pillar instead of Move.
+- Both Movement and Home ideas now track how many times they've actually been scheduled, and the palette sorts most-used-first — so "Netball" (used every week) rises above a one-off idea that was only tried once. New `use_count` column, bumped (best-effort, never blocking) whenever an idea is dropped/tapped onto a day.
+
+Technically: `movement_ideas` table extended with `category` ('movement'/'home') and `use_count` columns (migration 016) rather than a new table — same data shape, just filtered/sorted differently per tab. Verified with the same headless-browser approach as today's other changes (loaded the page, rendered both palettes with fake data, switched tabs, opened the confirm panel) — no crashes. Still needs a live pass: add a Home idea, schedule it, confirm it moves up the list after a second use.
+
 ## 🚧 Habit card redesign: "win the day" is now stated up front (2026-11-04)
 Maddie reviewed a before/after mockup and approved it — now built into the real app:
 - A "🎯 Do all 3 to win the day!" badge sits right under the card title, so the goal is visible before you start, not just celebrated after.

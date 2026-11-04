@@ -105,8 +105,12 @@ async function handleApi(request, env, url) {
     return dailyThreeRoutes.completePillar(request, familyId, env);
   }
 
-  if (path === "/api/movement-ideas" && method === "GET") return movementIdeasRoutes.listMovementIdeas(familyId, env);
+  if (path === "/api/movement-ideas" && method === "GET") return movementIdeasRoutes.listMovementIdeas(request, familyId, env);
   if (path === "/api/movement-ideas" && method === "POST") return movementIdeasRoutes.addMovementIdea(request, familyId, env);
+  const movementIdeaUseMatch = path.match(/^\/api\/movement-ideas\/([^/]+)\/use$/);
+  if (movementIdeaUseMatch && method === "POST") {
+    return movementIdeasRoutes.useMovementIdea(movementIdeaUseMatch[1], familyId, env);
+  }
   if (path === "/api/habits" && method === "GET") return habitRoutes.getHabits(request, familyId, env);
   if (path === "/api/habits/completions" && method === "GET") return habitRoutes.listCompletions(familyId, env);
   if (path === "/api/habits/set" && method === "POST") return habitRoutes.setHabits(request, familyId, env);
