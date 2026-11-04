@@ -591,7 +591,11 @@ async function api(path, options = {}) {
   if (state.token) headers["Authorization"] = "Bearer " + state.token;
   const res = await fetch(path, { ...options, headers });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.ok === false) throw new Error(data.error || ("Request failed (" + res.status + ")"));
+  if (!res.ok || data.ok === false) {
+    const err = new Error(data.error || ("Request failed (" + res.status + ")"));
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 
@@ -636,10 +640,17 @@ async function loadHome() {
   $("joinCodeDisplay").textContent = me.family.joinCode;
 
   renderMembers();
-  await Promise.all([
-    renderEvents(), renderHabits(), renderRewards(), renderRecipes(),
-    renderMealPlan(), renderShopping(), loadMeeting(), renderMemories(),
-  ]);
+  // Each card renders independently — if one fails (e.g. the database is
+  // missing a column a newer version of the app expects), the rest of the
+  // home screen still loads instead of the whole page breaking.
+  const sections = [
+    ["calendar", renderEvents], ["habits", renderHabits], ["reward shop", renderRewards],
+    ["recipes", renderRecipes], ["this week's meals", renderMealPlan], ["shopping list", renderShopping],
+    ["weekly check-in", loadMeeting], ["family memories", renderMemories],
+  ];
+  await Promise.all(sections.map(([name, fn]) =>
+    fn().catch((err) => { console.error(`Failed to load ${name}:`, err); toast(`Couldn't load ${name} — ${err.message}`, true); })
+  ));
   await refreshNotifyUi();
   await refreshGoogleCalUi();
 }
@@ -2117,7 +2128,20 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
 (async function boot() {
   if (state.token) {
     try { await loadHome(); return; }
-    catch (err) { localStorage.removeItem("ftf_token"); state.token = null; }
+    catch (err) {
+      // Only treat this as "you're logged out" when the server actually
+      // said so (401/403) — any other failure (a network hiccup, a
+      // one-off bug in a single card) shouldn't silently sign someone out
+      // and dump the login form on top of their still-visible home screen.
+      if (err.status === 401 || err.status === 403) {
+        localStorage.removeItem("ftf_token");
+        state.token = null;
+        hide("homeScreen");
+      } else {
+        toast("Something went wrong loading the app — try refreshing.", true);
+        return;
+      }
+    }
   }
   show("authScreen");
 })();
