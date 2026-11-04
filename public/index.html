@@ -128,6 +128,8 @@
   .cal-day.today { outline: 2px solid var(--terracotta); }
   .cal-day-num { font-weight: 700; font-size: 0.75rem; }
   .cal-event-chip { border-radius: 6px; padding: 2px 4px; color: #183F35; font-size: 0.62rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+  .cal-habit-markers { display: flex; flex-wrap: wrap; gap: 3px; margin-top: auto; padding-top: 2px; }
+  .cal-habit-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(24, 63, 53, 0.15); }
   .cal-grid + button { margin-top: 12px; }
   .event-row:last-child { border-bottom: none; }
   .muted { opacity: 0.65; font-size: 0.85rem; }
@@ -744,6 +746,7 @@ $("addMemberBtn").onclick = async () => {
 // --- Events: month calendar grid ---
 let calendarMonth = new Date(); // any date within the currently shown month
 let allEvents = [];
+let allHabitCompletions = []; // [{day, memberId, title, emoji}] — tiny dots on the calendar
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const PILLAR_COLORS = { fuel: "#F8E3D1", move: "#E2ECEE", grow: "#E4EAD9" };
 
@@ -759,6 +762,10 @@ function memberNameFor(memberId) {
 async function renderEvents() {
   const data = await api("/api/events");
   allEvents = data.events;
+  try {
+    const completionsData = await api("/api/habits/completions");
+    allHabitCompletions = completionsData.completions || [];
+  } catch (err) { allHabitCompletions = []; } // markers are a nice-to-have, never block the calendar
   renderCalendarGrid();
 }
 
@@ -781,6 +788,11 @@ function renderCalendarGrid() {
     const key = ymd(new Date(e.starts_at));
     if (!eventsByDay[key]) eventsByDay[key] = [];
     eventsByDay[key].push(e);
+  });
+  const habitsByDay = {};
+  allHabitCompletions.forEach((c) => {
+    if (!habitsByDay[c.day]) habitsByDay[c.day] = [];
+    habitsByDay[c.day].push(c);
   });
 
   const cells = [];
@@ -814,7 +826,14 @@ function renderCalendarGrid() {
           return `<div class="cal-event-chip" style="background:${bg}" data-event-id="${e.id}" title="${label}">${label}</div>`;
         }).join("")
       : "";
-    div.innerHTML = `<div class="cal-day-num">${cell.day}</div>${chips}`;
+    const habitMarkers = cell.key && habitsByDay[cell.key]
+      ? `<div class="cal-habit-markers">${habitsByDay[cell.key].slice(0, 6).map((c) => {
+          const bg = memberColorFor(c.memberId) || "#BE7050";
+          const label = `${memberNameFor(c.memberId) || ""} ${c.emoji || ""} ${c.title}`.trim();
+          return `<span class="cal-habit-dot" style="background:${bg}" title="${escapeHtml(label)}"></span>`;
+        }).join("")}</div>`
+      : "";
+    div.innerHTML = `<div class="cal-day-num">${cell.day}</div>${chips}${habitMarkers}`;
     if (cell.key) div.setAttribute("data-date-key", cell.key);
     grid.appendChild(div);
   });

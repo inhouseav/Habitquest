@@ -4,6 +4,9 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 🚧 Habit completions shown on the calendar (2026-11-04)
+Each ticked-off habit now shows as a small coloured dot on that day in the month calendar — one dot per person per completed habit, colored by that member's own color, with a hover tooltip naming who and which habit. New `GET /api/habits/completions` endpoint (unscoped by date, same pattern as `/api/events` — fetched once per calendar load and cached client-side) joins `habit_completions` to `weekly_habits` for the title/emoji. Purely additive — no schema change, `habit_completions` already recorded per-day completions, this just surfaces it visually. Not yet tested live.
+
 ## 🚧 Lunchbox builder + 6 example recipes (2026-11-04)
 New "🎒 Build a lunchbox" button next to "+ Add a recipe": a lunchbox is 5+ small separate items (fruit, veg sticks, a sandwich, a snack bar...), which is awkward to type as one free-text ingredient list, so instead there's a palette of ~16 common lunchbox items you tap (mobile-friendly) or drag (desktop) into a box, plus a "+ Add your own item" field for anything not in the palette. Saving it creates a normal recipe behind the scenes (category: `lunchboxes`, ingredients = the chosen items, one auto-generated step), so it gets every existing recipe feature for free — shows as a polaroid card, drags onto the calendar, adds its items to the shopping list, appears in the Family Cookbook under Lunchboxes. No schema change — reuses the existing `recipes` table and `POST /api/recipes` endpoint.
 

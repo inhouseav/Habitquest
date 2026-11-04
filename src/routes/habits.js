@@ -67,6 +67,28 @@ export async function getHabits(request, familyId, env) {
 }
 
 /**
+ * GET /api/habits/completions — every habit completion ever logged, with
+ * just enough info (day, who, title, emoji) to draw small markers on the
+ * calendar. Mirrors the "/api/events" pattern: unscoped by date range,
+ * fetched once by the frontend and cached (family-sized datasets stay
+ * small, so this is fine without pagination for now).
+ */
+export async function listCompletions(familyId, env) {
+  const db = env.DB;
+  const rows = await db
+    .prepare(
+      `SELECT hc.day, hc.member_id as memberId, wh.title, wh.emoji
+       FROM habit_completions hc
+       JOIN weekly_habits wh ON wh.id = hc.habit_id
+       WHERE hc.family_id = ?
+       ORDER BY hc.day ASC`
+    )
+    .bind(familyId)
+    .all();
+  return json({ ok: true, completions: rows.results || [] });
+}
+
+/**
  * POST /api/habits/set — replace one member's 3 weekly habits.
  * Body: { memberId, habits: [{ slot: 1-3, title, emoji? }, ...] }
  * Any slot left out is cleared. This is the simple editor for now; the

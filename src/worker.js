@@ -104,6 +104,7 @@ async function handleApi(request, env, url) {
   }
 
   if (path === "/api/habits" && method === "GET") return habitRoutes.getHabits(request, familyId, env);
+  if (path === "/api/habits/completions" && method === "GET") return habitRoutes.listCompletions(familyId, env);
   if (path === "/api/habits/set" && method === "POST") return habitRoutes.setHabits(request, familyId, env);
   const habitCompleteMatch = path.match(/^\/api\/habits\/([^/]+)\/complete$/);
   if (habitCompleteMatch && method === "POST") {
