@@ -390,6 +390,44 @@
       <div class="error hidden" id="eventError"></div>
     </div>
 
+    <div class="card">
+      <h3>Need an idea? 🤖</h3>
+      <p class="muted">Get a fun activity suggestion — or a healthy snack idea.</p>
+      <label>For</label>
+      <select id="aiMemberSelect"></select>
+      <label>How are they feeling / in the mood for?</label>
+      <select id="aiMood">
+        <option value="">Choose one...</option>
+        <option value="hungry">🍎 Hungry</option>
+        <option value="bored">😐 Bored</option>
+        <option value="energetic">⚡ Full of energy</option>
+        <option value="tired">😴 Tired / want something calm</option>
+      </select>
+      <div id="ideaPickerWrap" class="hidden">
+        <label id="ideaPickerLabel">Pick an idea</label>
+        <select id="ideaPicker"><option value="">Choose...</option></select>
+      </div>
+      <button id="aiSuggestBtn">Get an idea</button>
+      <div id="aiSuggestionBox" class="hidden" style="margin-top: 12px; padding: 12px; border-radius: 12px; background: #fff;"></div>
+      <div class="error hidden" id="aiError"></div>
+    </div>
+
+    <div class="card">
+      <h3>Family members</h3>
+      <div id="membersList"><p class="loading-text">Loading...</p></div>
+      <button class="small secondary" id="showAddMemberBtn">+ Add family member</button>
+      <div id="addMemberForm" class="hidden" style="margin-top: 12px;">
+        <label>Name</label>
+        <input id="newMemberName" placeholder="e.g. Jamie" />
+        <label>Role</label>
+        <select id="newMemberRole"><option value="child">Child</option><option value="parent">Parent</option></select>
+        <label>What do they like? (optional, comma separated)</label>
+        <input id="newMemberInterests" placeholder="e.g. dinosaurs, gardening, soccer" />
+        <button id="addMemberBtn">Add</button>
+      </div>
+      <div class="error hidden" id="memberError"></div>
+    </div>
+
     <div class="pair-row">
     <div class="card">
       <h3>Reward shop 🎁</h3>
