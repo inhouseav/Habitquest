@@ -99,6 +99,10 @@
   .polaroid-cap { font-family: "Kalam", cursive; text-align: center; padding-top: 8px; font-size: 0.95rem; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .polaroid-meta { text-align: center; font-size: 0.68rem; opacity: 0.6; margin-top: 1px; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
   .polaroid-badge { position: absolute; top: 4px; right: 4px; background: rgba(255,255,255,0.85); border-radius: 999px; padding: 1px 6px; font-size: 0.6rem; font-weight: 700; }
+  .polaroid[draggable="true"] { cursor: grab; }
+  .polaroid.dragging { opacity: 0.4; }
+  .cal-day.drag-over { outline: 2px dashed var(--terracotta); background: #fff6ee; }
+  .polaroid-photo.drag-over { outline: 2px dashed var(--terracotta); outline-offset: -2px; }
   .memories-progress-track { height: 14px; border-radius: 999px; background: #f1eadc; overflow: hidden; }
   .memories-progress-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #FF6B6B, #FFA94D, #FFD43B, #69DB7C, #4DABF7, #9775FA); }
   .memories-slide { position: relative; width: 100%; max-width: 480px; height: 260px; border-radius: 20px; overflow: hidden; margin: 0 auto; box-shadow: 0 10px 24px rgba(24,63,53,0.15); }
@@ -135,8 +139,11 @@
   .pillar-btns button { flex: 1; margin-top: 6px; }
   .pillar-btns button.done { background: var(--sage); color: var(--text); }
   .won { background: var(--terracotta); color: #fff; padding: 8px; border-radius: 12px; text-align: center; margin-top: 8px; font-weight: 600; }
-  .checkbox-row { display: flex; align-items: center; gap: 10px; }
+  .checkbox-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f1ead9; }
+  .checkbox-row:last-child { border-bottom: none; }
   .checkbox-row.checked span { text-decoration: line-through; opacity: 0.5; }
+  .checkbox-row input[type="checkbox"] { width: 22px; height: 22px; flex-shrink: 0; margin: 0; }
+  .checkbox-row button[data-delete] { width: 34px; height: 34px; flex-shrink: 0; padding: 0; }
   .vote-btn { background: var(--blue); color: var(--text); }
 
   /* Desktop / wide-screen layout: cards arrange into two columns so the
@@ -390,6 +397,7 @@
         <label style="width:auto; margin:0; font-weight:normal;" class="muted">Voting as</label>
         <select id="mealVoterSelect" style="width:auto;"></select>
       </div>
+      <button class="small secondary" id="addWeekIngredientsBtn" style="margin-top:8px;">🛒 Add this week's ingredients to shopping list</button>
       <div id="addMealForm" class="hidden" style="margin-top: 12px;">
         <label>Day</label>
         <input id="newMealDay" type="date" />
@@ -696,7 +704,36 @@ function renderCalendarGrid() {
         }).join("")
       : "";
     div.innerHTML = `<div class="cal-day-num">${cell.day}</div>${chips}`;
+    if (cell.key) div.setAttribute("data-date-key", cell.key);
     grid.appendChild(div);
+  });
+  wireCalendarDropTargets();
+}
+
+// --- Drag a recipe polaroid onto a calendar day to plan cooking it that
+// day. Desktop-only (native HTML5 drag doesn't work on touch) — the
+// "Cook this" button + date picker in the recipe detail panel is the
+// equivalent action for phones/tablets and always stays available.
+async function scheduleRecipeForDay(recipeId, day) {
+  const recipe = recipesCache.find((r) => r.id === recipeId);
+  if (!recipe) return;
+  try {
+    await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day, title: recipe.title, recipeId })});
+    await renderMealPlan();
+    toast(`Added "${recipe.title}" to the meal plan for ${day}!`);
+  } catch (err) { toast(err.message, true); }
+}
+
+function wireCalendarDropTargets() {
+  $("calDaysGrid").querySelectorAll(".cal-day[data-date-key]").forEach((cell) => {
+    cell.ondragover = (evt) => { evt.preventDefault(); cell.classList.add("drag-over"); };
+    cell.ondragleave = () => cell.classList.remove("drag-over");
+    cell.ondrop = (evt) => {
+      evt.preventDefault();
+      cell.classList.remove("drag-over");
+      const recipeId = evt.dataTransfer.getData("text/recipe-id");
+      if (recipeId) scheduleRecipeForDay(recipeId, cell.getAttribute("data-date-key"));
+    };
   });
 }
 
@@ -933,28 +970,33 @@ let recipeMenuOpenId = null;
 let pendingPhotoRecipeId = null;
 let pendingPhotoHabitId = null;
 
+async function uploadPhotoFile(file, { recipeId = null, habitId = null } = {}) {
+  if (!file || (!recipeId && !habitId)) return false;
+  const qsParams = { day: todayStr() };
+  if (recipeId) qsParams.recipeId = recipeId;
+  if (habitId) qsParams.habitId = habitId;
+  const qs = new URLSearchParams(qsParams);
+  const res = await fetch(`/api/photos?${qs}`, {
+    method: "POST",
+    headers: { "Content-Type": file.type, Authorization: "Bearer " + state.token },
+    body: file,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) throw new Error(data.error || "Upload failed.");
+  toast("📷 Photo added to your Family Memories!");
+  await renderMemories();
+  if (recipeId) await renderRecipes();
+  return true;
+}
+
 $("photoFileInput").onchange = async () => {
   const file = $("photoFileInput").files[0];
   const recipeId = pendingPhotoRecipeId;
   const habitId = pendingPhotoHabitId;
-  if (!file || (!recipeId && !habitId)) return;
   try {
-    const qsParams = { day: todayStr() };
-    if (recipeId) qsParams.recipeId = recipeId;
-    if (habitId) qsParams.habitId = habitId;
-    const qs = new URLSearchParams(qsParams);
-    const res = await fetch(`/api/photos?${qs}`, {
-      method: "POST",
-      headers: { "Content-Type": file.type, Authorization: "Bearer " + state.token },
-      body: file,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.ok === false) throw new Error(data.error || "Upload failed.");
-    toast("📷 Photo added to your Family Memories!");
-    pendingPhotoRecipeId = null; pendingPhotoHabitId = null;
-    await renderMemories();
-    if (recipeId) await renderRecipes();
+    await uploadPhotoFile(file, { recipeId, habitId });
   } catch (err) { toast(err.message, true); }
+  finally { pendingPhotoRecipeId = null; pendingPhotoHabitId = null; }
 };
 
 let recipeCoverPhotos = {}; // recipeId -> photoId, for the polaroid cover image
@@ -1004,6 +1046,33 @@ async function renderRecipes() {
       <div class="polaroid-meta">${r.ingredients.length} ingredients · ${r.steps.length} steps</div>
     `;
     card.onclick = () => showRecipeDetail(r.id);
+    card.setAttribute("draggable", "true");
+    card.ondragstart = (evt) => {
+      evt.dataTransfer.setData("text/recipe-id", r.id);
+      evt.dataTransfer.effectAllowed = "copy";
+      card.classList.add("dragging");
+    };
+    card.ondragend = () => card.classList.remove("dragging");
+
+    // Drag an image file from your computer straight onto the photo —
+    // an alternative to tapping "Add photo" in the card's detail panel.
+    const photoBox = card.querySelector(".polaroid-photo");
+    photoBox.ondragover = (evt) => {
+      if (!evt.dataTransfer.types.includes("Files")) return;
+      evt.preventDefault(); evt.stopPropagation();
+      photoBox.classList.add("drag-over");
+    };
+    photoBox.ondragleave = () => photoBox.classList.remove("drag-over");
+    photoBox.ondrop = async (evt) => {
+      if (!evt.dataTransfer.files.length) return;
+      evt.preventDefault(); evt.stopPropagation();
+      photoBox.classList.remove("drag-over");
+      const file = evt.dataTransfer.files[0];
+      if (!file.type.startsWith("image/")) { toast("Please drop an image file.", true); return; }
+      try { await uploadPhotoFile(file, { recipeId: r.id }); }
+      catch (err) { toast(err.message, true); }
+    };
+
     grid.appendChild(card);
     if (coverPhotoId) {
       fetchPhotoBlobUrl(coverPhotoId).then((url) => {
@@ -1290,6 +1359,36 @@ async function renderMealPlan() {
     };
   });
 }
+$("addWeekIngredientsBtn").onclick = async () => {
+  const btn = $("addWeekIngredientsBtn");
+  btn.disabled = true; const originalText = btn.textContent; btn.textContent = "Adding...";
+  try {
+    const start = mondayOfWeek(); const end = addDays(start, 6);
+    const data = await api(`/api/meal-plan?startDay=${start}&endDay=${end}`);
+    const weekRecipeIds = [...new Set((data.items || []).filter((it) => it.recipeId).map((it) => it.recipeId))];
+    if (!weekRecipeIds.length) { toast("No recipes planned this week yet — suggest a meal with a recipe first!", true); return; }
+
+    const existing = await api("/api/shopping");
+    const existingNames = new Set((existing.items || []).map((i) => i.name.trim().toLowerCase()));
+    const seen = new Set(existingNames);
+    let added = 0;
+    for (const recipeId of weekRecipeIds) {
+      const recipe = recipesCache.find((r) => r.id === recipeId);
+      if (!recipe) continue;
+      for (const ing of recipe.ingredients) {
+        const key = ing.trim().toLowerCase();
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        await api("/api/shopping", { method: "POST", body: JSON.stringify({ name: ing })});
+        added++;
+      }
+    }
+    await renderShopping();
+    toast(added ? `Added ${added} ingredient(s) from this week's meals!` : "Already all on the list!");
+  } catch (err) { toast(err.message, true); }
+  finally { btn.disabled = false; btn.textContent = originalText; }
+};
+
 $("showAddMealBtn").onclick = () => { $("newMealDay").value = todayStr(); show("addMealForm"); };
 $("addMealBtn").onclick = async () => {
   clearError("mealError");
