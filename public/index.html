@@ -364,7 +364,12 @@
         <h3 id="calMonthLabel">Month Year</h3>
         <button class="small secondary" id="calNextBtn">›</button>
       </div>
-      <div id="calMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
+      <div id="calMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;"></div>
+      <div id="calViewTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+        <button class="small" data-cal-view="week" style="margin:0;">1 Week</button>
+        <button class="small secondary" data-cal-view="2week" style="margin:0;">2 Weeks</button>
+        <button class="small secondary" data-cal-view="month" style="margin:0;">Month</button>
+      </div>
       <div class="cal-grid" id="calWeekdayRow"></div>
       <div class="cal-grid" id="calDaysGrid"></div>
       <div id="eventDetailPanel" class="hidden" style="margin-top: 10px; padding: 12px; background: #fff; border-radius: 12px;"></div>
@@ -867,11 +872,14 @@ $("addMemberBtn").onclick = async () => {
   } catch (err) { showError("memberError", err.message); }
 };
 
-// --- Events: month calendar grid ---
-let calendarMonth = new Date(); // any date within the currently shown month
+// --- Events: calendar grid (1 week / 2 weeks / full month) ---
+let calendarViewMode = "week"; // "week" | "2week" | "month" — 1 week is simplest for a kid, so it's the default
+let calendarMonth = new Date(); // any date within the currently shown month (month view only)
+let calendarWeekStart = mondayOfWeek(); // Monday of the currently shown week (week/2week views)
 let allEvents = [];
 let allHabitCompletions = []; // [{day, memberId, title, emoji}] — tiny dots on the calendar
-const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; // month view (grid starts Sunday)
+const WEEKDAY_LABELS_MON = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]; // week/2week views (grid starts Monday)
 const PILLAR_COLORS = { fuel: "#F8E3D1", move: "#E2ECEE", grow: "#E4EAD9" };
 
 function memberColorFor(memberId) {
@@ -899,24 +907,59 @@ async function renderEvents() {
 }
 
 function renderCalendarGrid() {
-  const year = calendarMonth.getFullYear();
-  const month = calendarMonth.getMonth();
-  $("calMonthLabel").textContent = calendarMonth.toLocaleString([], { month: "long", year: "numeric" });
-
-  const weekdayRow = $("calWeekdayRow");
-  weekdayRow.innerHTML = WEEKDAY_LABELS.map((d) => `<div class="cal-weekday">${d}</div>`).join("");
-
-  const firstOfMonth = new Date(year, month, 1);
-  const startOffset = firstOfMonth.getDay(); // 0 = Sunday
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const daysInPrevMonth = new Date(year, month, 0).getDate();
-
   const todayKey = todayStr();
-  const monthStartKey = ymd(new Date(year, month, 1));
-  const monthEndKey = ymd(new Date(year, month, daysInMonth));
+  const weekdayRow = $("calWeekdayRow");
+  const cells = [];
+  let rangeStartKey, rangeEndKey;
+
+  if (calendarViewMode === "month") {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    $("calMonthLabel").textContent = calendarMonth.toLocaleString([], { month: "long", year: "numeric" });
+    weekdayRow.innerHTML = WEEKDAY_LABELS.map((d) => `<div class="cal-weekday">${d}</div>`).join("");
+
+    const firstOfMonth = new Date(year, month, 1);
+    const startOffset = firstOfMonth.getDay(); // 0 = Sunday
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+    rangeStartKey = ymd(new Date(year, month, 1));
+    rangeEndKey = ymd(new Date(year, month, daysInMonth));
+
+    // Leading days from the previous month (greyed out, for grid alignment).
+    for (let i = startOffset - 1; i >= 0; i--) {
+      cells.push({ day: daysInPrevMonth - i, otherMonth: true, key: null });
+    }
+    // This month's real days.
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = ymd(new Date(year, month, d));
+      cells.push({ day: d, otherMonth: false, key });
+    }
+    // Trailing days to fill the last week.
+    while (cells.length % 7 !== 0) {
+      cells.push({ day: cells.length - (startOffset + daysInMonth) + 1, otherMonth: true, key: null });
+    }
+  } else {
+    // Week / 2-week view — simplest and most kid-friendly, so it's the default.
+    const numDays = calendarViewMode === "2week" ? 14 : 7;
+    rangeStartKey = calendarWeekStart;
+    rangeEndKey = addDays(calendarWeekStart, numDays - 1);
+    weekdayRow.innerHTML = WEEKDAY_LABELS_MON
+      .slice(0, numDays > 7 ? 7 : numDays)
+      .map((d) => `<div class="cal-weekday">${d}</div>`)
+      .join("")
+      .repeat(numDays > 7 ? 2 : 1);
+    const fmtShort = (key) => new Date(key + "T00:00:00").toLocaleDateString([], { month: "short", day: "numeric" });
+    const fmtShortYear = (key) => new Date(key + "T00:00:00").toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+    $("calMonthLabel").textContent = `${fmtShort(rangeStartKey)} – ${fmtShortYear(rangeEndKey)}`;
+    for (let i = 0; i < numDays; i++) {
+      const key = addDays(calendarWeekStart, i);
+      cells.push({ day: new Date(key + "T00:00:00").getDate(), otherMonth: false, key });
+    }
+  }
+
   const eventsByDay = {};
   allEvents.filter((e) => eventInvolvesMember(e, calendarMemberFilter)).forEach((e) => {
-    eventOccurrenceKeys(e, monthStartKey, monthEndKey).forEach((key) => {
+    eventOccurrenceKeys(e, rangeStartKey, rangeEndKey).forEach((key) => {
       if (!eventsByDay[key]) eventsByDay[key] = [];
       eventsByDay[key].push(e);
     });
@@ -928,21 +971,6 @@ function renderCalendarGrid() {
       if (!habitsByDay[c.day]) habitsByDay[c.day] = [];
       habitsByDay[c.day].push(c);
     });
-
-  const cells = [];
-  // Leading days from the previous month (greyed out, for grid alignment).
-  for (let i = startOffset - 1; i >= 0; i--) {
-    cells.push({ day: daysInPrevMonth - i, otherMonth: true, key: null });
-  }
-  // This month's real days.
-  for (let d = 1; d <= daysInMonth; d++) {
-    const key = ymd(new Date(year, month, d));
-    cells.push({ day: d, otherMonth: false, key });
-  }
-  // Trailing days to fill the last week.
-  while (cells.length % 7 !== 0) {
-    cells.push({ day: cells.length - (startOffset + daysInMonth) + 1, otherMonth: true, key: null });
-  }
 
   const grid = $("calDaysGrid");
   grid.innerHTML = "";
@@ -1051,8 +1079,30 @@ $("calDaysGrid").addEventListener("click", (evt) => {
   showEventDetail(chip.getAttribute("data-event-id"));
 });
 
-$("calPrevBtn").onclick = () => { calendarMonth.setMonth(calendarMonth.getMonth() - 1); renderCalendarGrid(); };
-$("calNextBtn").onclick = () => { calendarMonth.setMonth(calendarMonth.getMonth() + 1); renderCalendarGrid(); };
+function calendarShift(dir) {
+  if (calendarViewMode === "month") {
+    calendarMonth.setMonth(calendarMonth.getMonth() + dir);
+  } else {
+    const numDays = calendarViewMode === "2week" ? 14 : 7;
+    calendarWeekStart = addDays(calendarWeekStart, dir * numDays);
+  }
+  renderCalendarGrid();
+}
+$("calPrevBtn").onclick = () => calendarShift(-1);
+$("calNextBtn").onclick = () => calendarShift(1);
+
+document.querySelectorAll("[data-cal-view]").forEach((btn) => {
+  btn.onclick = () => {
+    calendarViewMode = btn.getAttribute("data-cal-view");
+    document.querySelectorAll("[data-cal-view]").forEach((b) => {
+      b.classList.toggle("secondary", b.getAttribute("data-cal-view") !== calendarViewMode);
+    });
+    // Switching into a week/2-week view should centre on today's week,
+    // not wherever the month view happened to be scrolled to.
+    if (calendarViewMode !== "month") calendarWeekStart = mondayOfWeek();
+    renderCalendarGrid();
+  };
+});
 
 $("showAddEventBtn").onclick = () => show("addEventForm");
 $("newEventRepeatCheck").onchange = () => {

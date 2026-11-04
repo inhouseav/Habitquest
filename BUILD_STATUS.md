@@ -4,6 +4,9 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 🚧 Calendar view switcher: 1 week / 2 weeks / month (2026-11-04)
+The big Calendar card now defaults to showing just **this week** (Mon–Sun) instead of jumping straight to a full month grid — much less overwhelming, and "Month Year" with no real content on a fresh account was confusing. Three small tabs above the grid ("1 Week" / "2 Weeks" / "Month") switch between them; ‹ › still step forward/back, by whatever the current view's size is (a week, two weeks, or a month). Switching into a week view always re-centres on today's week. Purely a display change — no new data, no schema change. Verified directly (headless browser, calling the render function in all 3 modes + stepping forward/back) rather than just checked for syntax errors, so this one's more trustworthy than most of today's 🚧 items, but still worth a quick look live.
+
 ## 🔧 Fixed: a broken deploy wiped the whole app (2026-11-04)
 The commit that relocated "Family members" and "Need an idea?" below the Calendar accidentally deleted their HTML instead of moving it, leaving `$("showAddMemberBtn")` pointing at nothing. That threw on page load and halted all script execution after it — breaking login, the Planner, and everything else wired up later in the file. This is also why login looked like it "wasn't remembering" sessions: the token was being saved fine the whole time, but `boot()` (the code that checks for a saved token on page load) never got to run. Restored both cards' markup. **Process change going forward**: before every push now, the page is loaded in a local headless browser to catch any JS crash like this one immediately, not just a syntax check — this exact bug would have been caught before reaching Maddie.
 
