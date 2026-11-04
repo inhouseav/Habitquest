@@ -141,6 +141,9 @@
   .pillar-btns button { flex: 1; margin-top: 6px; }
   .pillar-btns button.done { background: var(--sage); color: var(--text); }
   .won { background: var(--terracotta); color: #fff; padding: 8px; border-radius: 12px; text-align: center; margin-top: 8px; font-weight: 600; }
+  .member-check-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .member-check-list label { display: flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; background: var(--sage); border-radius: 999px; padding: 6px 12px 6px 10px; font-size: 0.85rem; cursor: pointer; }
+  .member-check-list input[type="checkbox"] { width: 16px; height: 16px; margin: 0; }
   .lunchbox-palette { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
   .lunchbox-chip { background: var(--peach); color: var(--text); border-radius: 999px; padding: 8px 14px; font-size: 0.9rem; cursor: grab; border: none; width: auto; margin: 0; transition: transform 0.08s ease, filter 0.15s ease; }
   .lunchbox-chip:hover { filter: brightness(0.97); }
@@ -312,6 +315,7 @@
     <div class="card">
       <h3>This Week's Habits 🌟</h3>
       <p class="muted">Everyone picks 3 things they want to do this week — tick them off as you go.</p>
+      <div id="habitsMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
       <div id="habitsList"><p class="loading-text">Loading...</p></div>
     </div>
 
@@ -359,6 +363,7 @@
         <h3 id="calMonthLabel">Month Year</h3>
         <button class="small secondary" id="calNextBtn">›</button>
       </div>
+      <div id="calMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
       <div class="cal-grid" id="calWeekdayRow"></div>
       <div class="cal-grid" id="calDaysGrid"></div>
       <div id="eventDetailPanel" class="hidden" style="margin-top: 10px; padding: 12px; background: #fff; border-radius: 12px;"></div>
@@ -367,7 +372,7 @@
         <label>Title</label>
         <input id="newEventTitle" placeholder="e.g. Bike ride in the park" />
         <label>For</label>
-        <select id="newEventMember"></select>
+        <div id="newEventMemberChecks" class="member-check-list"></div>
         <label>Pillar</label>
         <select id="newEventPillar"><option value="">None</option><option value="fuel">Fuel</option><option value="move">Move</option><option value="grow">Grow</option></select>
         <label>When</label>
@@ -687,7 +692,6 @@ async function loadHome() {
 
 function renderMembers() {
   const list = $("membersList"); list.innerHTML = "";
-  const memberSelect = $("newEventMember"); memberSelect.innerHTML = "";
   const notifySelect = $("notifyMemberSelect"); notifySelect.innerHTML = "";
   const aiSelect = $("aiMemberSelect"); aiSelect.innerHTML = "";
   const mealVoterSelect = $("mealVoterSelect"); mealVoterSelect.innerHTML = "";
@@ -698,8 +702,6 @@ function renderMembers() {
       <span><span id="stars-${m.id}" class="muted">⭐ ...</span> <button class="small" data-member="${m.id}">Give Kudos</button></span>`;
     list.appendChild(row);
     loadStars(m.id);
-    const opt = document.createElement("option"); opt.value = m.id; opt.textContent = m.display_name;
-    memberSelect.appendChild(opt);
     const notifyOpt = document.createElement("option"); notifyOpt.value = m.id; notifyOpt.textContent = m.display_name;
     notifySelect.appendChild(notifyOpt);
     const aiOpt = document.createElement("option"); aiOpt.value = m.id; aiOpt.textContent = m.display_name;
@@ -713,6 +715,61 @@ function renderMembers() {
   if (savedVoter) mealVoterSelect.value = savedVoter;
   mealVoterSelect.onchange = () => localStorage.setItem("ftf_active_member", mealVoterSelect.value);
   list.querySelectorAll("button[data-member]").forEach((btn) => { btn.onclick = () => giveStar(btn.getAttribute("data-member")); });
+  renderEventMemberChecks();
+  renderCalMemberTabs();
+}
+
+// "For" field on the Add Event form: "Everyone" (a group activity — the
+// whole family, including anyone added later) is mutually exclusive with
+// picking specific people; picking any specific person unchecks Everyone.
+function renderEventMemberChecks() {
+  const wrap = $("newEventMemberChecks");
+  const peopleHtml = state.members.map((m) =>
+    `<label><input type="checkbox" data-event-member-check value="${m.id}" />${m.display_name}</label>`
+  ).join("");
+  wrap.innerHTML = `<label><input type="checkbox" id="newEventEveryoneCheck" checked />🌍 Everyone</label>${peopleHtml}`;
+  const everyoneBox = $("newEventEveryoneCheck");
+  const peopleBoxes = () => Array.from(wrap.querySelectorAll("[data-event-member-check]"));
+  everyoneBox.onchange = () => { if (everyoneBox.checked) peopleBoxes().forEach((b) => (b.checked = false)); };
+  peopleBoxes().forEach((box) => {
+    box.onchange = () => { if (box.checked) everyoneBox.checked = false; };
+  });
+}
+
+let calendarMemberFilter = "all";
+function renderCalMemberTabs() {
+  const wrap = $("calMemberTabs");
+  const tabs = [{ id: "all", label: "All" }, ...state.members.map((m) => ({ id: m.id, label: m.display_name, color: m.color }))];
+  wrap.innerHTML = tabs.map((t) => {
+    const active = calendarMemberFilter === t.id;
+    return `<button class="small ${active ? "" : "secondary"}" data-cal-member-tab="${t.id}" style="margin:0;">${t.color ? `<span class="member-dot" style="background:${t.color};"></span>` : ""}${t.label}</button>`;
+  }).join("");
+  wrap.querySelectorAll("[data-cal-member-tab]").forEach((btn) => {
+    btn.onclick = () => { calendarMemberFilter = btn.getAttribute("data-cal-member-tab"); renderCalendarGrid(); };
+  });
+}
+
+// Does this event involve the given member? Handles all three shapes:
+// a specific solo member_id, a 2+ person event_members list, or
+// "whole family" (no member_id and no event_members rows at all).
+function eventInvolvesMember(e, memberId) {
+  if (memberId === "all") return true;
+  if (e.memberIds && e.memberIds.length) return e.memberIds.includes(memberId);
+  if (e.member_id) return e.member_id === memberId;
+  return true; // whole-family event involves everyone
+}
+
+// Display name + color for an event chip, covering all three shapes: one
+// specific person, several specific people, or the whole family.
+function eventWhoAndColor(e) {
+  if (e.memberIds && e.memberIds.length) {
+    const names = e.memberIds.map((id) => memberNameFor(id)).filter(Boolean);
+    return { who: names.length > 2 ? `${names.slice(0, 2).join(", ")} +${names.length - 2}` : names.join(" & "), bg: "var(--gold)" };
+  }
+  if (e.member_id) {
+    return { who: memberNameFor(e.member_id), bg: memberColorFor(e.member_id) || (e.pillar && PILLAR_COLORS[e.pillar]) || "#E4EAD9" };
+  }
+  return { who: "👨‍👩‍👧 Everyone", bg: (e.pillar && PILLAR_COLORS[e.pillar]) || "#E4EAD9" };
 }
 
 async function loadStars(memberId) {
@@ -784,16 +841,18 @@ function renderCalendarGrid() {
 
   const todayKey = todayStr();
   const eventsByDay = {};
-  allEvents.forEach((e) => {
+  allEvents.filter((e) => eventInvolvesMember(e, calendarMemberFilter)).forEach((e) => {
     const key = ymd(new Date(e.starts_at));
     if (!eventsByDay[key]) eventsByDay[key] = [];
     eventsByDay[key].push(e);
   });
   const habitsByDay = {};
-  allHabitCompletions.forEach((c) => {
-    if (!habitsByDay[c.day]) habitsByDay[c.day] = [];
-    habitsByDay[c.day].push(c);
-  });
+  allHabitCompletions
+    .filter((c) => calendarMemberFilter === "all" || c.memberId === calendarMemberFilter)
+    .forEach((c) => {
+      if (!habitsByDay[c.day]) habitsByDay[c.day] = [];
+      habitsByDay[c.day].push(c);
+    });
 
   const cells = [];
   // Leading days from the previous month (greyed out, for grid alignment).
@@ -818,12 +877,9 @@ function renderCalendarGrid() {
     div.className = "cal-day" + (cell.otherMonth ? " other-month" : "") + (cell.key === todayKey ? " today" : "");
     const chips = cell.key && eventsByDay[cell.key]
       ? eventsByDay[cell.key].map((e) => {
-          // Color by the person it's for (so each family member is visually
-          // consistent on the calendar); fall back to pillar color, then default.
-          const bg = memberColorFor(e.member_id) || (e.pillar && PILLAR_COLORS[e.pillar]) || "#E4EAD9";
-          const who = memberNameFor(e.member_id);
+          const { who, bg } = eventWhoAndColor(e);
           const label = who ? `${who}: ${e.title}` : e.title;
-          return `<div class="cal-event-chip" style="background:${bg}" data-event-id="${e.id}" title="${label}">${label}</div>`;
+          return `<div class="cal-event-chip" style="background:${bg}" data-event-id="${e.id}" title="${escapeHtml(label)}">${escapeHtml(label)}</div>`;
         }).join("")
       : "";
     const habitMarkers = cell.key && habitsByDay[cell.key]
@@ -872,7 +928,7 @@ function showEventDetail(eventId) {
   const panel = $("eventDetailPanel");
   if (!e) { hide("eventDetailPanel"); return; }
 
-  const who = memberNameFor(e.member_id) || "Whole family";
+  const who = eventWhoAndColor(e).who;
   const when = new Date(e.starts_at).toLocaleString([], {
     weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
   });
@@ -920,12 +976,15 @@ $("addEventBtn").onclick = async () => {
   clearError("eventError");
   const startVal = $("newEventStart").value;
   if (!startVal) { showError("eventError", "Please pick a date and time."); return; }
+  const everyone = $("newEventEveryoneCheck").checked;
+  const memberIds = everyone ? [] : Array.from($("newEventMemberChecks").querySelectorAll("[data-event-member-check]:checked")).map((b) => b.value);
+  if (!everyone && !memberIds.length) { showError("eventError", "Choose who this is for, or tick Everyone."); return; }
   try {
     await api("/api/events", { method: "POST", body: JSON.stringify({
-      title: $("newEventTitle").value, memberId: $("newEventMember").value || null,
+      title: $("newEventTitle").value, memberIds,
       pillar: $("newEventPillar").value || null, startsAt: new Date(startVal).toISOString(),
     })});
-    $("newEventTitle").value = ""; hide("addEventForm"); await renderEvents();
+    $("newEventTitle").value = ""; renderEventMemberChecks(); hide("addEventForm"); await renderEvents();
   } catch (err) { showError("eventError", err.message); }
 };
 
@@ -941,11 +1000,26 @@ const HABIT_SLOT_META = {
   3: { label: "Home", emoji: "🏡", placeholder: "e.g. 30 min off screens" },
 };
 
+let habitsActiveMemberId = null;
 async function renderHabits() {
   const data = await api("/api/habits?day=" + todayStr());
   const list = $("habitsList"); list.innerHTML = "";
 
-  data.members.forEach((m) => {
+  // Tabs — one person's habits shown at a time instead of everyone stacked
+  // in one long list. Keeps whoever's already selected if they still exist.
+  if (!data.members.some((m) => m.memberId === habitsActiveMemberId)) {
+    habitsActiveMemberId = data.members[0] ? data.members[0].memberId : null;
+  }
+  const tabsWrap = $("habitsMemberTabs");
+  tabsWrap.innerHTML = data.members.map((m) => {
+    const active = habitsActiveMemberId === m.memberId;
+    return `<button class="small ${active ? "" : "secondary"}" data-habits-tab="${m.memberId}" style="margin:0;"><span class="member-dot" style="background:${m.color || '#ccc'}"></span>${m.displayName}</button>`;
+  }).join("");
+  tabsWrap.querySelectorAll("[data-habits-tab]").forEach((btn) => {
+    btn.onclick = () => { habitsActiveMemberId = btn.getAttribute("data-habits-tab"); renderHabits(); };
+  });
+
+  data.members.filter((m) => m.memberId === habitsActiveMemberId).forEach((m) => {
     const row = document.createElement("div");
     row.className = "member-row";
     row.style.flexDirection = "column";

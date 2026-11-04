@@ -4,6 +4,13 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 🚧 Per-person tabs + tag-everyone on events and habits (2026-11-04)
+Two related changes:
+- **This Week's Habits** now shows one person at a time via tabs above the list, instead of every family member's habits stacked in one long card — scales properly once a family has more than one member.
+- **Calendar events** can now be tagged to specific several people at once ("Mum and Sarah at the park"), not just one person or the whole family. The "For" field on "+ Add an event" is now a checklist: a 🌍 Everyone checkbox (default, for group activities — dynamically means whoever's in the family, including anyone added later) plus one checkbox per person, mutually exclusive with Everyone. The calendar also gets a row of person tabs above the grid to filter it down to just one person's events + habit dots, or "All".
+
+New table `event_members` (migration 012, not yet run by Maddie) backs the multi-person case — a single-person event still just uses the existing `events.member_id` column unchanged, and a whole-family event still just means `member_id IS NULL` with no join-table rows, so no existing event changes meaning. `GET /api/events` now also returns each event's `memberIds` array. Not yet tested live — needs a pass adding an event tagged to 2+ specific people, one tagged Everyone, and switching between the new person tabs on both the calendar and This Week's Habits.
+
 ## 🚧 Habit completions shown on the calendar (2026-11-04)
 Each ticked-off habit now shows as a small coloured dot on that day in the month calendar — one dot per person per completed habit, colored by that member's own color, with a hover tooltip naming who and which habit. New `GET /api/habits/completions` endpoint (unscoped by date, same pattern as `/api/events` — fetched once per calendar load and cached client-side) joins `habit_completions` to `weekly_habits` for the title/emoji. Purely additive — no schema change, `habit_completions` already recorded per-day completions, this just surfaces it visually. Not yet tested live.
 
