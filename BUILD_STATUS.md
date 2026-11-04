@@ -4,6 +4,11 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 🚧 Weekly recurring events (2026-11-04)
+"+ Add an event" now has a simple 🔁 "This happens every week (like netball)" checkbox — tick it and an "Until when?" date appears (defaults to 3 months out, a typical season length, so a kid isn't stuck guessing a date). The calendar expands a repeating event into one chip per week, every week, up to that date — deliberately kept to one simple weekly-repeat-until-a-date model, not a full recurrence-rule picker, to stay usable for an 8-year-old. Deleting a repeating event deletes the whole series (the confirm dialog says so) — editing/deleting a single occurrence isn't supported, out of scope for now.
+
+Technically: the `events.recurrence` column already existed in the schema (added for this, apparently, a while back) but had never actually been wired up to anything — nothing read it. This is genuinely new functionality, not a bug fix. No new migration needed, no schema change. Occurrences are computed client-side at render time (not stored as separate rows), so editing the "until" date or the original event instantly reflects everywhere. Not yet tested live.
+
 ## 🚧 Habit streaks, "day won", always-3-slots, Google Calendar bonus items, auto shopping list (2026-11-04)
 Several related changes to This Week's Habits and the shopping list:
 - **Always 3 slots**: a person's habit card always shows all 3 slots now, even unfilled ones — an empty slot shows a dashed "+ Add a [Move/Cook/Home] habit" row instead of just not appearing, so it's obvious 3 are expected.

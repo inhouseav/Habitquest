@@ -16,6 +16,21 @@ function validDate(value) {
   return !Number.isNaN(t);
 }
 
+function validDay(value) {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+// Kept deliberately simple (one option: weekly, until a date) rather than a
+// full RRULE picker — this is for an 8-year-old to use without help.
+// { freq: "weekly", until: "YYYY-MM-DD" } or null for a one-off event.
+function parseRecurrence(input, startsAt) {
+  if (!input || typeof input !== "object" || input.freq !== "weekly") return null;
+  if (!validDay(input.until)) return null;
+  const startDay = startsAt && !Number.isNaN(Date.parse(startsAt)) ? new Date(startsAt).toISOString().slice(0, 10) : null;
+  if (startDay && input.until < startDay) return null; // "until" can't be before the event starts
+  return { freq: "weekly", until: input.until };
+}
+
 /** GET /api/events — list this family's shared calendar events. */
 export async function listEvents(familyId, env) {
   const db = env.DB;
@@ -56,7 +71,7 @@ export async function createEvent(request, familyId, env) {
   const pillar = VALID_PILLARS.includes(body.pillar) ? body.pillar : null;
   const startsAt = body.startsAt;
   const endsAt = body.endsAt || null;
-  const recurrence = Array.isArray(body.recurrence) ? body.recurrence : null;
+  const recurrence = parseRecurrence(body.recurrence, startsAt);
 
   // memberIds is the preferred way in: [] = whole family (a group activity
   // everyone's tagged to), [one id] = that one person, [2+ ids] = those

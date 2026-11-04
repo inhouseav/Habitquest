@@ -380,6 +380,14 @@
         <select id="newEventPillar"><option value="">None</option><option value="fuel">Fuel</option><option value="move">Move</option><option value="grow">Grow</option></select>
         <label>When</label>
         <input id="newEventStart" type="datetime-local" />
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="newEventRepeatCheck" style="width:20px; height:20px; margin:0;" />
+          🔁 This happens every week (like netball)
+        </label>
+        <div id="newEventRepeatUntilWrap" class="hidden">
+          <label>Until when?</label>
+          <input id="newEventRepeatUntil" type="date" />
+        </div>
         <button id="addEventBtn">Add event</button>
       </div>
       <div class="error hidden" id="eventError"></div>
@@ -755,6 +763,25 @@ function renderCalMemberTabs() {
 // Does this event involve the given member? Handles all three shapes:
 // a specific solo member_id, a 2+ person event_members list, or
 // "whole family" (no member_id and no event_members rows at all).
+// Which day-keys this event appears on within [rangeStartKey, rangeEndKeyInclusive]
+// — just the one start day for a normal event, or every 7 days up to
+// recurrence.until for a repeating one (capped at 2 years of weeks, just
+// in case, so a bad date never causes a runaway loop).
+function eventOccurrenceKeys(e, rangeStartKey, rangeEndKeyInclusive) {
+  const startKey = ymd(new Date(e.starts_at));
+  if (!e.recurrence) return [startKey];
+  let rec;
+  try { rec = typeof e.recurrence === "string" ? JSON.parse(e.recurrence) : e.recurrence; } catch (err) { return [startKey]; }
+  if (!rec || rec.freq !== "weekly" || !rec.until) return [startKey];
+  const keys = [];
+  let cursorKey = startKey;
+  for (let i = 0; i < 104 && cursorKey <= rec.until; i++) {
+    if (cursorKey >= rangeStartKey && cursorKey <= rangeEndKeyInclusive) keys.push(cursorKey);
+    cursorKey = addDays(cursorKey, 7);
+  }
+  return keys;
+}
+
 function eventInvolvesMember(e, memberId) {
   if (memberId === "all") return true;
   if (e.memberIds && e.memberIds.length) return e.memberIds.includes(memberId);
@@ -821,7 +848,12 @@ function memberNameFor(memberId) {
 
 async function renderEvents() {
   const data = await api("/api/events");
-  allEvents = data.events;
+  // recurrence comes back from the API as a JSON string column — parse it
+  // once here so everything downstream can just treat it as an object.
+  allEvents = data.events.map((e) => {
+    if (!e.recurrence || typeof e.recurrence !== "string") return e;
+    try { return { ...e, recurrence: JSON.parse(e.recurrence) }; } catch (err) { return { ...e, recurrence: null }; }
+  });
   try {
     const completionsData = await api("/api/habits/completions");
     allHabitCompletions = completionsData.completions || [];
@@ -843,11 +875,14 @@ function renderCalendarGrid() {
   const daysInPrevMonth = new Date(year, month, 0).getDate();
 
   const todayKey = todayStr();
+  const monthStartKey = ymd(new Date(year, month, 1));
+  const monthEndKey = ymd(new Date(year, month, daysInMonth));
   const eventsByDay = {};
   allEvents.filter((e) => eventInvolvesMember(e, calendarMemberFilter)).forEach((e) => {
-    const key = ymd(new Date(e.starts_at));
-    if (!eventsByDay[key]) eventsByDay[key] = [];
-    eventsByDay[key].push(e);
+    eventOccurrenceKeys(e, monthStartKey, monthEndKey).forEach((key) => {
+      if (!eventsByDay[key]) eventsByDay[key] = [];
+      eventsByDay[key].push(e);
+    });
   });
   const habitsByDay = {};
   allHabitCompletions
@@ -881,8 +916,9 @@ function renderCalendarGrid() {
     const chips = cell.key && eventsByDay[cell.key]
       ? eventsByDay[cell.key].map((e) => {
           const { who, bg } = eventWhoAndColor(e);
+          const repeatIcon = e.recurrence ? "🔁 " : "";
           const label = who ? `${who}: ${e.title}` : e.title;
-          return `<div class="cal-event-chip" style="background:${bg}" data-event-id="${e.id}" title="${escapeHtml(label)}">${escapeHtml(label)}</div>`;
+          return `<div class="cal-event-chip" style="background:${bg}" data-event-id="${e.id}" title="${escapeHtml(label)}">${repeatIcon}${escapeHtml(label)}</div>`;
         }).join("")
       : "";
     const habitMarkers = cell.key && habitsByDay[cell.key]
@@ -937,24 +973,28 @@ function showEventDetail(eventId) {
     weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
   });
   const pillar = e.pillar && PILLAR_LABELS[e.pillar] ? `<span class="muted">${PILLAR_LABELS[e.pillar]}</span>` : "";
+  const repeatLine = e.recurrence
+    ? `<br><span class="muted">🔁 Every week until ${new Date(e.recurrence.until).toLocaleDateString([], { month: "short", day: "numeric" })}</span>`
+    : "";
 
   panel.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
       <div>
         <strong style="font-size:1.05rem;">${e.title}</strong><br>
-        <span class="muted">${when}</span><br>
+        <span class="muted">${when}</span>${repeatLine}<br>
         <span class="muted">${who}</span> ${pillar}
       </div>
       <button class="small secondary" id="closeEventDetailBtn" style="margin:0; width:auto;">✕</button>
     </div>
-    <button class="small secondary" id="deleteEventBtn" style="margin-top:10px; background:#fde2de;">🗑 Delete event</button>
+    <button class="small secondary" id="deleteEventBtn" style="margin-top:10px; background:#fde2de;">🗑 ${e.recurrence ? "Delete all of these" : "Delete event"}</button>
     <div class="error hidden" id="eventDetailError"></div>
   `;
   show("eventDetailPanel");
 
   $("closeEventDetailBtn").onclick = () => hide("eventDetailPanel");
   $("deleteEventBtn").onclick = async () => {
-    if (!confirm(`Delete "${e.title}"?`)) return;
+    const confirmMsg = e.recurrence ? `Delete "${e.title}" and every future week?` : `Delete "${e.title}"?`;
+    if (!confirm(confirmMsg)) return;
     try {
       await api(`/api/events/${e.id}`, { method: "DELETE" });
       hide("eventDetailPanel");
@@ -976,6 +1016,19 @@ $("calPrevBtn").onclick = () => { calendarMonth.setMonth(calendarMonth.getMonth(
 $("calNextBtn").onclick = () => { calendarMonth.setMonth(calendarMonth.getMonth() + 1); renderCalendarGrid(); };
 
 $("showAddEventBtn").onclick = () => show("addEventForm");
+$("newEventRepeatCheck").onchange = () => {
+  const checked = $("newEventRepeatCheck").checked;
+  if (checked) {
+    show("newEventRepeatUntilWrap");
+    if (!$("newEventRepeatUntil").value) {
+      // Default to 3 months out (a typical sports season) so a kid isn't
+      // stuck guessing a date — easy to change.
+      $("newEventRepeatUntil").value = addDays(todayStr(), 90);
+    }
+  } else {
+    hide("newEventRepeatUntilWrap");
+  }
+};
 $("addEventBtn").onclick = async () => {
   clearError("eventError");
   const startVal = $("newEventStart").value;
@@ -983,12 +1036,20 @@ $("addEventBtn").onclick = async () => {
   const everyone = $("newEventEveryoneCheck").checked;
   const memberIds = everyone ? [] : Array.from($("newEventMemberChecks").querySelectorAll("[data-event-member-check]:checked")).map((b) => b.value);
   if (!everyone && !memberIds.length) { showError("eventError", "Choose who this is for, or tick Everyone."); return; }
+  let recurrence = null;
+  if ($("newEventRepeatCheck").checked) {
+    if (!$("newEventRepeatUntil").value) { showError("eventError", "Pick an end date for the repeat, or untick \"every week\"."); return; }
+    recurrence = { freq: "weekly", until: $("newEventRepeatUntil").value };
+  }
   try {
     await api("/api/events", { method: "POST", body: JSON.stringify({
       title: $("newEventTitle").value, memberIds,
       pillar: $("newEventPillar").value || null, startsAt: new Date(startVal).toISOString(),
+      recurrence,
     })});
-    $("newEventTitle").value = ""; renderEventMemberChecks(); hide("addEventForm"); await renderEvents();
+    $("newEventTitle").value = ""; $("newEventRepeatCheck").checked = false; hide("newEventRepeatUntilWrap");
+    renderEventMemberChecks(); hide("addEventForm"); await renderEvents();
+    toast(recurrence ? "🔁 Added — it'll repeat every week until then!" : "Event added!");
   } catch (err) { showError("eventError", err.message); }
 };
 
