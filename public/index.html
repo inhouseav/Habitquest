@@ -139,6 +139,14 @@
   .pillar-btns button { flex: 1; margin-top: 6px; }
   .pillar-btns button.done { background: var(--sage); color: var(--text); }
   .won { background: var(--terracotta); color: #fff; padding: 8px; border-radius: 12px; text-align: center; margin-top: 8px; font-weight: 600; }
+  .lunchbox-palette { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .lunchbox-chip { background: var(--peach); color: var(--text); border-radius: 999px; padding: 8px 14px; font-size: 0.9rem; cursor: grab; border: none; width: auto; margin: 0; transition: transform 0.08s ease, filter 0.15s ease; }
+  .lunchbox-chip:hover { filter: brightness(0.97); }
+  .lunchbox-chip:active { transform: scale(0.96); }
+  .lunchbox-dropzone { min-height: 56px; border: 2px dashed #ddd3c0; border-radius: 14px; padding: 10px; margin-top: 6px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fffefb; transition: background 0.15s ease, border-color 0.15s ease; }
+  .lunchbox-dropzone.drag-over { background: var(--gold); border-color: var(--terracotta); }
+  .lunchbox-box-item { display: inline-flex; align-items: center; gap: 6px; background: var(--sage); border-radius: 999px; padding: 6px 8px 6px 14px; font-size: 0.9rem; }
+  .lunchbox-box-item button { width: 22px; height: 22px; padding: 0; margin: 0; font-size: 0.75rem; line-height: 1; border-radius: 50%; background: var(--terracotta); flex-shrink: 0; }
   .checkbox-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f1ead9; }
   .checkbox-row:last-child { border-bottom: none; }
   .checkbox-row.checked span { text-decoration: line-through; opacity: 0.5; }
@@ -390,6 +398,26 @@
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
         <button class="small secondary" id="showAddRecipeBtn">+ Add a recipe</button>
         <button class="small secondary" id="scanRecipeBtn">📷 Scan a recipe photo</button>
+        <button class="small secondary" id="showLunchboxBuilderBtn">🎒 Build a lunchbox</button>
+      </div>
+      <div id="lunchboxBuilder" class="hidden" style="margin-top: 12px;">
+        <label>Lunchbox name</label>
+        <input id="newLunchboxTitle" placeholder="e.g. Monday's lunchbox" />
+        <label>Tap or drag items in</label>
+        <div id="lunchboxPalette" class="lunchbox-palette"></div>
+        <div style="display:flex; gap:6px; margin-top:8px;">
+          <input id="newLunchboxCustomItem" placeholder="Add your own item..." style="flex:1;" />
+          <button type="button" class="small secondary" id="addLunchboxCustomItemBtn" style="margin:0; white-space:nowrap;">+ Add</button>
+        </div>
+        <label>In the box</label>
+        <div id="lunchboxDropZone" class="lunchbox-dropzone">
+          <p class="muted" id="lunchboxEmptyHint" style="margin:0;">Drag or tap items above to fill the box</p>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button id="saveLunchboxBtn" style="flex:1;">💾 Save this lunchbox</button>
+          <button class="secondary" type="button" id="cancelLunchboxBtn" style="flex:0; white-space:nowrap;">Cancel</button>
+        </div>
+        <div class="error hidden" id="lunchboxError"></div>
       </div>
       <div id="addRecipeForm" class="hidden" style="margin-top: 12px;">
         <label>Title</label>
@@ -1305,8 +1333,117 @@ function resetRecipeForm() {
   $("addRecipeBtn").textContent = "Add recipe";
   hide("cancelEditRecipeBtn");
 }
-$("showAddRecipeBtn").onclick = () => { resetRecipeForm(); show("addRecipeForm"); };
+$("showAddRecipeBtn").onclick = () => { resetRecipeForm(); hide("lunchboxBuilder"); show("addRecipeForm"); };
 $("cancelEditRecipeBtn").onclick = () => { resetRecipeForm(); hide("addRecipeForm"); };
+
+// --- Lunchbox builder: a lunchbox is too fiddly to type out as one recipe
+// (5+ small separate items), so instead of the normal "+ Add a recipe" form,
+// this is a tap/drag palette of common lunchbox items that drop into a box.
+// Saving it just creates a normal recipe (category: "lunchboxes") behind the
+// scenes, so it shows up on the Lunchboxes tab, drags onto the calendar, adds
+// its items to the shopping list, and shows in the cookbook — all for free.
+const LUNCHBOX_PALETTE_ITEMS = [
+  "🍅 Cherry tomatoes", "🍎 Apple slices", "🥕 Carrot sticks", "🥣 Muesli bar",
+  "🧀 Toasted cheese sandwich", "🧀 Cheese cubes", "🥪 Sandwich", "🫐 Berries",
+  "🥛 Yoghurt", "🍪 Oat biscuit", "🥨 Pretzels", "🥚 Boiled egg",
+  "🍊 Mandarin", "🍿 Popcorn", "🥒 Cucumber sticks", "🧃 Juice box",
+];
+let lunchboxItems = [];
+
+function renderLunchboxPalette() {
+  const wrap = $("lunchboxPalette");
+  wrap.innerHTML = LUNCHBOX_PALETTE_ITEMS.map((item) =>
+    `<button type="button" class="lunchbox-chip" draggable="true" data-lunchbox-chip="${escapeHtml(item)}">${item}</button>`
+  ).join("");
+  wrap.querySelectorAll("[data-lunchbox-chip]").forEach((chip) => {
+    const item = chip.getAttribute("data-lunchbox-chip");
+    chip.onclick = () => addLunchboxItem(item); // tap-to-add, for touch screens
+    chip.ondragstart = (evt) => {
+      evt.dataTransfer.setData("text/lunchbox-item", item);
+      evt.dataTransfer.effectAllowed = "copy";
+    };
+  });
+}
+
+function addLunchboxItem(item) {
+  if (!item || lunchboxItems.includes(item)) return;
+  lunchboxItems.push(item);
+  renderLunchboxBox();
+}
+
+function renderLunchboxBox() {
+  const zone = $("lunchboxDropZone");
+  if (!lunchboxItems.length) {
+    zone.innerHTML = '<p class="muted" id="lunchboxEmptyHint" style="margin:0;">Drag or tap items above to fill the box</p>';
+    return;
+  }
+  zone.innerHTML = lunchboxItems.map((item, i) =>
+    `<span class="lunchbox-box-item">${item}<button type="button" data-remove-lunchbox-item="${i}">✕</button></span>`
+  ).join("");
+  zone.querySelectorAll("[data-remove-lunchbox-item]").forEach((btn) => {
+    btn.onclick = () => {
+      lunchboxItems.splice(Number(btn.getAttribute("data-remove-lunchbox-item")), 1);
+      renderLunchboxBox();
+    };
+  });
+}
+
+const lunchboxZone = $("lunchboxDropZone");
+lunchboxZone.ondragover = (evt) => {
+  if (!evt.dataTransfer.types.includes("text/lunchbox-item")) return;
+  evt.preventDefault();
+  lunchboxZone.classList.add("drag-over");
+};
+lunchboxZone.ondragleave = () => lunchboxZone.classList.remove("drag-over");
+lunchboxZone.ondrop = (evt) => {
+  const item = evt.dataTransfer.getData("text/lunchbox-item");
+  if (!item) return;
+  evt.preventDefault();
+  lunchboxZone.classList.remove("drag-over");
+  addLunchboxItem(item);
+};
+
+function resetLunchboxBuilder() {
+  lunchboxItems = [];
+  $("newLunchboxTitle").value = "";
+  $("newLunchboxCustomItem").value = "";
+  clearError("lunchboxError");
+  renderLunchboxPalette();
+  renderLunchboxBox();
+}
+
+$("showLunchboxBuilderBtn").onclick = () => {
+  resetRecipeForm(); hide("addRecipeForm");
+  resetLunchboxBuilder();
+  show("lunchboxBuilder");
+  $("lunchboxBuilder").scrollIntoView({ behavior: "smooth", block: "nearest" });
+};
+$("cancelLunchboxBtn").onclick = () => { resetLunchboxBuilder(); hide("lunchboxBuilder"); };
+$("addLunchboxCustomItemBtn").onclick = () => {
+  const val = $("newLunchboxCustomItem").value.trim();
+  if (!val) return;
+  addLunchboxItem(val);
+  $("newLunchboxCustomItem").value = "";
+};
+$("newLunchboxCustomItem").addEventListener("keydown", (evt) => {
+  if (evt.key === "Enter") { evt.preventDefault(); $("addLunchboxCustomItemBtn").click(); }
+});
+$("saveLunchboxBtn").onclick = async () => {
+  clearError("lunchboxError");
+  const title = $("newLunchboxTitle").value.trim();
+  if (!title) { showError("lunchboxError", "Give the lunchbox a name first."); return; }
+  if (!lunchboxItems.length) { showError("lunchboxError", "Add at least one item to the box."); return; }
+  try {
+    const payload = JSON.stringify({
+      title, ingredients: lunchboxItems, steps: ["Pack it all into the lunchbox!"], category: "lunchboxes",
+    });
+    await api("/api/recipes", { method: "POST", body: payload });
+    toast(`🎒 ${title} saved!`);
+    resetLunchboxBuilder();
+    hide("lunchboxBuilder");
+    await renderRecipes();
+  } catch (err) { showError("lunchboxError", err.message); }
+};
 $("addRecipeBtn").onclick = async () => {
   clearError("recipeError");
   try {

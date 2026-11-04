@@ -4,6 +4,15 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 🚧 Lunchbox builder + 6 example recipes (2026-11-04)
+New "🎒 Build a lunchbox" button next to "+ Add a recipe": a lunchbox is 5+ small separate items (fruit, veg sticks, a sandwich, a snack bar...), which is awkward to type as one free-text ingredient list, so instead there's a palette of ~16 common lunchbox items you tap (mobile-friendly) or drag (desktop) into a box, plus a "+ Add your own item" field for anything not in the palette. Saving it creates a normal recipe behind the scenes (category: `lunchboxes`, ingredients = the chosen items, one auto-generated step), so it gets every existing recipe feature for free — shows as a polaroid card, drags onto the calendar, adds its items to the shopping list, appears in the Family Cookbook under Lunchboxes. No schema change — reuses the existing `recipes` table and `POST /api/recipes` endpoint.
+
+Also added 6 example recipes (SQL given to Maddie to paste into D1, not yet confirmed run): Chicken Schnitzel & Mash, Overnight Oats with Yoghurt & Berries, Eggs on Toast, Avocado on Toast, Nachos, Pizza Night — real ingredients/steps, no photos attached (R2 isn't reachable from the build environment, so photos need to go in via the app's own "📷 Add photo" button, which already works).
+
+Worth noting: the app already has a real "✨ AI photo" feature (`/api/ai/image`, DALL-E 3) — it's just gated behind an `OPENAI_API_KEY` Cloudflare secret that hasn't been added yet (needs a parent with billing set up on platform.openai.com). Once that's added, AI photos work with no further code changes.
+
+🚧 because none of this has been tested live yet — needs a pass clicking through the lunchbox builder (including the drag-and-drop on an actual desktop browser) and confirming the 6 recipes imported correctly.
+
 ## Fixed: a failed card could silently log you out (2026-11-04)
 Found via a real screenshot from Maddie's own "Walker" account: the login screen and the home screen were both showing at once. Root cause — `loadHome()` loaded every card with one `Promise.all`, so if any single card's fetch failed (in this case: "This week's meals" calling `/api/meal-plan`, which errors because the `meal_type` column from migration 011 hadn't been run on the real database yet), the whole `Promise.all` rejected, which `boot()` treated as "not logged in" — clearing the saved login token and showing the auth screen **on top of** the already-rendered home screen (which never got hidden). Fixed two ways: (1) each home-screen card now loads independently and catches its own errors (one broken card shows a toast, the rest of the page still works), (2) `boot()` only clears the saved login and shows the auth screen for an actual 401/403 from the server, never for an unrelated error. The specific trigger (missing `meal_type` column) is fixed by running the migration below — but the underlying bug (one failed fetch = silent full logout) was real and is now fixed regardless.
 
