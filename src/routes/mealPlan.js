@@ -14,6 +14,8 @@ function safeParseArray(value) {
   }
 }
 
+const VALID_MEAL_TYPES = ["breakfast", "lunch", "dinner", "snacks"];
+
 /** GET /api/meal-plan?startDay=YYYY-MM-DD&endDay=YYYY-MM-DD — list meal options for a date range. */
 export async function listMealPlan(request, familyId, env) {
   const url = new URL(request.url);
@@ -26,7 +28,7 @@ export async function listMealPlan(request, familyId, env) {
   const db = env.DB;
   const items = await db
     .prepare(
-      "SELECT id, day, recipe_id, title, votes, together FROM meal_plan_items WHERE family_id = ? AND day BETWEEN ? AND ? ORDER BY day ASC, created_at ASC"
+      "SELECT id, day, recipe_id as recipeId, title, votes, together, meal_type as mealType FROM meal_plan_items WHERE family_id = ? AND day BETWEEN ? AND ? ORDER BY day ASC, created_at ASC"
     )
     .bind(familyId, startDay, endDay)
     .all();
@@ -46,6 +48,7 @@ export async function proposeMeal(request, familyId, env) {
   const title = (body.title || "").trim();
   const recipeId = body.recipeId || null;
   const together = body.together ? 1 : 0;
+  const mealType = VALID_MEAL_TYPES.includes(body.mealType) ? body.mealType : null;
 
   if (!validDay(day)) return errorResponse("day must be formatted YYYY-MM-DD.");
   if (!title) return errorResponse("Please enter a meal title.");
@@ -61,11 +64,11 @@ export async function proposeMeal(request, familyId, env) {
 
   const itemId = newId();
   await db
-    .prepare("INSERT INTO meal_plan_items (id, family_id, day, recipe_id, title, votes, together) VALUES (?, ?, ?, ?, ?, '[]', ?)")
-    .bind(itemId, familyId, day, recipeId, title, together)
+    .prepare("INSERT INTO meal_plan_items (id, family_id, day, recipe_id, title, votes, together, meal_type) VALUES (?, ?, ?, ?, ?, '[]', ?, ?)")
+    .bind(itemId, familyId, day, recipeId, title, together, mealType)
     .run();
 
-  return json({ ok: true, item: { id: itemId, day, recipeId, title, votes: [], together: !!together } });
+  return json({ ok: true, item: { id: itemId, day, recipeId, title, votes: [], together: !!together, mealType } });
 }
 
 /** POST /api/meal-plan/:id/vote — toggle this member's vote on a meal option. */

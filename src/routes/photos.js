@@ -139,7 +139,7 @@ export async function getCookbook(request, familyId, env) {
   const photos = await db
     .prepare(
       `SELECT p.id, p.recipe_id, p.habit_id, p.member_id, p.source, p.caption, p.day,
-              r.title as recipe_title, m.display_name as member_name,
+              r.title as recipe_title, r.category as recipe_category, m.display_name as member_name,
               h.title as habit_title, h.emoji as habit_emoji
        FROM cookbook_photos p
        LEFT JOIN recipes r ON r.id = p.recipe_id
@@ -152,7 +152,7 @@ export async function getCookbook(request, familyId, env) {
     .all();
 
   const favorites = await db
-    .prepare("SELECT id, title FROM recipes WHERE family_id = ? AND favorite = 1 ORDER BY title ASC")
+    .prepare("SELECT id, title, category FROM recipes WHERE family_id = ? AND favorite = 1 ORDER BY title ASC")
     .bind(familyId)
     .all();
 

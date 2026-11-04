@@ -179,7 +179,9 @@
   .meal-day-row { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; border-bottom: 1px solid #f1ead9; }
   .meal-day-row:last-of-type { border-bottom: none; }
   .meal-day-label { width: 34px; font-weight: 700; font-size: 0.78rem; opacity: 0.65; flex-shrink: 0; padding-top: 6px; }
-  .meal-day-items { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; flex: 1; }
+  .meal-day-items { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+  .meal-type-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .meal-type-label { font-size: 0.68rem; font-weight: 700; opacity: 0.55; flex-shrink: 0; }
   .meal-chip { background: #fff; color: var(--text); border: 1px solid #eee3cf; border-radius: 999px; padding: 5px 12px; font-size: 0.78rem; cursor: pointer; margin: 0; width: auto; }
   .meal-chip.open { background: var(--sage); color: var(--text); }
   .meal-detail { padding: 2px 0 10px 44px; }
@@ -403,6 +405,13 @@
         <input id="newMealDay" type="date" />
         <label>Meal</label>
         <input id="newMealTitle" placeholder="e.g. Taco night" />
+        <label>Meal type</label>
+        <select id="newMealType">
+          <option value="breakfast">🥣 Breakfast</option>
+          <option value="lunch">🥪 Lunch</option>
+          <option value="dinner" selected>🍽️ Dinner</option>
+          <option value="snacks">🍎 Snacks</option>
+        </select>
         <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:8px;">
           <input type="checkbox" id="newMealTogether" style="width:auto;" />
           👨‍👩‍👧 We're all eating this together
@@ -718,7 +727,7 @@ async function scheduleRecipeForDay(recipeId, day) {
   const recipe = recipesCache.find((r) => r.id === recipeId);
   if (!recipe) return;
   try {
-    await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day, title: recipe.title, recipeId })});
+    await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day, title: recipe.title, recipeId, mealType: mealTypeForRecipe(recipe) })});
     await renderMealPlan();
     toast(`Added "${recipe.title}" to the meal plan for ${day}!`);
   } catch (err) { toast(err.message, true); }
@@ -965,6 +974,21 @@ const RECIPE_CATEGORY_META = {
   snacks: { label: "Snacks", emoji: "🍎" },
   lunchboxes: { label: "Lunchboxes", emoji: "🎒" },
 };
+// Meal-plan items use a simpler 4-way split (breakfast/lunch/dinner/snacks)
+// than recipe categories (which also has lunchboxes) — map the extra one in.
+const MEAL_TYPE_META = {
+  breakfast: { label: "Breakfast", emoji: "🥣" },
+  lunch: { label: "Lunch", emoji: "🥪" },
+  dinner: { label: "Dinner", emoji: "🍽️" },
+  snacks: { label: "Snacks", emoji: "🍎" },
+  other: { label: "Other", emoji: "🍴" },
+};
+const MEAL_TYPE_ORDER = ["breakfast", "lunch", "dinner", "snacks", "other"];
+function mealTypeForRecipe(recipe) {
+  if (!recipe || !recipe.category) return null;
+  if (recipe.category === "lunchboxes") return "lunch";
+  return MEAL_TYPE_META[recipe.category] ? recipe.category : null;
+}
 let cookingRecipeId = null;
 let recipeMenuOpenId = null;
 let pendingPhotoRecipeId = null;
@@ -1174,7 +1198,7 @@ function showRecipeDetail(recipeId) {
     $("cookConfirmBtn").onclick = async () => {
       const day = $("cookDayInput").value || todayStr();
       try {
-        await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day, title: r.title, recipeId: r.id })});
+        await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day, title: r.title, recipeId: r.id, mealType: mealTypeForRecipe(r) })});
         cookingRecipeId = null;
         await renderMealPlan();
         toast(`Added "${r.title}" to the meal plan!`);
@@ -1279,12 +1303,20 @@ async function renderMealPlan() {
     const dayItems = data.items.filter((it) => it.day === day);
     const dayRow = document.createElement("div");
     dayRow.className = "meal-day-row";
-    const chipsHtml = dayItems.map((item) => {
-      const open = expandedMealItemId === item.id;
-      return `<button class="meal-chip ${open ? "open" : ""}" data-meal-chip="${item.id}">${escapeHtml(item.title)}${item.together ? " 👨‍👩‍👧" : ""} · 👍${item.votes.length}</button>`;
+
+    const groupsHtml = MEAL_TYPE_ORDER.map((typeKey) => {
+      const itemsOfType = dayItems.filter((it) => (it.mealType || "other") === typeKey);
+      if (!itemsOfType.length) return "";
+      const meta = MEAL_TYPE_META[typeKey] || { label: "Other", emoji: "🍴" };
+      const chipsHtml = itemsOfType.map((item) => {
+        const open = expandedMealItemId === item.id;
+        return `<button class="meal-chip ${open ? "open" : ""}" data-meal-chip="${item.id}">${escapeHtml(item.title)}${item.together ? " 👨‍👩‍👧" : ""} · 👍${item.votes.length}</button>`;
+      }).join("");
+      return `<div class="meal-type-row"><span class="meal-type-label">${meta.emoji} ${meta.label}</span>${chipsHtml}</div>`;
     }).join("");
+
     dayRow.innerHTML = `<div class="meal-day-label">${MEAL_DAY_LABELS[i]}</div>
-      <div class="meal-day-items">${chipsHtml || '<span class="muted">—</span>'}<button class="small secondary" data-meal-add-day="${day}" style="margin:0;">＋</button></div>`;
+      <div class="meal-day-items">${groupsHtml || '<span class="muted">—</span>'}<div class="meal-type-row"><button class="small secondary" data-meal-add-day="${day}" style="margin:0;">＋ Add</button></div></div>`;
     list.appendChild(dayRow);
 
     dayItems.forEach((item) => {
@@ -1393,7 +1425,7 @@ $("showAddMealBtn").onclick = () => { $("newMealDay").value = todayStr(); show("
 $("addMealBtn").onclick = async () => {
   clearError("mealError");
   try {
-    await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day: $("newMealDay").value, title: $("newMealTitle").value, together: $("newMealTogether").checked })});
+    await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day: $("newMealDay").value, title: $("newMealTitle").value, mealType: $("newMealType").value, together: $("newMealTogether").checked })});
     $("newMealTitle").value = ""; $("newMealTogether").checked = false; hide("addMealForm"); await renderMealPlan();
   } catch (err) { showError("mealError", err.message); }
 };
@@ -1469,24 +1501,44 @@ $("loadCookbookBtn").onclick = async () => {
       return;
     }
 
-    view.innerHTML = `${bits.join("")}<div class="polaroid-grid" id="cookbookGrid"></div>`;
-    const grid = $("cookbookGrid");
+    // Group photos into the same categories recipes use, so the Family
+    // Cookbook reads as organised sections instead of one mixed wall.
+    const COOKBOOK_CATEGORY_META = { ...RECIPE_CATEGORY_META, other: { label: "Family moments", emoji: "📸" } };
+    const COOKBOOK_CATEGORY_ORDER = [...Object.keys(RECIPE_CATEGORY_META), "other"];
+    const grouped = {};
     for (const p of data.photos) {
-      const title = p.recipe_title || (p.habit_title ? `${p.habit_emoji || ""} ${p.habit_title}`.trim() : "Family moment");
-      const who = p.member_name ? `${p.member_name} · ` : "";
-      const cell = document.createElement("div"); cell.className = "polaroid";
-      cell.innerHTML = `
-        <div class="polaroid-photo">${p.source === "ai" ? `<span class="polaroid-badge">✨ AI</span>` : ""}</div>
-        <div class="polaroid-cap">${title}</div>
-        <div class="polaroid-meta">${who}${p.day}</div>
-      `;
-      grid.appendChild(cell);
-      fetchPhotoBlobUrl(p.id).then((url) => {
-        if (!url) return;
-        const img = document.createElement("img"); img.src = url; img.alt = title;
-        cell.querySelector(".polaroid-photo").appendChild(img);
-      });
+      const key = p.recipe_category && COOKBOOK_CATEGORY_META[p.recipe_category] ? p.recipe_category : "other";
+      (grouped[key] = grouped[key] || []).push(p);
     }
+
+    view.innerHTML = bits.join("") + `<div id="cookbookSections"></div>`;
+    const sectionsWrap = $("cookbookSections");
+    COOKBOOK_CATEGORY_ORDER.forEach((key) => {
+      const photosInGroup = grouped[key];
+      if (!photosInGroup || !photosInGroup.length) return;
+      const meta = COOKBOOK_CATEGORY_META[key];
+      const section = document.createElement("div");
+      section.style.marginTop = "14px";
+      section.innerHTML = `<h4 style="margin:0 0 8px;">${meta.emoji} ${meta.label}</h4><div class="polaroid-grid"></div>`;
+      const grid = section.querySelector(".polaroid-grid");
+      for (const p of photosInGroup) {
+        const title = p.recipe_title || (p.habit_title ? `${p.habit_emoji || ""} ${p.habit_title}`.trim() : "Family moment");
+        const who = p.member_name ? `${p.member_name} · ` : "";
+        const cell = document.createElement("div"); cell.className = "polaroid";
+        cell.innerHTML = `
+          <div class="polaroid-photo">${p.source === "ai" ? `<span class="polaroid-badge">✨ AI</span>` : ""}</div>
+          <div class="polaroid-cap">${title}</div>
+          <div class="polaroid-meta">${who}${p.day}</div>
+        `;
+        grid.appendChild(cell);
+        fetchPhotoBlobUrl(p.id).then((url) => {
+          if (!url) return;
+          const img = document.createElement("img"); img.src = url; img.alt = title;
+          cell.querySelector(".polaroid-photo").appendChild(img);
+        });
+      }
+      sectionsWrap.appendChild(section);
+    });
   } catch (err) { view.innerHTML = `<p class="error">${err.message}</p>`; }
 };
 

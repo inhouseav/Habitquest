@@ -4,6 +4,11 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## Meal plan sorted by Breakfast/Lunch/Dinner/Snacks + sorted Family Cookbook (2026-11-04)
+This Week's Meals now groups each day into Breakfast/Lunch/Dinner/Snacks sections instead of one flat list. Cooking a recipe (via "Cook this" or dragging it onto the calendar) auto-picks the meal type from the recipe's own category; manually "suggesting a meal" now has a meal-type dropdown (defaults to Dinner). Needs migration `011_meal_plan_meal_type.sql` run in the D1 console (adds `meal_type` to `meal_plan_items`) — meals planned before that migration show under a 5th "Other" section until re-tagged. The Family Cookbook photo grid is now grouped the same way (Breakfast/Lunch/Dinner/Snacks/Lunchboxes, plus a "Family moments" section for habit photos not tied to a recipe).
+
+Also fixed a real pre-existing bug while in this code: `GET /api/meal-plan` was returning `recipe_id` (snake_case) but the frontend read `item.recipeId` (camelCase) — meaning "🛒 Add ingredients" on a planned meal, and the new "Add this week's ingredients" button, never actually found a recipe to pull ingredients from. Fixed by aliasing the SQL columns to camelCase.
+
 ## Drag recipes to the calendar + weekly shopping list (2026-11-04)
 Recipe polaroid cards can now be dragged straight onto a day in the month Calendar to plan cooking it that day (same effect as the existing "Cook this" button, just as a drag gesture) — desktop/mouse only, since phones don't support native drag-and-drop; the "Cook this" button + date picker in the recipe detail panel is the mobile-friendly equivalent and still works everywhere. Also added a "🛒 Add this week's ingredients to shopping list" button on This Week's Meals that pulls every recipe-linked meal planned for the week and adds all their ingredients at once (skipping anything already on the list), instead of one recipe at a time. The shopping list's checkboxes and delete buttons are now bigger touch targets for mobile. You can also now drag an image file straight onto a recipe's polaroid photo to upload it (desktop), as an alternative to the existing tap-to-upload / AI photo buttons. Not yet confirmed live by Maddie.
 
