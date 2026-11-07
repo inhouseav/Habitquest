@@ -134,6 +134,12 @@
   .cal-habit-markers { display: flex; flex-wrap: wrap; gap: 3px; margin-top: auto; padding-top: 2px; }
   .cal-habit-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(24, 63, 53, 0.15); }
   .cal-grid + button { margin-top: 12px; }
+  .card.cal-expanded .cal-day { min-height: 150px; max-height: 230px; overflow-y: auto; font-size: 0.8rem; padding: 7px; }
+  .card.cal-expanded .cal-day-num { font-size: 0.95rem; }
+  .card.cal-expanded .cal-event-chip { font-size: 0.78rem; padding: 4px 7px; line-height: 1.4; }
+  .card.cal-expanded .cal-weekday { font-size: 0.85rem; padding: 7px 0; }
+  .card.cal-expanded .cal-habit-dot { width: 9px; height: 9px; }
+  .card.cal-expanded .cal-grid { gap: 6px; }
   .event-row:last-child { border-bottom: none; }
   .muted { opacity: 0.65; font-size: 0.85rem; }
   .hidden { display: none !important; }
@@ -374,10 +380,11 @@
         <button class="small secondary" id="calNextBtn">›</button>
       </div>
       <div id="calMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;"></div>
-      <div id="calViewTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+      <div id="calViewTabs" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
         <button class="small" data-cal-view="week" style="margin:0;">1 Week</button>
         <button class="small secondary" data-cal-view="2week" style="margin:0;">2 Weeks</button>
         <button class="small secondary" data-cal-view="month" style="margin:0;">Month</button>
+        <button class="small secondary" id="calExpandBtn" type="button" style="margin:0 0 0 auto;">⤢ Expand</button>
       </div>
       <div class="cal-grid" id="calWeekdayRow"></div>
       <div class="cal-grid" id="calDaysGrid"></div>
@@ -1117,6 +1124,17 @@ document.querySelectorAll("[data-cal-view]").forEach((btn) => {
     renderCalendarGrid();
   };
 });
+
+let calendarExpanded = false;
+const calExpandBtn = $("calExpandBtn");
+if (calExpandBtn) {
+  calExpandBtn.onclick = () => {
+    calendarExpanded = !calendarExpanded;
+    const card = calExpandBtn.closest(".card");
+    if (card) card.classList.toggle("cal-expanded", calendarExpanded);
+    calExpandBtn.textContent = calendarExpanded ? "⤡ Collapse" : "⤢ Expand";
+  };
+}
 
 $("showAddEventBtn").onclick = () => show("addEventForm");
 $("newEventRepeatCheck").onchange = () => {
