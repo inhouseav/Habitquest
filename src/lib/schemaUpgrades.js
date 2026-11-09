@@ -44,14 +44,22 @@ export async function ensureBonusTables(db) {
   return bonusReady;
 }
 
-/** Optional reminder time (HH:MM, the family's local time) on a habit planned onto a day. */
+/**
+ * Extra columns on a habit planned onto a day:
+ *  - time:  optional reminder time (HH:MM, the family's local time)
+ *  - title: optional "just for this day" habit, e.g. the Planner put
+ *           "Netball training" in Mia's Move slot for Tuesday. That day it
+ *           shows (and is ticked) instead of her usual Move habit; every
+ *           other day her usual one is the default.
+ */
 export async function ensureHabitPlanTime(db) {
   if (planTimeReady) return true;
   try {
-    if (!(await columnNames(db, "habit_day_plan")).has("time")) {
-      await db.prepare("ALTER TABLE habit_day_plan ADD COLUMN time TEXT").run().catch(() => {});
-    }
-    planTimeReady = (await columnNames(db, "habit_day_plan")).has("time");
+    const cols = await columnNames(db, "habit_day_plan");
+    if (!cols.has("time")) await db.prepare("ALTER TABLE habit_day_plan ADD COLUMN time TEXT").run().catch(() => {});
+    if (!cols.has("title")) await db.prepare("ALTER TABLE habit_day_plan ADD COLUMN title TEXT").run().catch(() => {});
+    const after = await columnNames(db, "habit_day_plan");
+    planTimeReady = after.has("time") && after.has("title");
   } catch (err) {
     planTimeReady = false;
   }

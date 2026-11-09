@@ -23,3 +23,8 @@ database_id = "2fa8326b-db8d-4a92-99c0-83a24b7d2a86"
 [[r2_buckets]]
 binding = "PHOTOS"
 bucket_name = "habitquest-photos"
+
+# Cloudflare's built-in AI (Workers AI) — used to make recipe pictures.
+# Part of the Cloudflare account (free daily allowance), no API key needed.
+[ai]
+binding = "AI"

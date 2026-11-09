@@ -4,6 +4,16 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Maddie's 9 notes: Win the Day, pick lists, Planner top 5 → day's habit, AI recipe pictures, cookbook (2026-11-10)
+
+- **Win the Day** is the habits card's new name (they're daily habits).
+- **Habit editor pick lists by type:** Move shows Planner movement ideas, Cook shows recipes (favourites first, as "Cook …"), Home shows Planner home ideas. Tap to fill. Typed Move/Home habits are remembered in the Planner lists.
+- **Planner:** top 5 most-used per tab (numbered), "+ N more", and **⚙️ Manage** to remove ideas (`DELETE /api/movement-ideas/:id`).
+- **Planner → Win the Day:** planning an idea (or a recipe) for a person or Everyone, with a day + time, also makes it **that day's habit** in the matching slot (Move/Cook/Home) via `habit_day_plan.title` (+ time = reminder). Usual weekly habits stay the default every other day. Card shows "📅 today · 4:00 PM". One popup only (habit, with Done) even though a calendar event is also made.
+- **AI recipe pictures:** now use Cloudflare Workers AI (`[ai] binding = "AI"` in wrangler.toml, model flux-1-schnell) — no paid key. Made automatically when a recipe is added; your own photo replaces it (newest = cover). OpenAI still used if the AI binding isn't there and a key is.
+- **Family Cookbook** lists every recipe by meal (favourites first) with its cover picture, plus photos for the chosen dates; opens loaded.
+- Tested end to end on a database without the new columns (auto-added), with a stand-in AI; all earlier journeys still pass. **Not testable here: the real Workers AI call** — check by adding a recipe on the live site.
+
 ## ✅ Bonus habits, times on planned habits, popup reminders (2026-11-10)
 
 From Maddie's 💡 note ("add times… popup reminder… more than 3 tasks"):

@@ -21,7 +21,7 @@ function todayStr() {
  * (an adult, since it needs a paid account) adds it.
  */
 export async function generateImage(request, familyId, env) {
-  if (!env.OPENAI_API_KEY) {
+  if (!env.AI && !env.OPENAI_API_KEY) {
     return errorResponse(
       "AI photos aren't set up yet — this needs a paid API key added by a parent. Real uploaded photos work right now, for free!",
       500
@@ -43,6 +43,30 @@ export async function generateImage(request, familyId, env) {
   try { ingredients = JSON.parse(recipe.ingredients) || []; } catch (err) { /* ignore */ }
 
   const prompt = `A warm, appetizing, realistic food photograph of "${recipe.title}" (${ingredients.slice(0, 6).join(", ")}), plated simply on a home kitchen table, natural light, no text, no people, no logos.`;
+
+  // First choice: Cloudflare's own built-in AI (the "AI" binding in
+  // wrangler.toml) — part of the Cloudflare account, free daily allowance,
+  // no separate API key. Falls back to OpenAI only if that's not available.
+  if (env.AI) {
+    let out;
+    try {
+      out = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 6 });
+    } catch (err) {
+      if (!env.OPENAI_API_KEY) return errorResponse(`Couldn't make a picture right now (${err.message || "AI error"}). Try again in a bit, or add your own photo.`, 502);
+      out = null;
+    }
+    if (out && out.image) {
+      const bytes = Uint8Array.from(atob(out.image), (c) => c.charCodeAt(0));
+      const photoId = newId();
+      const r2Key = `${familyId}/${photoId}.jpg`;
+      await env.PHOTOS.put(r2Key, bytes, { httpMetadata: { contentType: "image/jpeg" } });
+      await env.DB.prepare(
+        "INSERT INTO cookbook_photos (id, family_id, recipe_id, r2_key, content_type, source, day) VALUES (?, ?, ?, ?, 'image/jpeg', 'ai', ?)"
+      ).bind(photoId, familyId, recipe.id, r2Key, todayStr()).run();
+      return json({ ok: true, photoId });
+    }
+    if (!env.OPENAI_API_KEY) return errorResponse("The AI didn't send back a picture. Try again in a bit.", 502);
+  }
 
   let aiRes;
   try {

@@ -27,3 +27,5 @@ CREATE INDEX IF NOT EXISTS idx_bonus_completions_member_day ON bonus_completions
 
 -- Optional reminder time (HH:MM local) on a habit planned onto a day.
 ALTER TABLE habit_day_plan ADD COLUMN time TEXT;
+-- Optional "just for this day" habit title (set from the Planner).
+ALTER TABLE habit_day_plan ADD COLUMN title TEXT;

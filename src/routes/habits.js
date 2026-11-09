@@ -1,6 +1,6 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
-import { ensureBonusTables } from "../lib/schemaUpgrades.js";
+import { ensureBonusTables, ensureHabitPlanTime } from "../lib/schemaUpgrades.js";
 
 const MAX_BONUS = 2;
 
@@ -91,13 +91,28 @@ export async function getHabits(request, familyId, env) {
   const streakByMember = {};
   for (const s of streaksRes.results || []) streakByMember[s.member_id] = s;
 
+  // Something planned for this exact day (from the Planner) swaps in for
+  // the usual habit in that slot, just for today.
+  const todayPlan = {};
+  if (await ensureHabitPlanTime(db)) {
+    const planRes = await db
+      .prepare("SELECT member_id, slot, title, time FROM habit_day_plan WHERE family_id = ? AND day = ? AND title IS NOT NULL")
+      .bind(familyId, day)
+      .all();
+    for (const p of planRes.results || []) todayPlan[`${p.member_id}:${p.slot}`] = p;
+  }
+
   const habitsByMember = {};
   for (const h of habitsRes.results || []) {
     if (!habitsByMember[h.member_id]) habitsByMember[h.member_id] = [];
+    const planned = todayPlan[`${h.member_id}:${h.slot}`];
     habitsByMember[h.member_id].push({
       id: h.id,
       slot: h.slot,
-      title: h.title,
+      title: planned ? planned.title : h.title,
+      usualTitle: h.title,
+      plannedToday: !!planned,
+      plannedTime: planned ? planned.time : null,
       emoji: h.emoji || "",
       completed: completedHabitIds.has(h.id),
     });

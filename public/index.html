@@ -228,6 +228,15 @@
   .meal-type-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .meal-type-label { font-size: 0.68rem; font-weight: 700; opacity: 0.55; flex-shrink: 0; }
   .habit-row-btn.bonus { border-style: dashed; }
+  .planner-rank { display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; border-radius: 50%; background: var(--terracotta); color: #fff; font-size: 0.65rem; font-weight: 700; margin-right: 5px; }
+  .planner-manage-chip { cursor: default; display: inline-flex; align-items: center; gap: 4px; }
+  .planner-manage-chip button { width: auto; margin: 0; padding: 0 4px; background: none; border: none; color: #b0533c; font-size: 0.9rem; cursor: pointer; }
+  .habit-today-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: #F8E3D1; font-size: 0.68rem; font-weight: 700; vertical-align: middle; text-decoration: none; }
+  .planner-habit-check { display: flex; gap: 8px; align-items: flex-start; font-size: 0.8rem; font-weight: 400; margin: 8px 0; cursor: pointer; }
+  .planner-habit-check input { width: auto; margin: 2px 0 0; }
+  .habit-quick-picks { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
+  .habit-quick-pick { width: auto; margin: 0; padding: 3px 10px; font-size: 0.72rem; border-radius: 999px; background: #fff; color: var(--text); border: 1px solid #eee3cf; cursor: pointer; }
+  .habit-quick-pick:hover { background: var(--sage); }
   .habit-plan-item { display: inline-flex; align-items: center; gap: 4px; background: #fff; border: 1px solid #eee3cf; border-radius: 999px; padding: 2px 4px 2px 10px; font-size: 0.78rem; }
   .habit-plan-item input[type=time] { width: auto; margin: 0; padding: 2px 4px; font-size: 0.75rem; border-radius: 8px; min-height: 0; }
   .habit-plan-item button { width: auto; margin: 0; padding: 2px 6px; background: none; color: #999; border: none; font-size: 0.8rem; cursor: pointer; }
@@ -371,16 +380,20 @@
     </div>
 
     <div class="card">
-      <h3>This Week's Habits 🌟</h3>
-      <p class="muted" style="margin-bottom:8px;">Everyone picks 3 things they want to do this week.</p>
+      <h3>Win the Day 🌟</h3>
+      <p class="muted" style="margin-bottom:8px;">Everyone has 3 habits to do every day. Plan something special for a day in the Planner and it swaps in just for that day.</p>
       <div style="margin-bottom:10px;"><span style="background:var(--terracotta); color:#fff; border-radius:999px; padding:6px 13px; font-size:0.88rem; font-weight:700; display:inline-block;">🎯 Do all 3 to win the day!</span></div>
       <div id="habitsMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
       <div id="habitsList"><p class="loading-text">Loading...</p></div>
     </div>
 
     <div class="card">
-      <h3>📋 Planner</h3>
-      <p class="muted">Drag an idea onto the calendar below to plan it for that day — or tap one if you're on your phone.</p>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <h3 style="margin:0;">📋 Planner</h3>
+        <button type="button" class="small secondary" id="plannerManageBtn" style="margin:0; width:auto;">⚙️ Manage</button>
+      </div>
+      <p class="muted">Your top 5 favourites. Tap one (or drag it onto the calendar) to plan it for a day — pick a person and it becomes their habit that day.</p>
+      <p class="muted hidden" id="plannerManageHint" style="background:#fff6ee; border-radius:8px; padding:6px 10px;">⚙️ Manage: tap ✕ to remove an idea, or add new ones below. Tap Done when finished.</p>
       <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
         <button class="small" data-planner-tab="movement" style="margin:0;">🏃 Movement</button>
         <button class="small secondary" data-planner-tab="home" style="margin:0;">🏡 Home</button>
@@ -414,6 +427,8 @@
           <label>For</label>
           <select id="plannerForMemberSelect"><option value="">🌍 Everyone</option></select>
         </div>
+        <label class="planner-habit-check"><input type="checkbox" id="plannerMakeHabitCheck" checked />
+          <span>⭐ Make it <span id="plannerHabitWho">everyone's</span> <b id="plannerHabitSlotLabel">Move</b> habit that day — counts toward winning the day</span></label>
         <div style="display:flex; gap:8px;">
           <button class="small" id="plannerPickDayConfirmBtn" style="flex:1;">Add to calendar</button>
           <button class="small secondary" type="button" id="plannerPickDayCancelBtn" style="flex:0; white-space:nowrap;">Cancel</button>
@@ -1320,6 +1335,16 @@ async function loadPlannerMovementIdeas() {
   renderPlannerIdeaPalette("home");
 }
 
+const PLANNER_TOP_N = 5;
+let plannerShowAll = { movement: false, home: false };
+let plannerManaging = false;
+function setPlannerManaging(on) {
+  plannerManaging = on;
+  $("plannerManageBtn").textContent = on ? "✓ Done" : "⚙️ Manage";
+  $("plannerManageHint").classList.toggle("hidden", !on);
+  renderPlannerIdeaPalette("movement");
+  renderPlannerIdeaPalette("home");
+}
 function renderPlannerIdeaPalette(category) {
   const meta = PLANNER_IDEA_CATEGORIES[category];
   const wrap = $(meta.paletteId);
@@ -1329,9 +1354,27 @@ function renderPlannerIdeaPalette(category) {
     wrap.innerHTML = `<p class="muted" style="margin:0;">${meta.emptyText}</p>`;
     return;
   }
-  wrap.innerHTML = ideas.map((idea) =>
-    `<button type="button" class="lunchbox-chip" draggable="true" data-planner-idea="${idea.id}" data-planner-title="${escapeHtml(idea.title)}">${meta.emoji} ${escapeHtml(idea.title)}</button>`
-  ).join("");
+  // Ideas arrive most-used first, so the first 5 are your favourites.
+  const showAll = plannerShowAll[category] || plannerManaging;
+  const visible = showAll ? ideas : ideas.slice(0, PLANNER_TOP_N);
+  const hiddenCount = ideas.length - visible.length;
+  wrap.innerHTML = visible.map((idea, i) => plannerManaging
+    ? `<span class="lunchbox-chip planner-manage-chip">${meta.emoji} ${escapeHtml(idea.title)} <button type="button" data-planner-delete="${idea.id}" title="Remove">✕</button></span>`
+    : `<button type="button" class="lunchbox-chip" draggable="true" data-planner-idea="${idea.id}" data-planner-title="${escapeHtml(idea.title)}">${i < PLANNER_TOP_N && ideas.length > 1 ? `<span class="planner-rank">${i + 1}</span>` : ""}${meta.emoji} ${escapeHtml(idea.title)}</button>`
+  ).join("") + (plannerManaging ? "" : hiddenCount > 0
+    ? `<button type="button" class="small secondary" data-planner-more="${category}" style="margin:0; width:auto;">+ ${hiddenCount} more</button>`
+    : ideas.length > PLANNER_TOP_N ? `<button type="button" class="small secondary" data-planner-more="${category}" style="margin:0; width:auto;">Show top 5</button>` : "");
+  wrap.querySelectorAll("[data-planner-more]").forEach((b) => {
+    b.onclick = () => { plannerShowAll[category] = !plannerShowAll[category]; renderPlannerIdeaPalette(category); };
+  });
+  wrap.querySelectorAll("[data-planner-delete]").forEach((b) => {
+    b.onclick = async () => {
+      try {
+        await api(`/api/movement-ideas/${b.getAttribute("data-planner-delete")}`, { method: "DELETE" });
+        await loadPlannerMovementIdeas();
+      } catch (err) { toast(err.message, true); }
+    };
+  });
   wrap.querySelectorAll("[data-planner-idea]").forEach((chip) => {
     const ideaId = chip.getAttribute("data-planner-idea");
     const title = chip.getAttribute("data-planner-title");
@@ -1398,26 +1441,60 @@ function wirePlannerAddIdea(category, inputId, btnId) {
 }
 wirePlannerAddIdea("movement", "plannerCustomMovement", "plannerAddCustomMovementBtn");
 wirePlannerAddIdea("home", "plannerCustomHome", "plannerAddCustomHomeBtn");
+$("plannerManageBtn").onclick = () => setPlannerManaging(!plannerManaging);
 
+// Which of the 3 daily habit slots a Planner item fills.
+function plannerSlotFor(item) {
+  if (item.type === "recipe") return 2;
+  return item.category === "home" ? 3 : 1;
+}
+function updatePlannerHabitLabel() {
+  if (!plannerPendingItem) return;
+  $("plannerHabitSlotLabel").textContent = HABIT_SLOT_META[plannerSlotFor(plannerPendingItem)].label;
+  const memberId = $("plannerForMemberSelect").value;
+  const m = state.members.find((mm) => mm.id === memberId);
+  $("plannerHabitWho").textContent = m ? `${m.display_name}'s` : "everyone's";
+}
 function openPlannerPickPanel(item, presetDay) {
   plannerPendingItem = item;
   const isRecipe = item.type === "recipe";
-  $("plannerPickTimeInput").classList.toggle("hidden", isRecipe);
-  $("plannerForMemberWrap").classList.toggle("hidden", isRecipe);
   $("plannerPickDayLabel").textContent = isRecipe ? "Add to this week's meals on..." : "Add to the calendar...";
   $("plannerPickDayInput").value = presetDay || todayStr();
-  if (!isRecipe && !$("plannerPickTimeInput").value) $("plannerPickTimeInput").value = "16:00";
+  if (!$("plannerPickTimeInput").value) $("plannerPickTimeInput").value = isRecipe ? "17:30" : "16:00";
+  $("plannerMakeHabitCheck").checked = true;
   renderPlannerForMemberOptions();
+  updatePlannerHabitLabel();
   show("plannerPickDayWrap");
   $("plannerPickDayWrap").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 $("plannerPickDayCancelBtn").onclick = () => { plannerPendingItem = null; hide("plannerPickDayWrap"); };
+$("plannerForMemberSelect").addEventListener("change", updatePlannerHabitLabel);
+
+// Puts a Planner item into the chosen person's (or everyone's) habit slot
+// for that day, with the time as a reminder. Returns how many people got it.
+async function addPlannerItemAsHabit(item, day, time, memberId) {
+  const slot = plannerSlotFor(item);
+  const title = item.type === "recipe" ? `Cook ${item.value}` : item.value;
+  const targets = memberId ? [memberId] : state.members.map((m) => m.id);
+  let added = 0;
+  for (const id of targets) {
+    try {
+      await api("/api/habit-day-plan", { method: "POST", body: JSON.stringify({ memberId: id, slot, day, title, time }) });
+      added++;
+    } catch (err) { /* one person failing shouldn't stop the rest */ }
+  }
+  return added;
+}
 $("plannerPickDayConfirmBtn").onclick = async () => {
   if (!plannerPendingItem) return;
   const day = $("plannerPickDayInput").value;
   if (!day) { toast("Pick a day first.", true); return; }
   try {
+    const pending = plannerPendingItem;
+    const makeHabit = $("plannerMakeHabitCheck").checked;
+    const habitTime = $("plannerPickTimeInput").value || null;
+    const habitFor = $("plannerForMemberSelect").value || null;
     if (plannerPendingItem.type === "recipe") {
       await scheduleRecipeForDay(plannerPendingItem.value, day);
     } else {
@@ -1438,6 +1515,13 @@ $("plannerPickDayConfirmBtn").onclick = async () => {
           .then(() => loadPlannerMovementIdeas())
           .catch(() => {});
       }
+    }
+    if (makeHabit) {
+      const recipeTitle = pending.type === "recipe" ? (recipesCache.find((r) => r.id === pending.value) || {}).title : null;
+      const item = pending.type === "recipe" ? { ...pending, value: recipeTitle || "dinner" } : pending;
+      const added = await addPlannerItemAsHabit(item, day, habitTime, habitFor);
+      await renderHabits();
+      if (added) setTimeout(() => toast(`⭐ Added as ${habitFor ? "their" : "everyone's"} ${HABIT_SLOT_META[plannerSlotFor(pending)].label} habit for that day${habitTime ? " — reminder at " + formatClock(habitTime) : ""}`), 1600);
     }
     plannerPendingItem = null;
     hide("plannerPickDayWrap");
@@ -1519,8 +1603,8 @@ async function renderHabits() {
         <div style="display:flex; align-items:center; gap:6px;">
           <button class="habit-row-btn ${h.completed ? 'done' : ''}" data-habit="${h.id}" ${h.completed ? 'disabled' : ''} style="flex:1;">
             <span class="habit-check" style="font-size:1.1rem;">${h.completed ? '✓' : '○'}</span>
-            <span style="font-size:1rem; flex-shrink:0;">${h.emoji || slotMeta.emoji}</span>
-            <span class="habit-title" style="font-weight:600;">${escapeHtml(h.title)}</span>
+            <span style="font-size:1rem; flex-shrink:0;">${h.plannedToday ? slotMeta.emoji : (h.emoji || slotMeta.emoji)}</span>
+            <span class="habit-title" style="font-weight:600;">${escapeHtml(h.title)}${h.plannedToday ? `<span class="habit-today-tag">📅 today${h.plannedTime ? " · " + escapeHtml(formatClock(h.plannedTime)) : ""}</span>` : ""}</span>
           </button>
           ${h.completed ? `<button class="small secondary" data-habit-photo="${h.id}" style="margin:0;" title="Add a photo of this moment">📷</button>` : ""}
         </div>`;
@@ -1608,6 +1692,16 @@ async function renderHabits() {
     };
   });
 
+  list.querySelectorAll("[data-pick-slot]").forEach((chip) => {
+    chip.onclick = () => {
+      const form = chip.closest("form");
+      const slot = chip.getAttribute("data-pick-slot");
+      form.querySelector(`[name="title${slot}"]`).value = chip.getAttribute("data-pick-title");
+      const emojiInput = form.querySelector(`[name="emoji${slot}"]`);
+      if (!emojiInput.value.trim()) emojiInput.value = chip.getAttribute("data-pick-emoji");
+    };
+  });
+
   list.querySelectorAll("form[data-habit-form]").forEach((form) => {
     form.onsubmit = async (e) => {
       e.preventDefault();
@@ -1624,6 +1718,11 @@ async function renderHabits() {
       }).filter(Boolean);
       try {
         await api("/api/habits/set", { method: "POST", body: JSON.stringify({ memberId, habits, bonus }) });
+        // Remember typed Move/Home habits in the Planner lists, so they're
+        // there to pick next time (no duplicates — the server ignores repeats).
+        const remember = habits.filter((h) => h.slot === 1 || h.slot === 3)
+          .map((h) => api("/api/movement-ideas", { method: "POST", body: JSON.stringify({ title: h.title, category: h.slot === 1 ? "movement" : "home" }) }).catch(() => {}));
+        Promise.all(remember).then(() => loadPlannerMovementIdeas()).catch(() => {});
         habitEditingMemberId = null;
         await renderHabits();
         toast("Habits saved!");
@@ -1712,7 +1811,7 @@ function habitWeekPlanHtml(m, weekStart) {
   if (!myHabits.length) return "";
 
   const paletteHtml = myHabits.map((h) => {
-    const label = `${h.emoji ? h.emoji + " " : ""}${h.title}`;
+    const label = `${h.emoji ? h.emoji + " " : ""}${h.usualTitle || h.title}`;
     return `<button type="button" class="lunchbox-chip" draggable="true" data-habit-plan-chip data-plan-slot="${h.slot}" data-plan-member="${m.memberId}" data-plan-title="${escapeAttr(label)}">${escapeHtml(label)}</button>`;
   }).join("");
 
@@ -1730,7 +1829,9 @@ function habitWeekPlanHtml(m, weekStart) {
     const dayItems = myPlanItems.filter((it) => it.day === day);
     const chips = dayItems.map((it) => {
       const h = myHabits.find((hh) => hh.slot === it.slot);
-      const title = h ? `${h.emoji ? h.emoji + " " : ""}${h.title}` : HABIT_SLOT_META[it.slot].label;
+      const title = it.title
+        ? `${HABIT_SLOT_META[it.slot].emoji} ${it.title}`
+        : h ? `${h.emoji ? h.emoji + " " : ""}${h.usualTitle || h.title}` : HABIT_SLOT_META[it.slot].label;
       return `<span class="habit-plan-item">${escapeHtml(title)}
         <span title="Reminder time (optional)">⏰</span><input type="time" data-habit-plan-time="${it.id}" value="${escapeAttr(it.time || "")}" aria-label="Reminder time for ${escapeAttr(title)}" />
         <button type="button" data-habit-plan-remove="${it.id}" title="Remove from this day">✕</button></span>`;
@@ -1790,6 +1891,26 @@ async function loadGoogleTodayItems(wrap) {
 }
 
 const BONUS_SLOTS = [4, 5];
+// Tap-to-pick suggestions under each habit slot, only of the right kind:
+// Move -> your Planner movement ideas, Cook -> your recipes (favourites
+// first), Home -> your Planner home ideas. Most-used first.
+function habitQuickPickOptions(slot) {
+  if (slot === 1) return (plannerIdeasByCategory.movement || []).map((i) => ({ title: i.title, emoji: "🏃" }));
+  if (slot === 3) return (plannerIdeasByCategory.home || []).map((i) => ({ title: i.title, emoji: "🏡" }));
+  if (slot === 2) {
+    return [...recipesCache]
+      .sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0))
+      .map((r) => ({ title: `Cook ${r.title}`, emoji: (RECIPE_CATEGORY_META[r.category] || {}).emoji || "🍳" }));
+  }
+  return [];
+}
+function habitQuickPickHtml(slot) {
+  const options = habitQuickPickOptions(slot).slice(0, 8);
+  const where = slot === 2 ? "Add recipes in the Recipes card to pick them here." : "Add ideas in the Planner to pick them here.";
+  if (!options.length) return `<p class="muted" style="font-size:0.7rem; margin:3px 0 0;">${where}</p>`;
+  return `<div class="habit-quick-picks">${options.map((o) =>
+    `<button type="button" class="habit-quick-pick" data-pick-slot="${slot}" data-pick-title="${escapeAttr(o.title)}" data-pick-emoji="${escapeAttr(o.emoji)}">${escapeHtml(o.emoji)} ${escapeHtml(o.title)}</button>`).join("")}</div>`;
+}
 function habitEditFormHtml(m) {
   const bonusInputs = BONUS_SLOTS.map((slot) => {
     const existing = (m.bonusHabits || []).find((b) => b.slot === slot);
@@ -1807,8 +1928,9 @@ function habitEditFormHtml(m) {
     return `<label style="margin-top:8px; font-size:0.78rem; font-weight:700; opacity:0.7;">${meta.emoji} ${meta.label}</label>
     <div style="display:flex; gap:6px; margin-top:4px;">
       <input name="emoji${slot}" placeholder="🙂" maxlength="4" value="${existing ? escapeAttr(existing.emoji) : ''}" style="width:48px; text-align:center;" />
-      <input name="title${slot}" placeholder="${meta.placeholder}" value="${existing ? escapeAttr(existing.title) : ''}" style="flex:1;" />
-    </div>`;
+      <input name="title${slot}" placeholder="${meta.placeholder}" value="${existing ? escapeAttr(existing.usualTitle || existing.title) : ''}" style="flex:1;" />
+    </div>
+    ${habitQuickPickHtml(slot)}`;
   }).join("");
   return `<form data-habit-form="${m.memberId}">
     ${slots}
@@ -2246,7 +2368,17 @@ $("addRecipeBtn").onclick = async () => {
       await api(`/api/recipes/${editingRecipeId}`, { method: "PUT", body: payload });
       toast("Recipe updated!");
     } else {
-      await api("/api/recipes", { method: "POST", body: payload });
+      const created = await api("/api/recipes", { method: "POST", body: payload });
+      const newId = created && created.recipe && created.recipe.id;
+      // New recipe with no photo yet: make an AI picture for it in the
+      // background. Taking your own photo later replaces it (newest photo
+      // is always the cover). Quietly skipped if AI pictures aren't available.
+      if (newId) {
+        toast("🎨 Recipe saved — making a picture for it...");
+        api("/api/ai/image", { method: "POST", body: JSON.stringify({ recipeId: newId }) })
+          .then(() => { toast("✨ Picture added! Take your own photo any time to replace it."); return renderRecipes(); })
+          .catch((err) => console.warn("AI picture skipped:", err.message));
+      }
     }
     resetRecipeForm();
     hide("addRecipeForm"); await renderRecipes();
@@ -2519,21 +2651,36 @@ $("loadCookbookBtn").onclick = async () => {
   try {
     const data = await api(`/api/cookbook?start=${start}&end=${end}`);
     const bits = [];
+    const COOKBOOK_CATEGORY_META = { ...RECIPE_CATEGORY_META, other: { label: "Family moments", emoji: "📸" } };
+    const COOKBOOK_CATEGORY_ORDER = [...Object.keys(RECIPE_CATEGORY_META), "other"];
 
-    if (data.favorites && data.favorites.length) {
-      bits.push(`<p class="muted" style="margin-bottom:8px;">⭐ Favourites: ${data.favorites.map((f) => f.title).join(", ")}</p>`);
+    // 1) Every recipe the family has, grouped by meal, favourites first.
+    const recipes = data.recipes || [];
+    if (!recipes.length) {
+      bits.push('<p class="muted">No recipes yet — add one in the Recipes card and it appears here.</p>');
+    } else {
+      bits.push(`<h4 style="margin:6px 0 4px;">📖 Our recipes (${recipes.length})</h4>`);
+      const byCat = {};
+      for (const r of recipes) { const k = r.category && RECIPE_CATEGORY_META[r.category] ? r.category : "other"; (byCat[k] = byCat[k] || []).push(r); }
+      COOKBOOK_CATEGORY_ORDER.forEach((k) => {
+        const list = byCat[k];
+        if (!list) return;
+        const meta = k === "other" ? { label: "Other", emoji: "🍴" } : COOKBOOK_CATEGORY_META[k];
+        bits.push(`<h5 style="margin:12px 0 6px; font-size:0.85rem;">${meta.emoji} ${meta.label}</h5><div class="polaroid-grid">${list.map((r) => `
+          <div class="polaroid" data-cookbook-recipe="${r.id}">
+            <div class="polaroid-photo" data-cover="${r.cover_photo_id || ""}">${r.cover_source === "ai" ? `<span class="polaroid-badge">✨ AI</span>` : ""}${r.cover_photo_id ? "" : `<span class="muted" style="font-size:0.7rem;">📷 No photo yet</span>`}</div>
+            <div class="polaroid-cap">${r.favorite ? "⭐ " : ""}${escapeHtml(r.title)}</div>
+          </div>`).join("")}</div>`);
+      });
     }
 
     if (!data.photos.length) {
-      bits.push('<p class="muted">No photos yet for this range — add one from a recipe card!</p>');
+      bits.push('<p class="muted" style="margin-top:14px;">📸 No cooking photos in these dates yet — add one from a recipe card!</p>');
       view.innerHTML = bits.join("");
+      loadCookbookCovers(view);
       return;
     }
-
-    // Group photos into the same categories recipes use, so the Family
-    // Cookbook reads as organised sections instead of one mixed wall.
-    const COOKBOOK_CATEGORY_META = { ...RECIPE_CATEGORY_META, other: { label: "Family moments", emoji: "📸" } };
-    const COOKBOOK_CATEGORY_ORDER = [...Object.keys(RECIPE_CATEGORY_META), "other"];
+    bits.push(`<h4 style="margin:18px 0 0;">📸 Photos ${escapeHtml(start)} to ${escapeHtml(end)}</h4>`);
     const grouped = {};
     for (const p of data.photos) {
       const key = p.recipe_category && COOKBOOK_CATEGORY_META[p.recipe_category] ? p.recipe_category : "other";
@@ -2541,6 +2688,7 @@ $("loadCookbookBtn").onclick = async () => {
     }
 
     view.innerHTML = bits.join("") + `<div id="cookbookSections"></div>`;
+    loadCookbookCovers(view);
     const sectionsWrap = $("cookbookSections");
     COOKBOOK_CATEGORY_ORDER.forEach((key) => {
       const photosInGroup = grouped[key];
@@ -2571,6 +2719,17 @@ $("loadCookbookBtn").onclick = async () => {
   } catch (err) { view.innerHTML = `<p class="error">${err.message}</p>`; }
 };
 
+function loadCookbookCovers(view) {
+  view.querySelectorAll("[data-cover]").forEach((el) => {
+    const id = el.getAttribute("data-cover");
+    if (!id) return;
+    fetchPhotoBlobUrl(id).then((url) => {
+      if (!url) return;
+      const img = document.createElement("img"); img.src = url; img.alt = "";
+      el.appendChild(img);
+    });
+  });
+}
 $("printCookbookBtn").onclick = () => window.print();
 
 // --- Family Memories ---
@@ -2930,6 +3089,7 @@ function collectDueReminders(now = new Date()) {
   });
 
   const members = (lastHabitsData && lastHabitsData.members) || [];
+  const habitReminderKeys = new Set(); // every timed habit today, shown or not
   habitDayPlanItems.forEach((it) => {
     if (it.day !== today || !it.time) return;
     if (who && it.memberId !== who) return;
@@ -2937,11 +3097,17 @@ function collectDueReminders(now = new Date()) {
     const h = m && m.habits.find((hh) => hh.slot === it.slot);
     if (!h) return;
     const at = new Date(`${today}T${it.time}:00`);
+    habitReminderKeys.add(`${(it.title || h.usualTitle || h.title).toLowerCase()}|${at.getTime()}`);
     const key = `hp:${it.id}`;
     if (shown.has(key) || !isDue(at)) return;
-    due.push({ key, at, emoji: h.emoji || HABIT_SLOT_META[it.slot].emoji, title: h.title, who: m.displayName, habitId: h.completed ? null : h.id });
+    due.push({ key, at, kind: "habit", emoji: it.title ? HABIT_SLOT_META[it.slot].emoji : (h.emoji || HABIT_SLOT_META[it.slot].emoji), title: it.title || h.usualTitle || h.title, who: m.displayName, habitId: h.completed ? null : h.id });
   });
-  return due.sort((a, b) => a.at - b.at);
+  // The Planner makes a calendar event AND a habit for the same thing —
+  // only pop up once (the habit one, since it has a Done button), even after
+  // the habit one has already been shown.
+  return due
+    .filter((d) => d.kind === "habit" || !habitReminderKeys.has(`${d.title.toLowerCase()}|${d.at.getTime()}`))
+    .sort((a, b) => a.at - b.at);
 }
 
 function playReminderChime() {
@@ -3062,6 +3228,7 @@ document.querySelectorAll(".settings-link[data-settings-toggle]").forEach((btn) 
 // --- Family Cookbook: collapsed by default ---
 $("cookbookToggleBtn").onclick = () => {
   $("cookbookPanel").classList.toggle("hidden");
+  if (!$("cookbookPanel").classList.contains("hidden")) $("loadCookbookBtn").click();
   $("cookbookToggleBtn").querySelector("span:last-child").textContent = $("cookbookPanel").classList.contains("hidden") ? "›" : "⌄";
 };
 

@@ -60,3 +60,12 @@ export async function useMovementIdea(id, familyId, env) {
   await db.prepare("UPDATE movement_ideas SET use_count = use_count + 1 WHERE id = ?").bind(id).run();
   return json({ ok: true });
 }
+
+/** DELETE /api/movement-ideas/:id — removes an idea from this family's Planner list. */
+export async function deleteMovementIdea(id, familyId, env) {
+  const db = env.DB;
+  const existing = await db.prepare("SELECT id FROM movement_ideas WHERE id = ? AND family_id = ?").bind(id, familyId).first();
+  if (!existing) return errorResponse("Not found.", 404);
+  await db.prepare("DELETE FROM movement_ideas WHERE id = ?").bind(id).run();
+  return json({ ok: true });
+}

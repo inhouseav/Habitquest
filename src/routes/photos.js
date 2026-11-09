@@ -156,7 +156,20 @@ export async function getCookbook(request, familyId, env) {
     .bind(familyId)
     .all();
 
-  return json({ ok: true, photos: photos.results || [], favorites: favorites.results || [] });
+  // Every family recipe, with its newest photo as the cover (your own photo
+  // replaces an AI one simply by being newer), so a recipe shows up in the
+  // cookbook as soon as it's added — not only once someone photographs it.
+  const recipes = await db
+    .prepare(
+      `SELECT r.id, r.title, r.category, r.favorite,
+              (SELECT p.id FROM cookbook_photos p WHERE p.recipe_id = r.id AND p.family_id = r.family_id ORDER BY p.created_at DESC LIMIT 1) as cover_photo_id,
+              (SELECT p.source FROM cookbook_photos p WHERE p.recipe_id = r.id AND p.family_id = r.family_id ORDER BY p.created_at DESC LIMIT 1) as cover_source
+       FROM recipes r WHERE r.family_id = ? ORDER BY r.favorite DESC, r.title ASC`
+    )
+    .bind(familyId)
+    .all();
+
+  return json({ ok: true, photos: photos.results || [], favorites: favorites.results || [], recipes: recipes.results || [] });
 }
 
 const MEMORIES_THRESHOLD = 5; // photos needed to unlock the next Memories slideshow

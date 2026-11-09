@@ -48,7 +48,7 @@ async function handleHealth(env) {
     // configured on the live site (visit /api/health in a browser tab)
     // without needing to open the Cloudflare dashboard.
     ai_suggestions_configured: !!env.ANTHROPIC_API_KEY,
-    ai_photos_configured: !!env.OPENAI_API_KEY,
+    ai_photos_configured: !!(env.AI || env.OPENAI_API_KEY),
     google_calendar_configured: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
     push_notifications_configured: !!env.VAPID_PRIVATE_JWK,
     pin_lockout_ready: hasDb && dbReachable ? await familyRoutes.ensureLockoutColumns(env.DB) : false,
@@ -116,6 +116,10 @@ async function handleApi(request, env, url) {
 
   if (path === "/api/movement-ideas" && method === "GET") return movementIdeasRoutes.listMovementIdeas(request, familyId, env);
   if (path === "/api/movement-ideas" && method === "POST") return movementIdeasRoutes.addMovementIdea(request, familyId, env);
+  const movementIdeaDeleteMatch = path.match(/^\/api\/movement-ideas\/([^/]+)$/);
+  if (movementIdeaDeleteMatch && method === "DELETE") {
+    return movementIdeasRoutes.deleteMovementIdea(movementIdeaDeleteMatch[1], familyId, env);
+  }
   const movementIdeaUseMatch = path.match(/^\/api\/movement-ideas\/([^/]+)\/use$/);
   if (movementIdeaUseMatch && method === "POST") {
     return movementIdeasRoutes.useMovementIdea(movementIdeaUseMatch[1], familyId, env);
