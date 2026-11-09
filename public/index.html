@@ -296,6 +296,12 @@
       <button id="signupBtn">Create our family</button>
       <div class="error hidden" id="signupError"></div>
     </div>
+    <div class="card" id="demoCard" style="text-align:center;">
+      <p style="margin:0 0 8px;">Just want to look around first?</p>
+      <button class="secondary" id="tryDemoBtn">👀 Try a demo family</button>
+      <p class="muted" style="margin:8px 0 0; font-size:0.85rem;">Makes your own private copy of the Smith family, all filled in — play with it as much as you like.</p>
+      <div class="error hidden" id="demoError"></div>
+    </div>
   </div>
 
   <!-- HOME SCREEN -->
@@ -313,8 +319,8 @@
 
     <div class="card full-width hidden" id="invitePanel">
       <div id="signupWelcome" class="hidden" style="margin-bottom:10px;">
-        <h3 style="margin-bottom:4px;">🎉 Your family is ready!</h3>
-        <p style="margin:0;">This is your <b>family code</b>. Write it down — you'll need it <b>and your PIN</b> to log in on another phone or after logging out.</p>
+        <h3 style="margin-bottom:4px;" id="signupWelcomeTitle">🎉 Your family is ready!</h3>
+        <p style="margin:0;" id="signupWelcomeText">This is your <b>family code</b>. Write it down — you'll need it <b>and your PIN</b> to log in on another phone or after logging out.</p>
       </div>
       <h3 id="inviteHeading">Invite family</h3>
       <p class="muted" id="inviteBlurb">Share this so other family members can log in from their own device.</p>
@@ -765,12 +771,28 @@ $("loginBtn").onclick = () => withBusyButton($("loginBtn"), "Logging in...", asy
 ["loginJoinCode", "loginPin"].forEach((id) => $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") $("loginBtn").click(); }));
 ["signupFamilyName", "signupMemberName", "signupPin"].forEach((id) => $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") $("signupBtn").click(); }));
 
+$("tryDemoBtn").onclick = () => withBusyButton($("tryDemoBtn"), "Setting up the Smiths...", async () => {
+  clearError("demoError");
+  try {
+    const data = await api("/api/family/demo", { method: "POST", body: JSON.stringify({
+      today: todayStr(), tzOffsetMinutes: new Date().getTimezoneOffset(),
+    })});
+    state.token = data.token; localStorage.setItem("ftf_token", data.token);
+    await loadHome();
+    $("signupWelcomeTitle").textContent = "👋 Welcome to the Smith family!";
+    $("signupWelcomeText").innerHTML = `This is a demo family made just for you. <b>Try this:</b> tap Mia's tab and tick off her last habit to win the day 🎉 — then explore the calendar, planner and recipes. To come back to it later, log in with this code and PIN <b>${escapeHtml(data.pin)}</b>.`;
+    showSignupWelcome();
+  } catch (err) { showError("demoError", err.message); }
+});
+
 function showSignupWelcome() {
   show("signupWelcome"); show("signupWelcomeDoneBtn"); hide("inviteHeading"); hide("inviteBlurb");
   show("invitePanel");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 $("signupWelcomeDoneBtn").onclick = () => {
+  $("signupWelcomeTitle").textContent = "🎉 Your family is ready!";
+  $("signupWelcomeText").innerHTML = "This is your <b>family code</b>. Write it down — you'll need it <b>and your PIN</b> to log in on another phone or after logging out.";
   hide("signupWelcome"); hide("signupWelcomeDoneBtn"); show("inviteHeading"); show("inviteBlurb");
   hide("invitePanel");
 };
@@ -1482,7 +1504,7 @@ async function renderHabits() {
   list.querySelectorAll("button[data-habit]").forEach((btn) => {
     btn.onclick = async () => {
       try {
-        const res = await api(`/api/habits/${btn.getAttribute("data-habit")}/complete`, { method: "POST", body: JSON.stringify({}) });
+        const res = await api(`/api/habits/${btn.getAttribute("data-habit")}/complete`, { method: "POST", body: JSON.stringify({ day: todayStr() }) });
         await renderHabits();
         if (res.justWonStreak) toast(`🎉 Day won! 🔥 ${res.currentStreak} day streak!`);
         else toast("⭐ Nice work!");

@@ -70,6 +70,7 @@ async function handleApi(request, env, url) {
   if (path === "/api/health" && method === "GET") return handleHealth(env);
   if (path === "/api/family/signup" && method === "POST") return familyRoutes.signup(request, env);
   if (path === "/api/family/login" && method === "POST") return familyRoutes.login(request, env);
+  if (path === "/api/family/demo" && method === "POST") return familyRoutes.demo(request, env);
   if (path === "/api/push/public-key" && method === "GET") {
     return json({ ok: true, publicKey: env.VAPID_PUBLIC_KEY || null });
   }

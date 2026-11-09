@@ -2,6 +2,7 @@ import { json, errorResponse, readJson } from "../lib/http.js";
 import { hashPin, verifyPin, newId, newJoinCode } from "../lib/crypto.js";
 import { createSession } from "../lib/sessions.js";
 import { VALID_COLORS } from "./members.js";
+import { seedDemoFamily, DEMO_PIN } from "../lib/demoSeed.js";
 
 const MAX_NAME_LENGTH = 60;
 const PIN_MIN_LENGTH = 4;
@@ -157,4 +158,22 @@ export async function me(familyId, env) {
     family: { id: family.id, name: family.name, joinCode: family.join_code },
     members: members.results || [],
   });
+}
+
+/**
+ * POST /api/family/demo — { today: "YYYY-MM-DD", tzOffsetMinutes } -> makes a
+ * brand-new, fully filled-in demo family dated around the visitor's own
+ * today, and logs them straight into it. Every call is a separate copy.
+ */
+export async function demo(request, env) {
+  const body = (await readJson(request)) || {};
+  const today = typeof body.today === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.today)
+    ? body.today
+    : new Date().toISOString().slice(0, 10);
+  const offset = Number.isFinite(body.tzOffsetMinutes) && Math.abs(body.tzOffsetMinutes) <= 14 * 60 ? body.tzOffsetMinutes : 0;
+
+  const db = env.DB;
+  const { familyId, joinCode } = await seedDemoFamily(db, { today, tzOffsetMinutes: offset });
+  const token = await createSession(db, familyId);
+  return json({ ok: true, token, demo: true, pin: DEMO_PIN, family: { id: familyId, joinCode } });
 }

@@ -4,6 +4,12 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ "Try a demo family" button + fixed habit ticks landing on yesterday (2026-11-10)
+
+- Login screen now has **👀 Try a demo family**. Each tap builds a brand-new private "Smith Family" (Sam, Mia, Jack) dated around the visitor's own today: a full week on the calendar, Mia on a 4-day streak with 2 of 3 done (tick the last one live for "Day won! 🔥 5 day streak"), stars and rewards, popular Planner ideas, recipes, this week's meals, shopping list and check-in notes. Code is shown on screen; PIN is 0000. Built in `src/lib/demoSeed.js`, route `POST /api/family/demo`. Uses only existing tables — no migration needed.
+- **Bug fixed:** ticking a habit didn't send the phone's local date, so the server used UK time. In Australia before 11am that's yesterday, so morning ticks were saved to the wrong day ("Already ticked off for today"). Now sends the local date.
+- Tested on an iPhone-sized browser in Sydney time against a local copy of the API: every card populated, two visitors get separate copies, logging back in with code + 0000 works, and the full sign-up journey still passes.
+
 ## ✅ Demo-night end-to-end test + fixes (2026-11-10)
 
 Tested the full journey on an iPhone-sized browser against a local copy of the API with a fresh database built from every migration (sign up → add a child → pick 3 habits → win the day → stars → calendar event → planner → expand calendar → reward → recipe → meal → shopping → refresh → log out/in → wrong PIN). Everything passed once these were fixed:
