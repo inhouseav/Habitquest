@@ -255,6 +255,8 @@
   #devNoteBody { padding: 14px; }
   #devNoteCaptureRow { display: flex; gap: 6px; flex-wrap: wrap; }
   #devNoteCaptureRow button { margin: 0; }
+  #devNoteStatus { border-radius: 8px; padding: 8px 10px; font-size: 0.82rem; margin: 10px 0 0; background: #eef4ea; }
+  #devNoteStatus.err { background: #fde2de; }
   #devNoteSelectHint { background: #fff6ee; border-radius: 8px; padding: 8px 10px; font-size: 0.82rem; margin: 10px 0 0; }
   #devNotePreviewWrap { margin-top: 10px; }
   #devNotePreviewImg { width: 100%; max-height: 160px; object-fit: contain; border-radius: 8px; border: 1px solid #eee3cf; background: #faf6ed; display: block; }
@@ -662,12 +664,11 @@
   </div>
   <div id="devNoteBody">
     <div id="devNoteCaptureRow">
-      <button type="button" class="small secondary" id="devNoteSelectSectionBtn">📐 Capture a section</button>
-      <button type="button" class="small secondary" id="devNoteWholePageBtn">🖥️ Capture whole page</button>
+      <button type="button" class="small secondary" id="devNoteRetakeBtn">📸 Retake screenshot</button>
       <button type="button" class="small secondary" id="devNoteUploadBtn">📁 Upload image</button>
       <input type="file" id="devNoteFileInput" accept="image/*" class="hidden" />
     </div>
-    <p id="devNoteSelectHint" class="hidden">Click the part of the page you want to capture. (Esc to cancel.)</p>
+    <p id="devNoteStatus" class="hidden"></p>
     <div id="devNotePreviewWrap" class="hidden">
       <img id="devNotePreviewImg" alt="Captured preview" />
       <button type="button" class="small secondary" id="devNoteClearImageBtn">✕ Remove image</button>
@@ -692,7 +693,7 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="/vendor/html2canvas.min.js"></script>
 <script>
 let state = { token: localStorage.getItem("ftf_token") || null, family: null, members: [] };
 
@@ -2910,7 +2911,11 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
   function openPanel() { panel.classList.remove("hidden"); }
   function closePanel() { panel.classList.add("hidden"); stopSelecting(); }
 
-  fab.onclick = () => { panel.classList.toggle("hidden"); if (!panel.classList.contains("hidden")) openPanel(); };
+  fab.onclick = async () => {
+    if (!panel.classList.contains("hidden")) { closePanel(); return; }
+    openPanel();
+    if (!capturedDataUrl) await captureScreen();
+  };
   $("devNoteCloseBtn").onclick = closePanel;
 
   function showPreview(dataUrl, label) {
@@ -2920,63 +2925,62 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
     $("devNotePreviewWrap").classList.remove("hidden");
   }
   $("devNoteClearImageBtn").onclick = () => {
+    setStatus("");
     capturedDataUrl = null; capturedLabel = "";
     $("devNotePreviewImg").src = "";
     $("devNotePreviewWrap").classList.add("hidden");
   };
 
+  function setStatus(msg, isError = false) {
+    const el = $("devNoteStatus");
+    if (!msg) { el.classList.add("hidden"); return; }
+    el.textContent = msg;
+    el.classList.toggle("err", isError);
+    el.classList.remove("hidden");
+  }
+
   async function captureElement(el, label) {
-    if (!window.html2canvas) { toast("Screenshot tool didn't load — try Upload image instead.", true); return; }
-    panel.classList.add("hidden"); // don't capture the tool itself
-    await new Promise((r) => setTimeout(r, 50));
-    try {
-      const canvas = await html2canvas(el, { backgroundColor: "#ffffff", useCORS: true, scale: Math.min(window.devicePixelRatio || 1, 2) });
-      showPreview(canvas.toDataURL("image/png"), label);
-    } catch (err) {
-      toast("Couldn't capture that — try Upload image instead.", true);
+    if (!window.html2canvas) {
+      setStatus("The screenshot tool didn't load on this device. Use your computer's own screenshot (Mac: Cmd+Shift+4) and then 📁 Upload image.", true);
+      return;
     }
-    panel.classList.remove("hidden");
+    setStatus("📸 Capturing...");
+    panel.classList.add("hidden"); // don't capture the tool itself
+    fab.style.visibility = "hidden";
+    await new Promise((r) => setTimeout(r, 60));
+    try {
+      // Just what's on screen right now: crop the page to the visible window.
+      const canvas = await html2canvas(el, {
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        logging: false,
+        scale: Math.min(window.devicePixelRatio || 1, 2),
+        x: window.scrollX,
+        y: window.scrollY,
+        width: document.documentElement.clientWidth,
+        height: window.innerHeight,
+      });
+      showPreview(canvas.toDataURL("image/png"), label);
+      setStatus("✅ Captured! Now type what should change and tap Save note.");
+    } catch (err) {
+      setStatus(`Couldn't capture that (${(err && err.message) || "unknown error"}). Try Capture whole page, or take your own screenshot and 📁 Upload image.`, true);
+    } finally {
+      fab.style.visibility = "";
+      panel.classList.remove("hidden");
+    }
   }
 
-  $("devNoteWholePageBtn").onclick = () => captureElement(document.body, "Whole page");
-
-  function stopSelecting() {
-    selecting = false;
-    document.body.style.cursor = "";
-    $("devNoteSelectHint").classList.add("hidden");
-    if (hoveredEl) { hoveredEl.classList.remove("devnote-highlight"); hoveredEl = null; }
-    document.removeEventListener("mouseover", onHover, true);
-    document.removeEventListener("click", onSelectClick, true);
-    document.removeEventListener("keydown", onEscKey, true);
+  function screenLabel() {
+    // Name the card nearest the middle of the screen, so the note says
+    // roughly where on the page it was taken ("Planner", "Calendar"...).
+    const el = document.elementFromPoint(window.innerWidth / 3, window.innerHeight / 2);
+    const card = el && el.closest(".card");
+    const h = card && card.querySelector("h2, h3");
+    return h ? h.textContent.trim() : "Screen";
   }
-
-  function onHover(evt) {
-    if (panel.contains(evt.target) || evt.target === fab) return;
-    if (hoveredEl) hoveredEl.classList.remove("devnote-highlight");
-    hoveredEl = evt.target;
-    hoveredEl.classList.add("devnote-highlight");
-  }
-
-  function onSelectClick(evt) {
-    if (panel.contains(evt.target) || evt.target === fab) return;
-    evt.preventDefault(); evt.stopPropagation();
-    const el = evt.target;
-    const label = (el.closest(".card") && el.closest(".card").querySelector("h3")?.textContent) || el.tagName.toLowerCase();
-    stopSelecting();
-    captureElement(el, label.trim());
-  }
-
-  function onEscKey(evt) { if (evt.key === "Escape") stopSelecting(); }
-
-  $("devNoteSelectSectionBtn").onclick = () => {
-    if (selecting) return;
-    selecting = true;
-    document.body.style.cursor = "crosshair";
-    $("devNoteSelectHint").classList.remove("hidden");
-    document.addEventListener("mouseover", onHover, true);
-    document.addEventListener("click", onSelectClick, true);
-    document.addEventListener("keydown", onEscKey, true);
-  };
+  function captureScreen() { return captureElement(document.body, screenLabel()); }
+  $("devNoteRetakeBtn").onclick = captureScreen;
+  function stopSelecting() {}
 
   $("devNoteUploadBtn").onclick = () => $("devNoteFileInput").click();
   $("devNoteFileInput").onchange = () => {
