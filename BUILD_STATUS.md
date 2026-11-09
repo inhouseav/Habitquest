@@ -4,6 +4,15 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Bonus habits, times on planned habits, popup reminders (2026-11-10)
+
+From Maddie's 💡 note ("add times… popup reminder… more than 3 tasks"):
+- **Bonus habits:** up to 2 extra per person (✨ in the habit editor). Ticking one earns a star but it's never needed to win the day — "do all 3 to win" stays the rule. Tables `bonus_habits` / `bonus_completions` are created by the app itself (`src/lib/schemaUpgrades.js`; record in migration 018).
+- **Times on planned habits:** in "Plan my week" each planned day has an optional ⏰ time (column `habit_day_plan.time`, also auto-added).
+- **Popup reminders (in-app):** while the app is open, today's calendar events and timed planned habits pop up at their time with a chime; habit popups have ✅ Done which ticks it. Only once per device per day; skipped if more than 30 min late. If a person is picked under Notifications ("who's using this device"), only their reminders + whole-family events show. Phone notifications when the app is closed are not built (needs push setup + a scheduled job).
+- **Fix:** editing habits used to delete and re-create them, wiping that person's ticks; now updates in place.
+- Demo family gets bonus habits too. Tested on a phone in Sydney time with a faked clock (3:58pm → event popup at 4:00, habit popup at 4:05 → Done → day won), on a database without the new tables.
+
 ## ✅ 💡 Dev notes: save as you go, export all at once (2026-11-10)
 
 The 💡 tool (turn on once with `?dev=1`) now keeps a list: capture/upload a screenshot + type a note → **➕ Save note**, repeat as many times as you like. Notes are kept in that browser (IndexedDB) so they survive a refresh; the 💡 shows a count. **⬇️ Export all for Claude** downloads one `.md` with every note numbered plus each screenshot as `…-01.png`, `…-02.png` (numbers match). Also **📋 Copy all text** and two-tap **🗑 Clear all**. Tested: save, refresh, export contents, delete, clear.

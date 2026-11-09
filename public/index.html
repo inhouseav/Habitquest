@@ -59,6 +59,14 @@
   .recipe-detail ul, .recipe-detail ol { margin: 4px 0; padding-left: 20px; }
   .recipe-detail li { margin-bottom: 2px; }
   .loading-text { opacity: 0.5; font-size: 0.85rem; font-style: italic; }
+  #reminderPopup { position: fixed; inset: 0; z-index: 3000; background: rgba(24, 63, 53, 0.35); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  #reminderPopup.hidden { display: none; }
+  #reminderCard { background: #fffdf7; border-radius: 22px; padding: 22px 22px 18px; width: min(360px, 100%); box-shadow: 0 14px 40px rgba(0,0,0,0.25); text-align: center; animation: reminderPop 0.25s ease; }
+  #reminderEmoji { font-size: 2.6rem; line-height: 1; }
+  #reminderWhen { font-weight: 700; color: var(--terracotta); margin-top: 8px; font-size: 0.9rem; }
+  #reminderTitle { font-size: 1.35rem; font-weight: 700; margin-top: 4px; }
+  #reminderWho { margin-top: 2px; }
+  @keyframes reminderPop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--text); color: #fff; padding: 12px 22px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease; font-size: 0.9rem; max-width: 90vw; text-align: center; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.error { background: var(--danger); }
@@ -219,6 +227,10 @@
   .meal-day-items { display: flex; flex-direction: column; gap: 5px; flex: 1; }
   .meal-type-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .meal-type-label { font-size: 0.68rem; font-weight: 700; opacity: 0.55; flex-shrink: 0; }
+  .habit-row-btn.bonus { border-style: dashed; }
+  .habit-plan-item { display: inline-flex; align-items: center; gap: 4px; background: #fff; border: 1px solid #eee3cf; border-radius: 999px; padding: 2px 4px 2px 10px; font-size: 0.78rem; }
+  .habit-plan-item input[type=time] { width: auto; margin: 0; padding: 2px 4px; font-size: 0.75rem; border-radius: 8px; min-height: 0; }
+  .habit-plan-item button { width: auto; margin: 0; padding: 2px 6px; background: none; color: #999; border: none; font-size: 0.8rem; cursor: pointer; }
   .meal-chip { background: #fff; color: var(--text); border: 1px solid #eee3cf; border-radius: 999px; padding: 5px 12px; font-size: 0.78rem; cursor: pointer; margin: 0; width: auto; }
   .meal-chip.open { background: var(--sage); color: var(--text); }
   .habit-plan-day-row.drag-over { background: #fff6ee; border-radius: 10px; }
@@ -650,6 +662,19 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="reminderPopup" class="hidden" role="alertdialog" aria-live="assertive">
+  <div id="reminderCard">
+    <div id="reminderEmoji">⏰</div>
+    <div id="reminderWhen"></div>
+    <div id="reminderTitle"></div>
+    <div id="reminderWho" class="muted"></div>
+    <div style="display:flex; gap:8px; margin-top:14px;">
+      <button type="button" id="reminderDoneBtn" class="hidden" style="margin:0;">✅ Done!</button>
+      <button type="button" id="reminderOkBtn" class="secondary" style="margin:0;">OK</button>
+    </div>
+    <p class="muted hidden" id="reminderMore" style="font-size:0.75rem; margin:8px 0 0;"></p>
+  </div>
+</div>
 
 <!-- Dev note tool: click the lightbulb to capture a screenshot (a section
      or the whole page) or upload your own image, write a note about what
@@ -821,6 +846,7 @@ $("signupWelcomeDoneBtn").onclick = () => {
 
 $("logoutBtn").onclick = () => {
   localStorage.removeItem("ftf_token"); state.token = null; state.family = null;
+  reminderQueue = []; reminderCurrent = null; hide("reminderPopup"); lastHabitsData = null;
   if (window.refreshDevFab) window.refreshDevFab();
   $("signupWelcomeDoneBtn").onclick();
   hide("homeScreen"); show("authScreen");
@@ -849,6 +875,7 @@ async function loadHome() {
   ));
   await refreshNotifyUi();
   await refreshGoogleCalUi();
+  startReminders();
 }
 
 function renderMembers() {
@@ -1433,8 +1460,10 @@ let habitsActiveMemberId = null;
 let habitDayPlanItems = [];
 let habitPlanPicking = null; // { memberId, slot, title } — which chip is mid-pick-a-day
 let habitPlanExpandedMembers = new Set(); // memberIds whose "📅 Plan my week" is open — closed by default, kid's daily view stays to just the 3 habits
+let lastHabitsData = null; // latest /api/habits response (reminders use it for titles + ticking)
 async function renderHabits() {
   const data = await api("/api/habits?day=" + todayStr());
+  lastHabitsData = data;
   const list = $("habitsList"); list.innerHTML = "";
 
   const planWeekStart = mondayOfWeek();
@@ -1509,9 +1538,26 @@ async function renderHabits() {
           </div>`
         : "";
 
+      const bonusList = m.bonusHabits || [];
+      const bonusHtml = bonusList.length
+        ? `<div style="margin-top:10px;">
+            <p class="muted" style="font-size:0.72rem; font-weight:700; margin:0 0 4px;">✨ BONUS — extra stars, not needed to win</p>
+            <div class="habit-rows">${bonusList.map((b) => `
+              <div style="display:flex; align-items:center; gap:6px;">
+                <button class="habit-row-btn bonus ${b.completed ? 'done' : ''}" data-bonus-habit="${b.id}" ${b.completed ? 'disabled' : ''} style="flex:1;">
+                  <span class="habit-check" style="font-size:1.1rem;">${b.completed ? '✓' : '○'}</span>
+                  <span style="font-size:1rem; flex-shrink:0;">${b.emoji || "✨"}</span>
+                  <span class="habit-title" style="font-weight:600;">${escapeHtml(b.title)}</span>
+                </button>
+              </div>`).join("")}
+            </div>
+          </div>`
+        : "";
+
       const planExpanded = habitPlanExpandedMembers.has(m.memberId);
       bodyHtml = `<div class="habit-rows">${habitsHtml}</div>
         ${progressLine}
+        ${bonusHtml}
         <div id="googleTodayItemsWrap" data-member="${m.memberId}" style="margin-top:6px;"></div>
         <div style="margin-top:12px; padding-top:10px; border-top:1px dashed #eee3cf;">
           <button type="button" class="small secondary" data-toggle-habit-plan="${m.memberId}" style="margin:0;">📅 Plan my week ${planExpanded ? "▴" : "▾"}</button>
@@ -1532,6 +1578,16 @@ async function renderHabits() {
         await renderHabits();
         if (res.justWonStreak) toast(`🎉 Day won! 🔥 ${res.currentStreak} day streak!`);
         else toast("⭐ Nice work!");
+      } catch (err) { toast(err.message, true); }
+    };
+  });
+
+  list.querySelectorAll("button[data-bonus-habit]").forEach((btn) => {
+    btn.onclick = async () => {
+      try {
+        await api(`/api/habits/bonus/${btn.getAttribute("data-bonus-habit")}/complete`, { method: "POST", body: JSON.stringify({ day: todayStr() }) });
+        await renderHabits();
+        toast("✨ Bonus star!");
       } catch (err) { toast(err.message, true); }
     };
   });
@@ -1561,8 +1617,13 @@ async function renderHabits() {
         const emoji = form.querySelector(`[name="emoji${slot}"]`).value.trim();
         return title ? { slot, title, emoji } : null;
       }).filter(Boolean);
+      const bonus = BONUS_SLOTS.map((slot) => {
+        const title = form.querySelector(`[name="title${slot}"]`).value.trim();
+        const emoji = form.querySelector(`[name="emoji${slot}"]`).value.trim();
+        return title ? { slot, title, emoji } : null;
+      }).filter(Boolean);
       try {
-        await api("/api/habits/set", { method: "POST", body: JSON.stringify({ memberId, habits }) });
+        await api("/api/habits/set", { method: "POST", body: JSON.stringify({ memberId, habits, bonus }) });
         habitEditingMemberId = null;
         await renderHabits();
         toast("Habits saved!");
@@ -1617,6 +1678,17 @@ async function renderHabits() {
       } catch (err) { toast(err.message, true); }
     };
   });
+  list.querySelectorAll("[data-habit-plan-time]").forEach((input) => {
+    input.onchange = async () => {
+      const id = input.getAttribute("data-habit-plan-time");
+      try {
+        await api(`/api/habit-day-plan/${id}/time`, { method: "POST", body: JSON.stringify({ time: input.value || null }) });
+        const item = habitDayPlanItems.find((it) => it.id === id);
+        if (item) item.time = input.value || null;
+        toast(input.value ? `⏰ Reminder set for ${formatClock(input.value)}` : "Reminder removed");
+      } catch (err) { toast(err.message, true); }
+    };
+  });
   list.querySelectorAll(".habit-plan-day-row").forEach((row) => {
     row.ondragover = (evt) => { evt.preventDefault(); row.classList.add("drag-over"); };
     row.ondragleave = () => row.classList.remove("drag-over");
@@ -1659,7 +1731,9 @@ function habitWeekPlanHtml(m, weekStart) {
     const chips = dayItems.map((it) => {
       const h = myHabits.find((hh) => hh.slot === it.slot);
       const title = h ? `${h.emoji ? h.emoji + " " : ""}${h.title}` : HABIT_SLOT_META[it.slot].label;
-      return `<button type="button" class="meal-chip" data-habit-plan-remove="${it.id}">${escapeHtml(title)} ✕</button>`;
+      return `<span class="habit-plan-item">${escapeHtml(title)}
+        <span title="Reminder time (optional)">⏰</span><input type="time" data-habit-plan-time="${it.id}" value="${escapeAttr(it.time || "")}" aria-label="Reminder time for ${escapeAttr(title)}" />
+        <button type="button" data-habit-plan-remove="${it.id}" title="Remove from this day">✕</button></span>`;
     }).join("");
     return `<div class="meal-day-row habit-plan-day-row" data-habit-plan-day="${day}">
       <div class="meal-day-label">${label}</div>
@@ -1668,7 +1742,7 @@ function habitWeekPlanHtml(m, weekStart) {
   }).join("");
 
   return `<div class="habit-week-plan" style="margin-top:10px;">
-    <p class="muted" style="font-size:0.72rem; font-weight:700; margin:0 0 6px;">Drag or tap a habit onto a day</p>
+    <p class="muted" style="font-size:0.72rem; font-weight:700; margin:0 0 6px;">Drag or tap a habit onto a day — add a ⏰ time if you want a reminder</p>
     <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px;">${paletteHtml}</div>
     ${pickerHtml}
     <div>${weekListHtml}</div>
@@ -1715,7 +1789,18 @@ async function loadGoogleTodayItems(wrap) {
   } catch (err) { wrap.innerHTML = ""; } // quietly give up — bonus feature, not core
 }
 
+const BONUS_SLOTS = [4, 5];
 function habitEditFormHtml(m) {
+  const bonusInputs = BONUS_SLOTS.map((slot) => {
+    const existing = (m.bonusHabits || []).find((b) => b.slot === slot);
+    return `<div style="display:flex; gap:6px; margin-top:4px;">
+      <input name="emoji${slot}" placeholder="✨" maxlength="4" value="${existing ? escapeAttr(existing.emoji) : ''}" style="width:48px; text-align:center;" />
+      <input name="title${slot}" placeholder="${slot === 4 ? "e.g. Read for 15 mins" : "e.g. Drink 4 glasses of water"}" value="${existing ? escapeAttr(existing.title) : ''}" style="flex:1;" />
+    </div>`;
+  }).join("");
+  const bonusSection = `<label style="margin-top:14px; font-size:0.78rem; font-weight:700; opacity:0.7;">✨ Bonus habits (optional)</label>
+    <p class="muted" style="font-size:0.72rem; margin:2px 0 0;">Extra stars if you do them — you still only need your 3 to win the day.</p>
+    ${bonusInputs}`;
   const slots = [1, 2, 3].map((slot) => {
     const existing = m.habits.find((h) => h.slot === slot);
     const meta = HABIT_SLOT_META[slot];
@@ -1727,6 +1812,7 @@ function habitEditFormHtml(m) {
   }).join("");
   return `<form data-habit-form="${m.memberId}">
     ${slots}
+    ${bonusSection}
     <div style="display:flex; gap:8px; margin-top:10px;">
       <button class="small" type="submit">Save</button>
       <button class="small secondary" type="button" data-cancel-edit>Cancel</button>
@@ -2792,6 +2878,140 @@ $("aiSuggestBtn").onclick = async () => {
     $("aiSuggestBtn").textContent = "Get an idea";
   }
 };
+
+// --- Popup reminders (in-app) ---
+// While the app is open, anything with a time today pops up when it's due:
+// calendar events, and habits planned onto today with a ⏰ time. If someone
+// has picked "who's using this device" (Notifications), only their things +
+// whole-family events pop up; otherwise everyone's do. Each reminder shows
+// once (remembered per device per day). Anything missed by more than 30
+// minutes (e.g. the app was closed) is skipped rather than popping up late.
+const REMINDER_LATE_LIMIT_MS = 30 * 60 * 1000;
+let reminderTimer = null;
+let reminderQueue = [];
+let reminderCurrent = null;
+
+function formatClock(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+function reminderShownSet() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("ftf_reminders_shown") || "{}");
+    return saved.day === todayStr() ? new Set(saved.keys || []) : new Set();
+  } catch (err) { return new Set(); }
+}
+function markReminderShown(key) {
+  const shown = reminderShownSet(); shown.add(key);
+  try { localStorage.setItem("ftf_reminders_shown", JSON.stringify({ day: todayStr(), keys: [...shown] })); } catch (err) {}
+}
+function reminderDeviceMember() {
+  let id = null;
+  try { id = localStorage.getItem("ftf_notify_member"); } catch (err) {}
+  return id && state.members.some((m) => m.id === id) ? id : null;
+}
+
+function collectDueReminders(now = new Date()) {
+  const today = todayStr();
+  const shown = reminderShownSet();
+  const who = reminderDeviceMember();
+  const due = [];
+  const isDue = (at) => now >= at && now - at <= REMINDER_LATE_LIMIT_MS;
+
+  (typeof allEvents !== "undefined" ? allEvents : []).forEach((e) => {
+    if (!e.starts_at || !eventInvolvesMember(e, who || "all")) return;
+    if (!eventOccurrenceKeys(e, today, today).includes(today)) return;
+    const start = new Date(e.starts_at);
+    const at = new Date(`${today}T${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}:00`);
+    const key = `ev:${e.id}:${today}`;
+    if (shown.has(key) || !isDue(at)) return;
+    const { who: whoLabel } = eventWhoAndColor(e);
+    due.push({ key, at, emoji: e.pillar === "fuel" ? "🍽️" : e.pillar === "grow" ? "🌱" : e.pillar === "move" ? "🏃" : "📅", title: e.title, who: whoLabel || "" });
+  });
+
+  const members = (lastHabitsData && lastHabitsData.members) || [];
+  habitDayPlanItems.forEach((it) => {
+    if (it.day !== today || !it.time) return;
+    if (who && it.memberId !== who) return;
+    const m = members.find((mm) => mm.memberId === it.memberId);
+    const h = m && m.habits.find((hh) => hh.slot === it.slot);
+    if (!h) return;
+    const at = new Date(`${today}T${it.time}:00`);
+    const key = `hp:${it.id}`;
+    if (shown.has(key) || !isDue(at)) return;
+    due.push({ key, at, emoji: h.emoji || HABIT_SLOT_META[it.slot].emoji, title: h.title, who: m.displayName, habitId: h.completed ? null : h.id });
+  });
+  return due.sort((a, b) => a.at - b.at);
+}
+
+function playReminderChime() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    [[880, 0], [1175, 0.18]].forEach(([freq, t]) => {
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.type = "sine"; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + t);
+      gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.35);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(ctx.currentTime + t); osc.stop(ctx.currentTime + t + 0.4);
+    });
+    setTimeout(() => ctx.close(), 1200);
+  } catch (err) {}
+}
+
+function showNextReminder() {
+  if (reminderCurrent || !reminderQueue.length) return;
+  reminderCurrent = reminderQueue.shift();
+  const r = reminderCurrent;
+  markReminderShown(r.key);
+  $("reminderEmoji").textContent = r.emoji;
+  $("reminderWhen").textContent = `⏰ ${r.at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+  $("reminderTitle").textContent = r.habitId ? `Time for: ${r.title}` : r.title;
+  $("reminderWho").textContent = r.who || "";
+  $("reminderDoneBtn").classList.toggle("hidden", !r.habitId);
+  $("reminderMore").classList.toggle("hidden", !reminderQueue.length);
+  $("reminderMore").textContent = reminderQueue.length ? `+${reminderQueue.length} more reminder${reminderQueue.length === 1 ? "" : "s"}` : "";
+  show("reminderPopup");
+  playReminderChime();
+  // Also a system notification if this browser already allows them (helps
+  // when the app is open in a background tab). Never asks on its own.
+  try {
+    if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+      new Notification(`⏰ ${r.title}`, { body: r.who ? `${r.who} · now` : "Now" });
+    }
+  } catch (err) {}
+}
+function closeReminder() {
+  hide("reminderPopup");
+  reminderCurrent = null;
+  setTimeout(showNextReminder, 300);
+}
+$("reminderOkBtn").onclick = closeReminder;
+$("reminderDoneBtn").onclick = async () => {
+  const r = reminderCurrent;
+  closeReminder();
+  if (!r || !r.habitId) return;
+  try {
+    const res = await api(`/api/habits/${r.habitId}/complete`, { method: "POST", body: JSON.stringify({ day: todayStr() }) });
+    await renderHabits();
+    toast(res.justWonStreak ? `🎉 Day won! 🔥 ${res.currentStreak} day streak!` : "⭐ Nice work!");
+  } catch (err) { toast(err.message, true); }
+};
+
+function checkReminders() {
+  if (!state.token || $("homeScreen").classList.contains("hidden")) return;
+  const queued = new Set([...(reminderCurrent ? [reminderCurrent.key] : []), ...reminderQueue.map((r) => r.key)]);
+  collectDueReminders().forEach((r) => { if (!queued.has(r.key)) reminderQueue.push(r); });
+  showNextReminder();
+}
+function startReminders() {
+  if (reminderTimer) return;
+  reminderTimer = setInterval(checkReminders, 20000);
+  setTimeout(checkReminders, 1500);
+}
 
 // --- Google Calendar ---
 async function refreshGoogleCalUi() {

@@ -123,6 +123,10 @@ async function handleApi(request, env, url) {
   if (path === "/api/habits" && method === "GET") return habitRoutes.getHabits(request, familyId, env);
   if (path === "/api/habits/completions" && method === "GET") return habitRoutes.listCompletions(familyId, env);
   if (path === "/api/habits/set" && method === "POST") return habitRoutes.setHabits(request, familyId, env);
+  const bonusCompleteMatch = path.match(/^\/api\/habits\/bonus\/([^/]+)\/complete$/);
+  if (bonusCompleteMatch && method === "POST") {
+    return habitRoutes.completeBonusHabit(bonusCompleteMatch[1], request, familyId, env);
+  }
   const habitCompleteMatch = path.match(/^\/api\/habits\/([^/]+)\/complete$/);
   if (habitCompleteMatch && method === "POST") {
     return habitRoutes.completeHabit(habitCompleteMatch[1], request, familyId, env);
@@ -130,6 +134,10 @@ async function handleApi(request, env, url) {
 
   if (path === "/api/habit-day-plan" && method === "GET") return habitDayPlanRoutes.listHabitDayPlan(request, familyId, env);
   if (path === "/api/habit-day-plan" && method === "POST") return habitDayPlanRoutes.addHabitDayPlan(request, familyId, env);
+  const habitDayPlanTimeMatch = path.match(/^\/api\/habit-day-plan\/([^/]+)\/time$/);
+  if (habitDayPlanTimeMatch && method === "POST") {
+    return habitDayPlanRoutes.setHabitDayPlanTime(habitDayPlanTimeMatch[1], request, familyId, env);
+  }
   const habitDayPlanDeleteMatch = path.match(/^\/api\/habit-day-plan\/([^/]+)$/);
   if (habitDayPlanDeleteMatch && method === "DELETE") {
     return habitDayPlanRoutes.deleteHabitDayPlan(habitDayPlanDeleteMatch[1], familyId, env);

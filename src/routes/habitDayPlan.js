@@ -1,5 +1,10 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
+import { ensureHabitPlanTime } from "../lib/schemaUpgrades.js";
+
+function validTime(t) {
+  return typeof t === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
+}
 
 function validDay(day) {
   return typeof day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(day);
@@ -14,8 +19,9 @@ export async function listHabitDayPlan(request, familyId, env) {
     return errorResponse("startDay and endDay must be formatted YYYY-MM-DD.");
   }
 
+  const hasTime = await ensureHabitPlanTime(env.DB);
   const rows = await env.DB.prepare(
-    "SELECT id, member_id as memberId, slot, day FROM habit_day_plan WHERE family_id = ? AND day BETWEEN ? AND ? ORDER BY day ASC"
+    `SELECT id, member_id as memberId, slot, day${hasTime ? ", time" : ""} FROM habit_day_plan WHERE family_id = ? AND day BETWEEN ? AND ? ORDER BY day ASC`
   )
     .bind(familyId, startDay, endDay)
     .all();
@@ -54,4 +60,17 @@ export async function deleteHabitDayPlan(id, familyId, env) {
   if (!existing) return errorResponse("Not found.", 404);
   await db.prepare("DELETE FROM habit_day_plan WHERE id = ?").bind(id).run();
   return json({ ok: true });
+}
+
+/** POST /api/habit-day-plan/:id/time — { time: "HH:MM" } sets a reminder time; { time: null } clears it. */
+export async function setHabitDayPlanTime(id, request, familyId, env) {
+  const body = (await readJson(request)) || {};
+  const time = body.time === null || body.time === "" ? null : body.time;
+  if (time !== null && !validTime(time)) return errorResponse("Time must look like 16:30.");
+  const db = env.DB;
+  if (!(await ensureHabitPlanTime(db))) return errorResponse("Times aren't available right now.", 500);
+  const existing = await db.prepare("SELECT id FROM habit_day_plan WHERE id = ? AND family_id = ?").bind(id, familyId).first();
+  if (!existing) return errorResponse("Not found.", 404);
+  await db.prepare("UPDATE habit_day_plan SET time = ? WHERE id = ?").bind(time, id).run();
+  return json({ ok: true, id, time });
 }

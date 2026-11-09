@@ -9,6 +9,7 @@
 
 import { hashPin, newId, newJoinCode } from "./crypto.js";
 import { VALID_COLORS } from "../routes/members.js";
+import { ensureBonusTables } from "./schemaUpgrades.js";
 
 export const DEMO_PIN = "0000";
 export const DEMO_FAMILY_NAME = "The Smith Family";
@@ -105,6 +106,18 @@ export async function seedDemoFamily(db, { today, tzOffsetMinutes = 0 }) {
     .forEach(([member, delta, reason]) =>
       add("INSERT INTO star_ledger (id, family_id, member_id, delta, reason, idempotency_key) VALUES (?, ?, ?, ?, ?, ?)",
         newId(), familyId, member, delta, reason, `demo:${newId()}`));
+
+  // --- Bonus habits (only if this database has them set up) ---
+  if (await ensureBonusTables(db)) {
+    const bonusRead = newId();
+    add("INSERT INTO bonus_habits (id, family_id, member_id, slot, title, emoji) VALUES (?, ?, ?, ?, ?, ?)", bonusRead, familyId, mia, 4, "Read for 15 mins", "📚");
+    add("INSERT INTO bonus_habits (id, family_id, member_id, slot, title, emoji) VALUES (?, ?, ?, ?, ?, ?)", newId(), familyId, jack, 4, "Practise piano", "🎹");
+    const ledgerId = newId();
+    add("INSERT INTO star_ledger (id, family_id, member_id, delta, reason, idempotency_key) VALUES (?, ?, ?, 1, ?, ?)",
+      ledgerId, familyId, mia, `Bonus: "Read for 15 mins" on ${addDays(today, -1)}`, `bonus:${bonusRead}:${addDays(today, -1)}`);
+    add("INSERT INTO bonus_completions (id, bonus_habit_id, member_id, family_id, day, star_ledger_id) VALUES (?, ?, ?, ?, ?, ?)",
+      newId(), bonusRead, mia, familyId, addDays(today, -1), ledgerId);
+  }
 
   // --- Reward shop ---
   [["Choose Saturday breakfast 🥞", 8], ["Pick the movie for movie night 🎬", 12], ["Extra 30 minutes at the park 🛝", 5]]
