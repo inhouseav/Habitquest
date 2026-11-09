@@ -2865,7 +2865,7 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
   // Hidden for visitors. Open the app once with ?dev=1 on the end of the
   // address to turn it on for that browser (?dev=0 turns it off again).
   const devMode = (() => {
-    const q = new URLSearchParams(location.search).get("dev");
+    const q = new URLSearchParams(location.search).get("dev") || (location.hash === "#dev" ? "1" : null);
     try {
       if (q === "1") localStorage.setItem("ftf_dev", "1");
       if (q === "0") localStorage.removeItem("ftf_dev");
@@ -2873,6 +2873,28 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
     } catch (err) { return q === "1"; }
   })();
   if (!devMode) fab.style.display = "none";
+
+  // No-link way to switch it on/off: tap the big title 5 times quickly
+  // (works on the login screen and on your family's home screen).
+  let titleTaps = 0, titleTapTimer = null;
+  function onTitleTap() {
+    titleTaps++;
+    clearTimeout(titleTapTimer);
+    titleTapTimer = setTimeout(() => { titleTaps = 0; }, 1500);
+    if (titleTaps < 5) return;
+    titleTaps = 0;
+    const turningOn = fab.style.display === "none";
+    try { if (turningOn) localStorage.setItem("ftf_dev", "1"); else localStorage.removeItem("ftf_dev"); } catch (err) {}
+    fab.style.display = turningOn ? "" : "none";
+    if (!turningOn) closePanel();
+    if (turningOn) renderNotes();
+    toast(turningOn ? "💡 Notes tool is on for this device" : "💡 Notes tool hidden");
+  }
+  document.querySelectorAll("#authScreen h1, #familyNameHeading").forEach((h) => {
+    h.addEventListener("click", onTitleTap);
+    h.style.userSelect = "none";
+    h.style.webkitUserSelect = "none";
+  });
 
   function openPanel() { panel.classList.remove("hidden"); }
   function closePanel() { panel.classList.add("hidden"); stopSelecting(); }
