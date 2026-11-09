@@ -4,6 +4,11 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ 💡 Dev notes: save as you go, export all at once (2026-11-10)
+
+The 💡 tool (turn on once with `?dev=1`) now keeps a list: capture/upload a screenshot + type a note → **➕ Save note**, repeat as many times as you like. Notes are kept in that browser (IndexedDB) so they survive a refresh; the 💡 shows a count. **⬇️ Export all for Claude** downloads one `.md` with every note numbered plus each screenshot as `…-01.png`, `…-02.png` (numbers match). Also **📋 Copy all text** and two-tap **🗑 Clear all**. Tested: save, refresh, export contents, delete, clear.
+Also: the Google Calendar panel now says plainly when Google linking isn't switched on (no keys on the server) instead of a broken Connect button.
+
 ## ✅ "Try a demo family" button + fixed habit ticks landing on yesterday (2026-11-10)
 
 - Login screen now has **👀 Try a demo family**. Each tap builds a brand-new private "Smith Family" (Sam, Mia, Jack) dated around the visitor's own today: a full week on the calendar, Mia on a 4-day streak with 2 of 3 done (tick the last one live for "Day won! 🔥 5 day streak"), stars and rewards, popular Planner ideas, recipes, this week's meals, shopping list and check-in notes. Code is shown on screen; PIN is 0000. Built in `src/lib/demoSeed.js`, route `POST /api/family/demo`. Uses only existing tables — no migration needed.

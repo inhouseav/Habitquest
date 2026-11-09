@@ -260,7 +260,15 @@
   #devNotePreviewImg { width: 100%; max-height: 160px; object-fit: contain; border-radius: 8px; border: 1px solid #eee3cf; background: #faf6ed; display: block; }
   #devNoteBody label { margin-top: 12px; display: block; font-size: 0.85rem; font-weight: 600; }
   #devNoteBody textarea { width: 100%; box-sizing: border-box; margin-top: 4px; font-family: inherit; }
-  #devNoteExportBtn { margin-top: 10px; background: #2b2b2b; }
+  #devNoteSaveBtn, #devNoteExportBtn { margin-top: 10px; background: #2b2b2b; }
+  #devNoteQueue { margin-top: 14px; padding-top: 12px; border-top: 1px solid #eee3cf; }
+  #devNoteQueue button.small { margin: 6px 0 0; flex: 1; }
+  .devnote-item { display: flex; gap: 8px; align-items: flex-start; padding: 8px 0; border-bottom: 1px dashed #eee3cf; font-size: 0.8rem; }
+  .devnote-item img { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid #eee3cf; flex-shrink: 0; }
+  .devnote-item .devnote-num { font-weight: 700; min-width: 18px; }
+  .devnote-item .devnote-text { flex: 1; white-space: pre-wrap; word-break: break-word; }
+  .devnote-item .devnote-meta { display: block; opacity: 0.55; font-size: 0.72rem; margin-top: 2px; }
+  .devnote-item button { width: auto; margin: 0; padding: 2px 8px; background: none; color: #999; border: none; font-size: 0.9rem; cursor: pointer; }
   .devnote-highlight { outline: 2px solid #e0a339 !important; outline-offset: 2px; cursor: crosshair !important; }
 </style>
 </head>
@@ -666,8 +674,21 @@
     </div>
     <label for="devNoteText">What should change?</label>
     <textarea id="devNoteText" rows="4" placeholder="e.g. This card is too tall on mobile, can we shrink it?"></textarea>
-    <button type="button" id="devNoteExportBtn">⬇️ Export for Claude</button>
-    <p class="muted" id="devNoteExportHint" style="font-size:0.78rem;">Downloads a screenshot (if any) and a text note — drag both into your Claude chat.</p>
+    <button type="button" id="devNoteSaveBtn">➕ Save note</button>
+    <div id="devNoteQueue">
+      <div id="devNoteQueueHead">
+        <strong id="devNoteQueueTitle">Saved notes (0)</strong>
+      </div>
+      <div id="devNoteList"><p class="muted" style="font-size:0.8rem; margin:4px 0 0;">No notes yet — save a few as you go, then export them all at once.</p></div>
+      <div id="devNoteQueueActions" class="hidden">
+        <button type="button" id="devNoteExportBtn">⬇️ Export all for Claude</button>
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="small secondary" id="devNoteCopyBtn">📋 Copy all text</button>
+          <button type="button" class="small secondary" id="devNoteClearAllBtn">🗑 Clear all</button>
+        </div>
+        <p class="muted" style="font-size:0.75rem; margin:6px 0 0;">Export downloads one notes file plus each screenshot — drag them all into your Claude chat together. Your notes stay saved here until you tap Clear all.</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2945,29 +2966,150 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
-  $("devNoteExportBtn").onclick = () => {
-    const note = $("devNoteText").value.trim();
-    if (!note && !capturedDataUrl) { toast("Add a note or a screenshot first.", true); return; }
-    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  // --- Saved notes list, kept in this browser (IndexedDB holds screenshots
+  // fine; localStorage is too small). Falls back to memory-only if blocked. ---
+  let memoryNotes = [];
+  function idb() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) return reject(new Error("no indexedDB"));
+      const req = indexedDB.open("ftf_devnotes", 1);
+      req.onupgradeneeded = () => req.result.createObjectStore("notes", { keyPath: "id" });
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function store(mode, fn) {
+    const db = await idb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("notes", mode);
+      const result = fn(tx.objectStore("notes"));
+      tx.oncomplete = () => resolve(result && "result" in result ? result.result : undefined);
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  async function loadNotes() {
+    try { return ((await store("readonly", (os) => os.getAll())) || []).sort((a, b) => a.createdAt - b.createdAt); }
+    catch (err) { return memoryNotes.slice(); }
+  }
+  async function saveNote(n) {
+    try { await store("readwrite", (os) => os.put(n)); } catch (err) { memoryNotes.push(n); }
+  }
+  async function deleteNote(id) {
+    try { await store("readwrite", (os) => os.delete(id)); } catch (err) { memoryNotes = memoryNotes.filter((n) => n.id !== id); }
+  }
+  async function clearNotes() {
+    try { await store("readwrite", (os) => os.clear()); } catch (err) { memoryNotes = []; }
+  }
 
-    if (capturedDataUrl) downloadDataUrl(capturedDataUrl, `fuelthefun-note-${stamp}.png`);
+  function updateFabBadge(count) {
+    fab.textContent = count ? `💡${count}` : "💡";
+    fab.style.width = count ? "auto" : "";
+    fab.style.padding = count ? "0 12px" : "";
+  }
 
-    const lines = [
-      "# Fuel the Fun — note for Claude",
-      "",
-      `Date: ${new Date().toLocaleString()}`,
-      `Page: ${location.href}`,
-      `Viewport: ${window.innerWidth}×${window.innerHeight}`,
-    ];
-    if (capturedLabel) lines.push(`Captured: ${capturedLabel}`);
-    lines.push("", "## What should change", note || "(no note written — see screenshot)");
-    setTimeout(() => downloadText(lines.join("\n"), `fuelthefun-note-${stamp}.md`), capturedDataUrl ? 300 : 0);
+  async function renderNotes() {
+    const notes = await loadNotes();
+    $("devNoteQueueTitle").textContent = `Saved notes (${notes.length})`;
+    $("devNoteQueueActions").classList.toggle("hidden", !notes.length);
+    updateFabBadge(notes.length);
+    const list = $("devNoteList");
+    if (!notes.length) {
+      list.innerHTML = '<p class="muted" style="font-size:0.8rem; margin:4px 0 0;">No notes yet — save a few as you go, then export them all at once.</p>';
+      return;
+    }
+    list.innerHTML = notes.map((n, i) => `<div class="devnote-item">
+        <span class="devnote-num">${i + 1}.</span>
+        ${n.image ? `<img src="${n.image}" alt="" />` : ""}
+        <span class="devnote-text">${escapeHtml(n.text || "(screenshot only)")}<span class="devnote-meta">${escapeHtml(n.label || "")}${n.label ? " · " : ""}${escapeHtml(new Date(n.createdAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }))}</span></span>
+        <button type="button" data-devnote-del="${n.id}" title="Delete this note">✕</button>
+      </div>`).join("");
+    list.querySelectorAll("[data-devnote-del]").forEach((b) => {
+      b.onclick = async () => { await deleteNote(b.getAttribute("data-devnote-del")); renderNotes(); };
+    });
+  }
 
-    toast("Downloaded! Drag both files into your Claude chat.");
+  $("devNoteSaveBtn").onclick = async () => {
+    const text = $("devNoteText").value.trim();
+    if (!text && !capturedDataUrl) { toast("Add a note or a screenshot first.", true); return; }
+    await saveNote({
+      id: (crypto.randomUUID && crypto.randomUUID()) || String(Date.now()),
+      createdAt: Date.now(),
+      text,
+      image: capturedDataUrl,
+      label: capturedLabel,
+      page: location.pathname,
+      viewport: `${window.innerWidth}×${window.innerHeight}`,
+      family: (state.family && state.family.name) || "",
+    });
     $("devNoteText").value = "";
     $("devNoteClearImageBtn").onclick();
-    closePanel();
+    await renderNotes();
+    toast("Saved! Keep going — export them all when you're done.");
   };
+
+  function buildNotesMarkdown(notes, stamp) {
+    const lines = [
+      `# Fuel the Fun — ${notes.length} update${notes.length === 1 ? "" : "s"} for Claude`,
+      "",
+      `Exported: ${new Date().toLocaleString()}`,
+      notes.some((n) => n.image) ? `Screenshots are the files named fuelthefun-notes-${stamp}-NN.png — the number matches the note.` : "No screenshots in this batch.",
+      "",
+    ];
+    notes.forEach((n, i) => {
+      const num = String(i + 1).padStart(2, "0");
+      lines.push(`## ${i + 1}. ${(n.text.split("\n")[0] || "(see screenshot)").slice(0, 80)}`);
+      if (n.label) lines.push(`- Section: ${n.label}`);
+      if (n.image) lines.push(`- Screenshot: fuelthefun-notes-${stamp}-${num}.png`);
+      lines.push(`- Screen size: ${n.viewport}${n.family ? ` · Family: ${n.family}` : ""}`);
+      lines.push(`- Noted: ${new Date(n.createdAt).toLocaleString()}`);
+      lines.push("", n.text || "(no words — see the screenshot)", "");
+    });
+    return lines.join("\n");
+  }
+
+  $("devNoteExportBtn").onclick = async () => {
+    const notes = await loadNotes();
+    if (!notes.length) return;
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+    let delay = 0;
+    notes.forEach((n, i) => {
+      if (!n.image) return;
+      const num = String(i + 1).padStart(2, "0");
+      setTimeout(() => downloadDataUrl(n.image, `fuelthefun-notes-${stamp}-${num}.png`), delay);
+      delay += 350; // browsers drop downloads fired all at the same instant
+    });
+    setTimeout(() => downloadText(buildNotesMarkdown(notes, stamp), `fuelthefun-notes-${stamp}.md`), delay);
+    const files = notes.filter((n) => n.image).length + 1;
+    toast(`Downloading ${files} file${files === 1 ? "" : "s"} — drag them all into your Claude chat. (If your browser asks, allow multiple downloads.)`);
+  };
+
+  $("devNoteCopyBtn").onclick = async () => {
+    const notes = await loadNotes();
+    try {
+      await navigator.clipboard.writeText(buildNotesMarkdown(notes, "copied"));
+      toast("All notes copied — paste them into your Claude chat (screenshots aren't included in a copy).");
+    } catch (err) { toast("Couldn't copy — use Export instead.", true); }
+  };
+
+  // Two taps to clear, so one slip doesn't lose everything.
+  let clearArmed = false;
+  $("devNoteClearAllBtn").onclick = async () => {
+    if (!clearArmed) {
+      clearArmed = true;
+      $("devNoteClearAllBtn").textContent = "Tap again to delete all";
+      setTimeout(() => { clearArmed = false; $("devNoteClearAllBtn").textContent = "🗑 Clear all"; }, 4000);
+      return;
+    }
+    clearArmed = false;
+    $("devNoteClearAllBtn").textContent = "🗑 Clear all";
+    await clearNotes();
+    await renderNotes();
+    toast("Cleared.");
+  };
+
+  if (devMode) renderNotes();
 })();
 
 // --- Boot ---
