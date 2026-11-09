@@ -10,6 +10,31 @@ const PIN_MAX_LENGTH = 12;
 const MAX_WRONG_PINS = 5;
 const LOCKOUT_MINUTES = 10;
 
+// The app adds its own PIN-lockout columns (migration 017) the first time
+// someone logs in, so nobody has to remember to run it in the D1 console.
+// Checked once per Worker instance; if anything goes wrong, login still
+// works normally, just without the lockout.
+let lockoutColumnsReady = false;
+export async function ensureLockoutColumns(db) {
+  if (lockoutColumnsReady) return true;
+  try {
+    const cols = await db.prepare("SELECT name FROM pragma_table_info('families')").all();
+    const names = new Set((cols.results || []).map((r) => r.name));
+    if (!names.has("failed_pin_attempts")) {
+      await db.prepare("ALTER TABLE families ADD COLUMN failed_pin_attempts INTEGER NOT NULL DEFAULT 0").run().catch(() => {});
+    }
+    if (!names.has("pin_locked_until")) {
+      await db.prepare("ALTER TABLE families ADD COLUMN pin_locked_until TEXT").run().catch(() => {});
+    }
+    const after = await db.prepare("SELECT name FROM pragma_table_info('families')").all();
+    const afterNames = new Set((after.results || []).map((r) => r.name));
+    lockoutColumnsReady = afterNames.has("failed_pin_attempts") && afterNames.has("pin_locked_until");
+  } catch (err) {
+    lockoutColumnsReady = false;
+  }
+  return lockoutColumnsReady;
+}
+
 function validPin(pin) {
   return (
     typeof pin === "string" &&
@@ -97,6 +122,7 @@ export async function login(request, env) {
   // 017_login_lockout migration hasn't been run on this database yet,
   // logging in still works normally (just without the lockout).
   let lockout = null;
+  await ensureLockoutColumns(db);
   try {
     lockout = await db
       .prepare("SELECT failed_pin_attempts, pin_locked_until FROM families WHERE id = ?")

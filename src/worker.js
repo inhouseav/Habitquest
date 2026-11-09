@@ -51,6 +51,7 @@ async function handleHealth(env) {
     ai_photos_configured: !!env.OPENAI_API_KEY,
     google_calendar_configured: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
     push_notifications_configured: !!env.VAPID_PRIVATE_JWK,
+    pin_lockout_ready: hasDb && dbReachable ? await familyRoutes.ensureLockoutColumns(env.DB) : false,
   });
 }
 
