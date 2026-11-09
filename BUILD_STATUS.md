@@ -4,6 +4,17 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Demo-night end-to-end test + fixes (2026-11-10)
+
+Tested the full journey on an iPhone-sized browser against a local copy of the API with a fresh database built from every migration (sign up → add a child → pick 3 habits → win the day → stars → calendar event → planner → expand calendar → reward → recipe → meal → shopping → refresh → log out/in → wrong PIN). Everything passed once these were fixed:
+- Family code now shown straight after sign-up ("Your family is ready!" panel).
+- Sign-up/login buttons disable while working (double-tap made two families); Enter submits.
+- 5 wrong PINs → 10-minute pause (migration 017; login still works if it's not run).
+- First member gets a colour; calendar chips show title first; Expand on a phone = day-by-day list with times.
+- Dev-note 💡 hidden unless the app is opened once with `?dev=1`.
+- `/api/health` now shows which optional features (AI, Google Calendar, push) are configured.
+Still worth a live check: the real site after migration 017, on a real phone.
+
 ## 🚧 Planner: 🏡 Home tab + popularity sorting (2026-11-04)
 Two additions to the Planner card:
 - A third **🏡 Home** tab, alongside Movement and Favourite recipes, for chores like "Tidy room" or "Set the table" — works exactly like Movement (remembered per family, drag/tap onto the calendar), just its own list and its own "+ Add". Dropping one creates a calendar event tagged with the Grow 🌱 pillar instead of Move.
