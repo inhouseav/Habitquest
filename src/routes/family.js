@@ -1,10 +1,13 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { hashPin, verifyPin, newId, newJoinCode } from "../lib/crypto.js";
 import { createSession } from "../lib/sessions.js";
+import { VALID_COLORS } from "./members.js";
 
 const MAX_NAME_LENGTH = 60;
 const PIN_MIN_LENGTH = 4;
 const PIN_MAX_LENGTH = 12;
+const MAX_WRONG_PINS = 5;
+const LOCKOUT_MINUTES = 10;
 
 function validPin(pin) {
   return (
@@ -56,8 +59,8 @@ export async function signup(request, env) {
 
   const memberId = newId();
   await db
-    .prepare("INSERT INTO members (id, family_id, display_name, role) VALUES (?, ?, ?, ?)")
-    .bind(memberId, familyId, firstMemberName, firstMemberRole)
+    .prepare("INSERT INTO members (id, family_id, display_name, role, color) VALUES (?, ?, ?, ?, ?)")
+    .bind(memberId, familyId, firstMemberName, firstMemberRole, VALID_COLORS[0])
     .run();
 
   const token = await createSession(db, familyId);
@@ -89,8 +92,42 @@ export async function login(request, env) {
 
   if (!family) return errorResponse("No family found with that join code.", 404);
 
+  // PIN-guessing protection. Kept in its own try/catch so that if the
+  // 017_login_lockout migration hasn't been run on this database yet,
+  // logging in still works normally (just without the lockout).
+  let lockout = null;
+  try {
+    lockout = await db
+      .prepare("SELECT failed_pin_attempts, pin_locked_until FROM families WHERE id = ?")
+      .bind(family.id)
+      .first();
+  } catch (err) {
+    lockout = null;
+  }
+  if (lockout && lockout.pin_locked_until && new Date(lockout.pin_locked_until).getTime() > Date.now()) {
+    const mins = Math.max(1, Math.ceil((new Date(lockout.pin_locked_until).getTime() - Date.now()) / 60000));
+    return errorResponse(`Too many wrong PINs. Please wait ${mins} minute${mins === 1 ? "" : "s"} and try again.`, 429);
+  }
+
   const valid = await verifyPin(pin, family.pin_hash);
-  if (!valid) return errorResponse("Incorrect PIN.", 401);
+  if (!valid) {
+    if (lockout) {
+      const attempts = (lockout.failed_pin_attempts || 0) + 1;
+      if (attempts >= MAX_WRONG_PINS) {
+        const until = new Date(Date.now() + LOCKOUT_MINUTES * 60000).toISOString();
+        await db.prepare("UPDATE families SET failed_pin_attempts = 0, pin_locked_until = ? WHERE id = ?").bind(until, family.id).run();
+        return errorResponse(`Too many wrong PINs. Please wait ${LOCKOUT_MINUTES} minutes and try again.`, 429);
+      }
+      await db.prepare("UPDATE families SET failed_pin_attempts = ? WHERE id = ?").bind(attempts, family.id).run();
+      const left = MAX_WRONG_PINS - attempts;
+      return errorResponse(`Incorrect PIN. ${left} ${left === 1 ? "try" : "tries"} left before a 10-minute pause.`, 401);
+    }
+    return errorResponse("Incorrect PIN.", 401);
+  }
+
+  if (lockout && (lockout.failed_pin_attempts || lockout.pin_locked_until)) {
+    await db.prepare("UPDATE families SET failed_pin_attempts = 0, pin_locked_until = NULL WHERE id = ?").bind(family.id).run();
+  }
 
   const token = await createSession(db, family.id);
 

@@ -64,7 +64,7 @@
   .toast.error { background: var(--danger); }
   .error { color: var(--danger); font-size: 0.9rem; margin-top: 8px; }
   .member-row, .list-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 14px; background: #fff; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
-  .member-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; }
+  .member-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; box-shadow: 0 0 0 2px #fff; }
   .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--gold); font-size: 0.75rem; margin-left: 6px; }
   .pill.fuel { background: var(--peach); }
   .pill.move { background: var(--blue); }
@@ -134,12 +134,27 @@
   .cal-habit-markers { display: flex; flex-wrap: wrap; gap: 3px; margin-top: auto; padding-top: 2px; }
   .cal-habit-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(24, 63, 53, 0.15); }
   .cal-grid + button { margin-top: 12px; }
+  .cal-chip-time, .cal-chip-who, .cal-day-name, .cal-empty-note { display: none; }
+  .card.cal-expanded .cal-chip-time { display: inline; font-weight: 700; }
+  .card.cal-expanded .cal-chip-who { display: inline; opacity: 0.75; }
   .card.cal-expanded .cal-day { min-height: 150px; max-height: 230px; overflow-y: auto; font-size: 0.8rem; padding: 7px; }
   .card.cal-expanded .cal-day-num { font-size: 0.95rem; }
   .card.cal-expanded .cal-event-chip { font-size: 0.78rem; padding: 4px 7px; line-height: 1.4; }
   .card.cal-expanded .cal-weekday { font-size: 0.85rem; padding: 7px 0; }
   .card.cal-expanded .cal-habit-dot { width: 9px; height: 9px; }
   .card.cal-expanded .cal-grid { gap: 6px; }
+  .card.cal-expanded .cal-event-chip { white-space: normal; }
+  /* On a phone, 7 columns are too narrow to read — Expand turns the
+     calendar into a simple list, one day per row, full width. */
+  @media (max-width: 700px) {
+    .card.cal-expanded #calWeekdayRow { display: none; }
+    .card.cal-expanded #calDaysGrid { grid-template-columns: 1fr; }
+    .card.cal-expanded .cal-day { min-height: 0; max-height: none; overflow: visible; padding: 10px 12px; gap: 5px; }
+    .card.cal-expanded .cal-day.other-month { display: none; }
+    .card.cal-expanded .cal-day-name { display: inline; }
+    .card.cal-expanded .cal-empty-note { display: block; opacity: 0.45; font-size: 0.78rem; }
+    .card.cal-expanded .cal-event-chip { font-size: 0.85rem; padding: 6px 9px; }
+  }
   .event-row:last-child { border-bottom: none; }
   .muted { opacity: 0.65; font-size: 0.85rem; }
   .hidden { display: none !important; }
@@ -297,9 +312,14 @@
     </div>
 
     <div class="card full-width hidden" id="invitePanel">
-      <h3>Invite family</h3>
-      <p class="muted">Share this so other family members can log in from their own device.</p>
+      <div id="signupWelcome" class="hidden" style="margin-bottom:10px;">
+        <h3 style="margin-bottom:4px;">🎉 Your family is ready!</h3>
+        <p style="margin:0;">This is your <b>family code</b>. Write it down — you'll need it <b>and your PIN</b> to log in on another phone or after logging out.</p>
+      </div>
+      <h3 id="inviteHeading">Invite family</h3>
+      <p class="muted" id="inviteBlurb">Share this so other family members can log in from their own device.</p>
       <div class="join-code" id="joinCodeDisplay">------</div>
+      <button class="small hidden" type="button" id="signupWelcomeDoneBtn">Got it 👍</button>
     </div>
 
     <div class="card full-width hidden" id="notifyPanel">
@@ -706,7 +726,16 @@ async function api(path, options = {}) {
 $("tabLogin").onclick = () => { $("tabLogin").classList.add("active"); $("tabSignup").classList.remove("active"); show("loginCard"); hide("signupCard"); };
 $("tabSignup").onclick = () => { $("tabSignup").classList.add("active"); $("tabLogin").classList.remove("active"); show("signupCard"); hide("loginCard"); };
 
-$("signupBtn").onclick = async () => {
+// Buttons are disabled while a request is in flight, so a double-tap on a
+// slow connection can't create two families or send two logins.
+async function withBusyButton(btn, busyText, fn) {
+  if (btn.disabled) return;
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = busyText;
+  try { await fn(); } finally { btn.disabled = false; btn.textContent = original; }
+}
+
+$("signupBtn").onclick = () => withBusyButton($("signupBtn"), "Creating your family...", async () => {
   clearError("signupError");
   try {
     const data = await api("/api/family/signup", { method: "POST", body: JSON.stringify({
@@ -714,23 +743,41 @@ $("signupBtn").onclick = async () => {
       firstMemberRole: $("signupRole").value, pin: $("signupPin").value,
     })});
     state.token = data.token; localStorage.setItem("ftf_token", data.token);
+    $("signupFamilyName").value = ""; $("signupMemberName").value = ""; $("signupPin").value = "";
     await loadHome();
+    showSignupWelcome();
   } catch (err) { showError("signupError", err.message); }
-};
+});
 
-$("loginBtn").onclick = async () => {
+$("loginBtn").onclick = () => withBusyButton($("loginBtn"), "Logging in...", async () => {
   clearError("loginError");
   try {
     const data = await api("/api/family/login", { method: "POST", body: JSON.stringify({
       joinCode: $("loginJoinCode").value, pin: $("loginPin").value,
     })});
     state.token = data.token; localStorage.setItem("ftf_token", data.token);
+    $("loginPin").value = "";
     await loadHome();
   } catch (err) { showError("loginError", err.message); }
+});
+
+// Pressing Enter/Go on the phone keyboard submits, like a normal form.
+["loginJoinCode", "loginPin"].forEach((id) => $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") $("loginBtn").click(); }));
+["signupFamilyName", "signupMemberName", "signupPin"].forEach((id) => $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") $("signupBtn").click(); }));
+
+function showSignupWelcome() {
+  show("signupWelcome"); show("signupWelcomeDoneBtn"); hide("inviteHeading"); hide("inviteBlurb");
+  show("invitePanel");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+$("signupWelcomeDoneBtn").onclick = () => {
+  hide("signupWelcome"); hide("signupWelcomeDoneBtn"); show("inviteHeading"); show("inviteBlurb");
+  hide("invitePanel");
 };
 
 $("logoutBtn").onclick = () => {
   localStorage.removeItem("ftf_token"); state.token = null;
+  $("signupWelcomeDoneBtn").onclick();
   hide("homeScreen"); show("authScreen");
 };
 
@@ -766,7 +813,7 @@ function renderMembers() {
   state.members.forEach((m) => {
     const row = document.createElement("div");
     row.className = "member-row compact";
-    row.innerHTML = `<span><span class="member-dot" style="background:${m.color || '#ccc'}"></span>${m.display_name}<span class="pill">${m.role}</span></span>
+    row.innerHTML = `<span><span class="member-dot" style="background:${m.color || '#ccc'}"></span>${escapeHtml(m.display_name)}<span class="pill">${m.role}</span></span>
       <span><span id="stars-${m.id}" class="muted">⭐ ...</span> <button class="small" data-member="${m.id}">Give Kudos</button></span>`;
     list.appendChild(row);
     loadStars(m.id);
@@ -999,7 +1046,8 @@ function renderCalendarGrid() {
           const { who, bg } = eventWhoAndColor(e);
           const repeatIcon = e.recurrence ? "🔁 " : "";
           const label = who ? `${who}: ${e.title}` : e.title;
-          return `<div class="cal-event-chip" style="background:${bg}" data-event-id="${e.id}" title="${escapeHtml(label)}">${repeatIcon}${escapeHtml(label)}</div>`;
+          const time = e.starts_at ? new Date(e.starts_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+          return `<div class="cal-event-chip" style="background:${bg}" data-event-id="${e.id}" title="${escapeHtml(label)}"><span class="cal-chip-time">${escapeHtml(time)} </span>${repeatIcon}${escapeHtml(e.title)}<span class="cal-chip-who"> · ${escapeHtml(who || "")}</span></div>`;
         }).join("")
       : "";
     const habitMarkers = cell.key && habitsByDay[cell.key]
@@ -1009,7 +1057,9 @@ function renderCalendarGrid() {
           return `<span class="cal-habit-dot" style="background:${bg}" title="${escapeHtml(label)}"></span>`;
         }).join("")}</div>`
       : "";
-    div.innerHTML = `<div class="cal-day-num">${cell.day}</div>${chips}${habitMarkers}`;
+    const dayName = cell.key ? new Date(cell.key + "T00:00:00").toLocaleDateString([], { weekday: "long" }) : "";
+    const emptyNote = cell.key && !chips ? `<div class="cal-empty-note">Nothing planned</div>` : "";
+    div.innerHTML = `<div class="cal-day-num"><span class="cal-day-name">${dayName} </span>${cell.day}</div>${chips}${emptyNote}${habitMarkers}`;
     if (cell.key) div.setAttribute("data-date-key", cell.key);
     grid.appendChild(div);
   });
@@ -1356,7 +1406,7 @@ async function renderHabits() {
   const tabsWrap = $("habitsMemberTabs");
   tabsWrap.innerHTML = data.members.map((m) => {
     const active = habitsActiveMemberId === m.memberId;
-    return `<button class="small ${active ? "" : "secondary"}" data-habits-tab="${m.memberId}" style="margin:0;"><span class="member-dot" style="background:${m.color || '#ccc'}"></span>${m.displayName}</button>`;
+    return `<button class="small ${active ? "" : "secondary"}" data-habits-tab="${m.memberId}" style="margin:0;"><span class="member-dot" style="background:${m.color || '#ccc'}"></span>${escapeHtml(m.displayName)}</button>`;
   }).join("");
   tabsWrap.querySelectorAll("[data-habits-tab]").forEach((btn) => {
     btn.onclick = () => { habitsActiveMemberId = btn.getAttribute("data-habits-tab"); renderHabits(); };
@@ -1651,10 +1701,10 @@ async function renderRewards() {
   if (!data.rewards.length) { list.innerHTML = '<p class="muted">No rewards yet — add one below!</p>'; return; }
   const REWARD_PREVIEW = 3;
   const visible = rewardsExpanded ? data.rewards : data.rewards.slice(0, REWARD_PREVIEW);
-  const memberOptions = state.members.map((m) => `<option value="${m.id}">${m.display_name}</option>`).join("");
+  const memberOptions = state.members.map((m) => `<option value="${m.id}">${escapeHtml(m.display_name)}</option>`).join("");
   visible.forEach((r) => {
     const row = document.createElement("div"); row.className = "list-row";
-    row.innerHTML = `<span>${r.title} <span class="pill">${r.star_cost} ⭐</span></span>
+    row.innerHTML = `<span>${escapeHtml(r.title)} <span class="pill">${r.star_cost} ⭐</span></span>
       <span><select class="small" style="width:auto; display:inline-block;" id="redeemer-${r.id}">${memberOptions}</select>
       <button class="small" data-reward="${r.id}">Redeem</button></span>`;
     list.appendChild(row);
@@ -2764,6 +2814,18 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
 
   const fab = $("devNoteFab");
   const panel = $("devNotePanel");
+
+  // Hidden for visitors. Open the app once with ?dev=1 on the end of the
+  // address to turn it on for that browser (?dev=0 turns it off again).
+  const devMode = (() => {
+    const q = new URLSearchParams(location.search).get("dev");
+    try {
+      if (q === "1") localStorage.setItem("ftf_dev", "1");
+      if (q === "0") localStorage.removeItem("ftf_dev");
+      return localStorage.getItem("ftf_dev") === "1";
+    } catch (err) { return q === "1"; }
+  })();
+  if (!devMode) fab.style.display = "none";
 
   function openPanel() { panel.classList.remove("hidden"); }
   function closePanel() { panel.classList.add("hidden"); stopSelecting(); }

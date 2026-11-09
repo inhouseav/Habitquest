@@ -3,7 +3,7 @@ import { newId } from "../lib/crypto.js";
 
 const MAX_NAME_LENGTH = 60;
 const VALID_ROLES = ["child", "parent"];
-const VALID_COLORS = [
+export const VALID_COLORS = [
   "#BE7050", // terracotta
   "#7C9473", // sage-dark (derived from #E4EAD9)
   "#6E8FA3", // soft blue-dark (derived from #E2ECEE)
