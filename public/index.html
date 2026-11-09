@@ -2777,6 +2777,10 @@ async function refreshGoogleCalUi() {
       $("googleCalStatus").textContent = "📅 Connected to Google Calendar — new events get added there too.";
       $("connectGoogleBtn").style.display = "none";
       $("disconnectGoogleBtn").style.display = "inline-block";
+    } else if (data.configured === false) {
+      $("googleCalStatus").textContent = "Linking to Google Calendar isn't switched on for this app yet — your Fuel the Fun calendar works fine on its own.";
+      $("connectGoogleBtn").style.display = "none";
+      $("disconnectGoogleBtn").style.display = "none";
     } else {
       $("googleCalStatus").textContent = "Not connected to Google Calendar yet.";
       $("connectGoogleBtn").style.display = "inline-block";

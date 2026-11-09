@@ -16,13 +16,13 @@ export async function status(familyId, env) {
   const row = await env.DB.prepare("SELECT family_id FROM google_calendar_connections WHERE family_id = ?")
     .bind(familyId)
     .first();
-  return json({ ok: true, connected: !!row });
+  return json({ ok: true, connected: !!row, configured: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) });
 }
 
 /** GET /api/calendar/google/start — kicks off the OAuth flow; redirects to Google. */
 export async function start(familyId, env, url) {
-  if (!env.GOOGLE_CLIENT_ID) {
-    return errorResponse("Google Calendar isn't set up on the server yet (missing GOOGLE_CLIENT_ID).", 500);
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+    return htmlResult(`Google Calendar isn't switched on for this app yet, so there's nothing to connect to. The app's own calendar works fine without it.`);
   }
   const state = newId();
   await env.DB.prepare("INSERT INTO google_oauth_states (state, family_id) VALUES (?, ?)")
@@ -83,6 +83,7 @@ function htmlResult(message, success = false) {
     `<!doctype html><html><body style="font-family:sans-serif;max-width:480px;margin:60px auto;text-align:center;">
       <h2>${success ? "✅ Connected!" : "Hmm, that didn't work"}</h2>
       <p>${message}</p>
+      <p><a href="/">← Back to the app</a></p>
     </body></html>`,
     { headers: { "Content-Type": "text/html; charset=utf-8" } }
   );
