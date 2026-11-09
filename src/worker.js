@@ -44,6 +44,13 @@ async function handleHealth(env) {
     db_binding_present: hasDb,
     db_reachable: dbReachable,
     photos_binding_present: hasPhotos,
+    // Booleans only — never the actual secret values. Lets you check what's
+    // configured on the live site (visit /api/health in a browser tab)
+    // without needing to open the Cloudflare dashboard.
+    ai_suggestions_configured: !!env.ANTHROPIC_API_KEY,
+    ai_photos_configured: !!env.OPENAI_API_KEY,
+    google_calendar_configured: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+    push_notifications_configured: !!env.VAPID_PRIVATE_JWK,
   });
 }
 
