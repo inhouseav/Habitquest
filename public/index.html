@@ -819,7 +819,8 @@ $("signupWelcomeDoneBtn").onclick = () => {
 };
 
 $("logoutBtn").onclick = () => {
-  localStorage.removeItem("ftf_token"); state.token = null;
+  localStorage.removeItem("ftf_token"); state.token = null; state.family = null;
+  if (window.refreshDevFab) window.refreshDevFab();
   $("signupWelcomeDoneBtn").onclick();
   hide("homeScreen"); show("authScreen");
 };
@@ -828,6 +829,7 @@ $("logoutBtn").onclick = () => {
 async function loadHome() {
   const me = await api("/api/me");
   state.family = me.family; state.members = me.members;
+  if (window.refreshDevFab) window.refreshDevFab();
   hide("authScreen"); show("homeScreen");
   $("familyNameHeading").textContent = me.family.name + " 🌱";
   $("joinCodeDisplay").textContent = me.family.joinCode;
@@ -2862,17 +2864,27 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
   const fab = $("devNoteFab");
   const panel = $("devNotePanel");
 
-  // Hidden for visitors. Open the app once with ?dev=1 on the end of the
-  // address to turn it on for that browser (?dev=0 turns it off again).
-  const devMode = (() => {
-    const q = new URLSearchParams(location.search).get("dev") || (location.hash === "#dev" ? "1" : null);
-    try {
-      if (q === "1") localStorage.setItem("ftf_dev", "1");
-      if (q === "0") localStorage.removeItem("ftf_dev");
-      return localStorage.getItem("ftf_dev") === "1";
-    } catch (err) { return q === "1"; }
-  })();
-  if (!devMode) fab.style.display = "none";
+  // Shown by default. Hidden automatically inside the Smith demo family
+  // (what visitors use), or anywhere it's been switched off on this device
+  // (5 taps on the title, or ?dev=0). ?dev=1 / 5 taps switch it back on.
+  let devPrefMemory = null;
+  function devPref() { try { return localStorage.getItem("ftf_dev"); } catch (err) { return devPrefMemory; } }
+  function setDevPref(v) { devPrefMemory = v; try { localStorage.setItem("ftf_dev", v); } catch (err) {} }
+  const q = new URLSearchParams(location.search).get("dev") || (location.hash === "#dev" ? "1" : null);
+  if (q === "1" || q === "0") setDevPref(q);
+  function shouldShowFab() {
+    const pref = devPref();
+    if (pref === "1") return true;
+    if (pref === "0") return false;
+    return !(state.family && state.family.name === "The Smith Family");
+  }
+  function refreshDevFab() {
+    const showIt = shouldShowFab();
+    fab.style.display = showIt ? "" : "none";
+    if (!showIt) closePanel();
+  }
+  window.refreshDevFab = refreshDevFab;
+  const devMode = true; // notes list always loads; visibility is handled above
 
   // No-link way to switch it on/off: tap the big title 5 times quickly
   // (works on the login screen and on your family's home screen).
@@ -2884,9 +2896,8 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
     if (titleTaps < 5) return;
     titleTaps = 0;
     const turningOn = fab.style.display === "none";
-    try { if (turningOn) localStorage.setItem("ftf_dev", "1"); else localStorage.removeItem("ftf_dev"); } catch (err) {}
-    fab.style.display = turningOn ? "" : "none";
-    if (!turningOn) closePanel();
+    setDevPref(turningOn ? "1" : "0");
+    refreshDevFab();
     if (turningOn) renderNotes();
     toast(turningOn ? "💡 Notes tool is on for this device" : "💡 Notes tool hidden");
   }
@@ -3131,6 +3142,7 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
     toast("Cleared.");
   };
 
+  refreshDevFab();
   if (devMode) renderNotes();
 })();
 
