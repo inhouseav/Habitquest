@@ -27,7 +27,7 @@
     color: var(--text);
     font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
     min-height: 100vh;
-    padding: 20px 16px 100px;
+    padding: 16px 16px calc(110px + env(safe-area-inset-bottom));
     overflow-x: hidden;
   }
   h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; margin: 0 0 8px; }
@@ -72,7 +72,7 @@
   #reminderTitle { font-size: 1.35rem; font-weight: 700; margin-top: 4px; }
   #reminderWho { margin-top: 2px; }
   @keyframes reminderPop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--text); color: #fff; padding: 12px 22px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease; font-size: 0.9rem; max-width: 90vw; text-align: center; }
+  .toast { position: fixed; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(10px); background: var(--text); color: #fff; padding: 12px 22px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease; font-size: 0.9rem; max-width: 90vw; text-align: center; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.error { background: var(--danger); }
   .error { color: var(--danger); font-size: 0.9rem; margin-top: 8px; }
@@ -199,12 +199,42 @@
   /* Desktop / wide-screen layout: cards arrange into two columns so the
      app isn't just a narrow phone-width strip stretched across a big screen.
      On phones (below 900px) everything stays exactly as a single column. */
-  @media (min-width: 900px) {
+  @media (min-width: 700px) {
     .wrap { max-width: 920px; }
-    #homeScreen { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
-    #homeScreen .card { margin-bottom: 0; }
-    #homeScreen .top-bar, #homeScreen .full-width { grid-column: 1 / -1; }
   }
+  /* iPad / laptop: inside a section, smaller cards sit side by side. */
+  @media (min-width: 760px) {
+    .tab-page { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    .tab-page > .card { margin-bottom: 0; }
+    .tab-page > .full-width, .tab-page > .card.hidden + .card.full-width { grid-column: 1 / -1; }
+  }
+
+  /* --- Sections + bottom tab bar --- */
+  .tab-off { display: none !important; }
+  #tabBar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 1500;
+    display: flex; justify-content: center; gap: 4px;
+    background: #fff; box-shadow: 0 -4px 18px rgba(24, 63, 53, 0.10);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  }
+  #homeScreen.hidden #tabBar { display: none; }
+  #tabBar button {
+    flex: 1; max-width: 150px; margin: 0; padding: 6px 2px 5px; border-radius: 14px;
+    background: transparent; color: var(--text); font-size: 0.78rem; font-weight: 700;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; box-shadow: none;
+  }
+  #tabBar button span { font-size: 1.5rem; line-height: 1.1; }
+  #tabBar button.active { background: var(--sage); color: var(--terracotta); }
+  @media (min-width: 760px) {
+    #tabBar button { font-size: 0.9rem; padding: 8px 4px; }
+    #tabBar button span { font-size: 1.7rem; }
+  }
+  .who-chip { width: auto; margin: 0; background: var(--sage); color: var(--text); padding: 7px 14px; font-size: 0.85rem; font-weight: 700; border-radius: 999px; white-space: nowrap; max-width: 55%; overflow: hidden; text-overflow: ellipsis; }
+  .top-bar { gap: 10px; }
+  .top-bar h1 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .welcome-card { background: var(--gold); }
+  @media (max-width: 500px) { .top-bar h1 { font-size: 1.3rem; } }
+  .settings-row { margin: 4px 0 0; }
 
   /* Compact settings row: small text-link buttons under the family heading
      instead of big always-open cards for join code / notifications / Google
@@ -221,6 +251,9 @@
 
   /* Compact member row */
   .member-row.compact { padding: 8px 12px; }
+  /* Nothing inside a person's card may push it wider than the screen. */
+  .member-row > * { min-width: 0; max-width: 100%; }
+  .reward-progress select { min-width: 0; max-width: 100%; }
 
   /* Recipe row: primary action + overflow ("...") menu for secondary actions */
   .row-menu { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #eee3cf; }
@@ -245,6 +278,7 @@
   .reward-line { font-size: 0.85rem; margin-top: 3px; }
   .reward-earned { margin-top: 6px; padding: 8px 10px; border-radius: 10px; background: #F8E3D1; font-size: 0.9rem; }
   .week-day.wd-reward span { font-size: 0.75rem; }
+  .meal-add-mini { width: 30px; height: 30px; margin: 0; padding: 0; border-radius: 50%; background: var(--sage); color: var(--text); font-size: 1rem; line-height: 30px; box-shadow: none; }
   .win-day-date { font-size: 0.85rem; background: #fff; border-radius: 10px; padding: 6px 10px; margin: 0 0 10px; }
   .week-strip { display: flex; gap: 5px; margin: 6px 0 8px; }
   .week-day { flex: 1; text-align: center; font-size: 0.7rem; font-weight: 700; opacity: 0.85; }
@@ -295,7 +329,7 @@
   /* Dev note tool: a small floating lightbulb, unrelated to the app's own
      design system on purpose, so it reads as a build tool, not a feature. */
   #devNoteFab {
-    position: fixed; bottom: 18px; right: 18px; z-index: 2000;
+    position: fixed; bottom: calc(86px + env(safe-area-inset-bottom)); right: 14px; z-index: 2000;
     width: 46px; height: 46px; border-radius: 50%; margin: 0; padding: 0;
     background: #2b2b2b; color: #fff; font-size: 1.3rem; border: none;
     box-shadow: 0 3px 10px rgba(0,0,0,0.3); opacity: 0.55; cursor: pointer;
@@ -303,7 +337,7 @@
   }
   #devNoteFab:hover { opacity: 1; transform: scale(1.08); }
   #devNotePanel {
-    position: fixed; bottom: 74px; right: 18px; z-index: 2000;
+    position: fixed; bottom: calc(142px + env(safe-area-inset-bottom)); right: 14px; z-index: 2000;
     width: min(360px, calc(100vw - 32px)); max-height: min(560px, calc(100vh - 110px));
     overflow-y: auto; background: #fff; border-radius: 14px;
     box-shadow: 0 8px 28px rgba(0,0,0,0.28); font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
@@ -380,68 +414,71 @@
   <div id="homeScreen" class="hidden">
     <div class="top-bar">
       <h1 id="familyNameHeading">Fuel the Fun 🌱</h1>
-      <button class="secondary small" id="logoutBtn">Log out</button>
+      <button class="who-chip" id="whoAmIBtn" type="button">👤 Who are you?</button>
     </div>
 
-    <div class="settings-row">
-      <button class="settings-link" data-settings-toggle="invite">Invite family ›</button>
-      <button class="settings-link" data-settings-toggle="notify">Notifications ›</button>
-      <button class="settings-link" data-settings-toggle="google">Google Calendar ›</button>
-      <button class="settings-link" id="whoAmIBtn" type="button">👤 Who's using this phone?</button>
-      <button class="settings-link" id="parentAdminLinkBtn" type="button">🔒 Parents ›</button>
-    </div>
-
-    <div class="card full-width hidden" id="invitePanel">
-      <div id="signupWelcome" class="hidden" style="margin-bottom:10px;">
+    <section class="tab-page" data-section="today">
+    <div class="card full-width hidden welcome-card" id="welcomeCard">
+      <div id="signupWelcome" style="margin-bottom:10px;">
         <h3 style="margin-bottom:4px;" id="signupWelcomeTitle">🎉 Your family is ready!</h3>
         <p style="margin:0;" id="signupWelcomeText">This is your <b>family code</b>. Write it down — you'll need it <b>and your PIN</b> to log in on another phone or after logging out.</p>
       </div>
-      <h3 id="inviteHeading">Invite family</h3>
-      <p class="muted" id="inviteBlurb">Share this so other family members can log in from their own device.</p>
-      <div class="join-code" id="joinCodeDisplay">------</div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-        <button class="small" type="button" id="emailInviteBtn" style="margin:0; width:auto;">📧 Invite by email</button>
-        <button class="small secondary" type="button" id="copyInviteBtn" style="margin:0; width:auto;">📋 Copy invite</button>
-      </div>
-      <p class="muted" style="font-size:0.75rem; margin:6px 0 0;">Tell them the family PIN yourself (it's not in the email). Each person then taps "👤 Who's using this phone?" and picks their name.</p>
-      <button class="small hidden" type="button" id="signupWelcomeDoneBtn">Got it 👍</button>
+      <div class="join-code" id="welcomeJoinCode">------</div>
+      <button class="small" type="button" id="signupWelcomeDoneBtn" style="width:auto; margin-top:10px;">Got it 👍</button>
     </div>
-
-    <div class="card full-width hidden" id="notifyPanel">
-      <h3>Notifications 🔔</h3>
-      <p class="muted">Turn on notifications for this device so it pings you about new events — pick who's using this device first.</p>
-      <select id="notifyMemberSelect"></select>
-      <div style="display:flex; gap: 8px; margin-top: 12px;">
-        <button class="secondary" id="enableNotifyBtn" style="margin-top:0;">Enable notifications</button>
-        <button class="small" id="testNotifyBtn" style="margin-top:0; display:none;">Send a test</button>
-      </div>
-      <p class="muted" id="notifyStatus" style="margin-top:8px;"></p>
-      <div class="error hidden" id="notifyError"></div>
-    </div>
-
-    <div class="card full-width hidden" id="googlePanel">
-      <h3>Google Calendar 📅</h3>
-      <p class="muted" id="googleCalStatus">Checking Google Calendar connection...</p>
-      <button class="small secondary" id="connectGoogleBtn" style="display:none;">Connect Google Calendar</button>
-      <button class="small secondary" id="disconnectGoogleBtn" style="display:none;">Disconnect Google Calendar</button>
-      <div class="error hidden" id="googleCalError"></div>
-    </div>
-
-    <div class="card">
+    <div class="card full-width win-card">
       <h3>Win the Day 🌟</h3>
-      <p class="muted" style="margin-bottom:8px;">Everyone has 3 habits to do every day. Plan something special for a day in the Planner and it swaps in just for that day.</p>
-      <div style="margin-bottom:10px;"><span style="background:var(--terracotta); color:#fff; border-radius:999px; padding:6px 13px; font-size:0.88rem; font-weight:700; display:inline-block;">🎯 Do all 3 to win the day!</span></div>
       <div id="winDayDate" class="win-day-date"></div>
       <div id="habitsMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
       <div id="habitsList"><p class="loading-text">Loading...</p></div>
     </div>
+    </section>
 
+    <section class="tab-page" data-section="plan">
+    <div class="card full-width">
+      <div class="cal-header">
+        <button class="small secondary" id="calPrevBtn">‹</button>
+        <h3 id="calMonthLabel">Month Year</h3>
+        <button class="small secondary" id="calNextBtn">›</button>
+      </div>
+      <div id="calMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;"></div>
+      <div id="calViewTabs" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+        <button class="small" data-cal-view="week" style="margin:0;">1 Week</button>
+        <button class="small secondary" data-cal-view="2week" style="margin:0;">2 Weeks</button>
+        <button class="small secondary" data-cal-view="month" style="margin:0;">Month</button>
+        <button class="small secondary" id="calExpandBtn" type="button" style="margin:0 0 0 auto;">⤢ Expand</button>
+      </div>
+      <div class="cal-grid" id="calWeekdayRow"></div>
+      <div class="cal-grid" id="calDaysGrid"></div>
+      <div id="eventDetailPanel" class="hidden" style="margin-top: 10px; padding: 12px; background: #fff; border-radius: 12px;"></div>
+      <button class="small secondary" id="showAddEventBtn">+ Add an event</button>
+      <div id="addEventForm" class="hidden" style="margin-top: 12px;">
+        <label>Title</label>
+        <input id="newEventTitle" placeholder="e.g. Bike ride in the park" />
+        <label>For</label>
+        <div id="newEventMemberChecks" class="member-check-list"></div>
+        <label>Pillar</label>
+        <select id="newEventPillar"><option value="">None</option><option value="fuel">Fuel</option><option value="move">Move</option><option value="grow">Grow</option></select>
+        <label>When</label>
+        <input id="newEventStart" type="datetime-local" />
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="newEventRepeatCheck" style="width:20px; height:20px; margin:0;" />
+          🔁 This happens every week (like netball)
+        </label>
+        <div id="newEventRepeatUntilWrap" class="hidden">
+          <label>Until when?</label>
+          <input id="newEventRepeatUntil" type="date" />
+        </div>
+        <button id="addEventBtn">Add event</button>
+      </div>
+      <div class="error hidden" id="eventError"></div>
+    </div>
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <h3 style="margin:0;">📋 Planner</h3>
         <button type="button" class="small secondary" id="plannerManageBtn" style="margin:0; width:auto;">⚙️ Manage</button>
       </div>
-      <p class="muted">Your top 5 favourites. Tap one (or drag it onto the calendar) to plan it for a day — pick a person and it becomes their habit that day.</p>
+      <p class="muted">Tap an idea to put it on a day.</p>
       <p class="muted hidden" id="plannerManageHint" style="background:#fff6ee; border-radius:8px; padding:6px 10px;">⚙️ Manage: tap ✕ to remove an idea, or add new ones below. Tap Done when finished.</p>
       <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
         <button class="small" data-planner-tab="movement" style="margin:0;">🏃 Movement</button>
@@ -488,46 +525,6 @@
         <div id="plannerWeekPlanWrap" class="hidden"></div>
       </div>
     </div>
-
-    <div class="card full-width">
-      <div class="cal-header">
-        <button class="small secondary" id="calPrevBtn">‹</button>
-        <h3 id="calMonthLabel">Month Year</h3>
-        <button class="small secondary" id="calNextBtn">›</button>
-      </div>
-      <div id="calMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;"></div>
-      <div id="calViewTabs" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
-        <button class="small" data-cal-view="week" style="margin:0;">1 Week</button>
-        <button class="small secondary" data-cal-view="2week" style="margin:0;">2 Weeks</button>
-        <button class="small secondary" data-cal-view="month" style="margin:0;">Month</button>
-        <button class="small secondary" id="calExpandBtn" type="button" style="margin:0 0 0 auto;">⤢ Expand</button>
-      </div>
-      <div class="cal-grid" id="calWeekdayRow"></div>
-      <div class="cal-grid" id="calDaysGrid"></div>
-      <div id="eventDetailPanel" class="hidden" style="margin-top: 10px; padding: 12px; background: #fff; border-radius: 12px;"></div>
-      <button class="small secondary" id="showAddEventBtn">+ Add an event</button>
-      <div id="addEventForm" class="hidden" style="margin-top: 12px;">
-        <label>Title</label>
-        <input id="newEventTitle" placeholder="e.g. Bike ride in the park" />
-        <label>For</label>
-        <div id="newEventMemberChecks" class="member-check-list"></div>
-        <label>Pillar</label>
-        <select id="newEventPillar"><option value="">None</option><option value="fuel">Fuel</option><option value="move">Move</option><option value="grow">Grow</option></select>
-        <label>When</label>
-        <input id="newEventStart" type="datetime-local" />
-        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-          <input type="checkbox" id="newEventRepeatCheck" style="width:20px; height:20px; margin:0;" />
-          🔁 This happens every week (like netball)
-        </label>
-        <div id="newEventRepeatUntilWrap" class="hidden">
-          <label>Until when?</label>
-          <input id="newEventRepeatUntil" type="date" />
-        </div>
-        <button id="addEventBtn">Add event</button>
-      </div>
-      <div class="error hidden" id="eventError"></div>
-    </div>
-
     <div class="card">
       <h3>Need an idea? 🤖</h3>
       <p class="muted">Get a fun activity suggestion — or a healthy snack idea.</p>
@@ -549,46 +546,56 @@
       <div id="aiSuggestionBox" class="hidden" style="margin-top: 12px; padding: 12px; border-radius: 12px; background: #fff;"></div>
       <div class="error hidden" id="aiError"></div>
     </div>
+    </section>
 
+    <section class="tab-page" data-section="food">
     <div class="card">
-      <h3>Family members</h3>
-      <div id="membersList"><p class="loading-text">Loading...</p></div>
-      <button class="small secondary" id="showAddMemberBtn">+ Add family member</button>
-      <div id="addMemberForm" class="hidden" style="margin-top: 12px;">
-        <label>Name</label>
-        <input id="newMemberName" placeholder="e.g. Jamie" />
-        <label>Role</label>
-        <select id="newMemberRole"><option value="child">Child</option><option value="parent">Parent</option></select>
-        <label>What do they like? (optional, comma separated)</label>
-        <input id="newMemberInterests" placeholder="e.g. dinosaurs, gardening, soccer" />
-        <button id="addMemberBtn">Add</button>
+      <h3>This week's meals 🥗</h3>
+      <p id="togetherCountLine" class="muted hidden" style="font-weight:600;"></p>
+      <div id="mealPlanList" style="margin-top: 4px;"><p class="loading-text">Loading...</p></div>
+      <div style="display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;">
+        <button class="small secondary" id="showAddMealBtn">+ Suggest a meal</button>
+        <label style="width:auto; margin:0; font-weight:normal;" class="muted">Voting as</label>
+        <select id="mealVoterSelect" style="width:auto;"></select>
       </div>
-      <div class="error hidden" id="memberError"></div>
-    </div>
-
-    <div class="pair-row">
-    <div class="card" id="rewardCard">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-        <h3 style="margin:0;">Reward shop 🎁</h3>
-        <button type="button" class="small secondary" id="rewardAdminBtn" style="margin:0; width:auto;">🔒 Parent admin</button>
-      </div>
-      <p class="muted" style="margin-top:6px;">🎯 Reach the weekly star goal and your chosen reward unlocks on <b>Saturday morning</b>.</p>
-      <div id="weeklyOverview"></div>
-      <div id="rewardAdminPanel" class="hidden"></div>
-      <div id="rewardsList"><p class="loading-text">Loading...</p></div>
-      <button class="small secondary" id="showAddRewardBtn">+ Add a reward</button>
-      <div id="addRewardForm" class="hidden" style="margin-top: 12px;">
-        <label>Reward</label>
-        <input id="newRewardTitle" placeholder="e.g. Pick the movie night film" />
+      <button class="small secondary" id="addWeekIngredientsBtn" style="margin-top:8px;">🛒 Add this week's ingredients to shopping list</button>
+      <div id="addMealForm" class="hidden" style="margin-top: 12px;">
+        <label>Day</label>
+        <input id="newMealDay" type="date" />
+        <label>Meal</label>
+        <input id="newMealTitle" placeholder="e.g. Taco night" />
+        <label>Meal type</label>
+        <select id="newMealType">
+          <option value="breakfast">🥣 Breakfast</option>
+          <option value="lunch">🥪 Lunch</option>
+          <option value="dinner" selected>🍽️ Dinner</option>
+          <option value="snacks">🍎 Snacks</option>
+        </select>
+        <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:8px;">
+          <input type="checkbox" id="newMealTogether" style="width:auto;" />
+          👨‍👩‍👧 We're all eating this together
+        </label>
         <label>Who's it for?</label>
-        <select id="newRewardFor"><option value="">🌍 Anyone</option></select>
-        <p class="muted" id="rewardApprovalHint" style="font-size:0.75rem; margin:6px 0 0;"></p>
-        <button id="addRewardBtn">Add reward</button>
+        <select id="newMealFor"><option value="">🌍 Everyone</option></select>
+        <button id="addMealBtn">Suggest</button>
       </div>
-      <div class="error hidden" id="rewardError"></div>
+      <div class="error hidden" id="mealError"></div>
     </div>
-
     <div class="card">
+      <h3>Shopping list 🛒</h3>
+      <div id="shoppingList"><p class="loading-text">Loading...</p></div>
+      <div style="display:flex; gap: 8px; margin-top: 12px;">
+        <input id="newShoppingItem" placeholder="Add an item..." style="flex:1" />
+        <button class="small" id="addShoppingBtn" style="margin-top:0;">Add</button>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap;">
+        <button class="small secondary" id="copyShoppingBtn" style="margin:0;">📋 Copy list</button>
+        <button class="small secondary" id="shoppingInfoBtn" style="margin:0;" type="button">ℹ️ How this works</button>
+      </div>
+      <p class="muted hidden" id="shoppingInfoText" style="margin-top:8px; font-size:0.82rem;">Woolworths and Coles don't offer a one-tap way to add items from another app, so "Copy list" copies your list as text — paste it into their app's search or list screen.</p>
+      <div class="error hidden" id="shoppingError"></div>
+    </div>
+    <div class="card full-width">
       <h3>Recipes 🍳</h3>
       <div id="recipeCategoryTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
       <div id="recipesList"><p class="loading-text">Loading...</p></div>
@@ -646,65 +653,7 @@
       <input type="file" id="photoFileInput" accept="image/*" class="hidden" />
       <input type="file" id="recipeScanInput" accept="image/*" class="hidden" />
     </div>
-    </div>
-
-    <div class="pair-row">
-    <div class="card">
-      <h3>This week's meals 🥗</h3>
-      <p id="togetherCountLine" class="muted hidden" style="font-weight:600;"></p>
-      <div id="mealPlanList" style="margin-top: 4px;"><p class="loading-text">Loading...</p></div>
-      <div style="display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;">
-        <button class="small secondary" id="showAddMealBtn">+ Suggest a meal</button>
-        <label style="width:auto; margin:0; font-weight:normal;" class="muted">Voting as</label>
-        <select id="mealVoterSelect" style="width:auto;"></select>
-      </div>
-      <button class="small secondary" id="addWeekIngredientsBtn" style="margin-top:8px;">🛒 Add this week's ingredients to shopping list</button>
-      <div id="addMealForm" class="hidden" style="margin-top: 12px;">
-        <label>Day</label>
-        <input id="newMealDay" type="date" />
-        <label>Meal</label>
-        <input id="newMealTitle" placeholder="e.g. Taco night" />
-        <label>Meal type</label>
-        <select id="newMealType">
-          <option value="breakfast">🥣 Breakfast</option>
-          <option value="lunch">🥪 Lunch</option>
-          <option value="dinner" selected>🍽️ Dinner</option>
-          <option value="snacks">🍎 Snacks</option>
-        </select>
-        <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:8px;">
-          <input type="checkbox" id="newMealTogether" style="width:auto;" />
-          👨‍👩‍👧 We're all eating this together
-        </label>
-        <label>Who's it for?</label>
-        <select id="newMealFor"><option value="">🌍 Everyone</option></select>
-        <button id="addMealBtn">Suggest</button>
-      </div>
-      <div class="error hidden" id="mealError"></div>
-    </div>
-
-    <div class="card">
-      <h3>Shopping list 🛒</h3>
-      <div id="shoppingList"><p class="loading-text">Loading...</p></div>
-      <div style="display:flex; gap: 8px; margin-top: 12px;">
-        <input id="newShoppingItem" placeholder="Add an item..." style="flex:1" />
-        <button class="small" id="addShoppingBtn" style="margin-top:0;">Add</button>
-      </div>
-      <div style="display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap;">
-        <button class="small secondary" id="copyShoppingBtn" style="margin:0;">📋 Copy list</button>
-        <button class="small secondary" id="shoppingInfoBtn" style="margin:0;" type="button">ℹ️ How this works</button>
-      </div>
-      <p class="muted hidden" id="shoppingInfoText" style="margin-top:8px; font-size:0.82rem;">Woolworths and Coles don't offer a one-tap way to add items from another app, so "Copy list" copies your list as text — paste it into their app's search or list screen.</p>
-      <div class="error hidden" id="shoppingError"></div>
-    </div>
-    </div>
-
-    <div class="pair-row">
-    <div class="card">
-      <h3>✨ Family Memories</h3>
-      <div id="memoriesView"><p class="loading-text">Loading...</p></div>
-    </div>
-
-    <div class="card">
+    <div class="card full-width">
       <h3>Family Cookbook 📸</h3>
       <p class="muted" style="margin-bottom:8px;">Favourite recipes + photos of you making them.</p>
       <button class="summary-row" id="cookbookToggleBtn" type="button"><span>View cookbook</span><span class="chevron">›</span></button>
@@ -720,8 +669,51 @@
         <div id="cookbookView" style="margin-top:14px;"><p class="muted">Pick a date range and tap Load.</p></div>
       </div>
     </div>
-    </div>
+    </section>
 
+    <section class="tab-page" data-section="rewards">
+    <div class="card full-width" id="rewardCard">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <h3 style="margin:0;">Reward shop 🎁</h3>
+        <button type="button" class="small secondary" id="rewardAdminBtn" style="margin:0; width:auto;">🔒 Parent admin</button>
+      </div>
+      <p class="muted" style="margin-top:6px;">🎯 Reach the weekly star goal and your chosen reward unlocks on <b>Saturday morning</b>.</p>
+      <div id="weeklyOverview"></div>
+      <div id="rewardAdminPanel" class="hidden"></div>
+      <div id="rewardsList"><p class="loading-text">Loading...</p></div>
+      <button class="small secondary" id="showAddRewardBtn">+ Add a reward</button>
+      <div id="addRewardForm" class="hidden" style="margin-top: 12px;">
+        <label>Reward</label>
+        <input id="newRewardTitle" placeholder="e.g. Pick the movie night film" />
+        <label>Who's it for?</label>
+        <select id="newRewardFor"><option value="">🌍 Anyone</option></select>
+        <p class="muted" id="rewardApprovalHint" style="font-size:0.75rem; margin:6px 0 0;"></p>
+        <button id="addRewardBtn">Add reward</button>
+      </div>
+      <div class="error hidden" id="rewardError"></div>
+    </div>
+    </section>
+
+    <section class="tab-page" data-section="family">
+    <div class="card">
+      <h3>Family members</h3>
+      <div id="membersList"><p class="loading-text">Loading...</p></div>
+      <button class="small secondary" id="showAddMemberBtn">+ Add family member</button>
+      <div id="addMemberForm" class="hidden" style="margin-top: 12px;">
+        <label>Name</label>
+        <input id="newMemberName" placeholder="e.g. Jamie" />
+        <label>Role</label>
+        <select id="newMemberRole"><option value="child">Child</option><option value="parent">Parent</option></select>
+        <label>What do they like? (optional, comma separated)</label>
+        <input id="newMemberInterests" placeholder="e.g. dinosaurs, gardening, soccer" />
+        <button id="addMemberBtn">Add</button>
+      </div>
+      <div class="error hidden" id="memberError"></div>
+    </div>
+    <div class="card">
+      <h3>✨ Family Memories</h3>
+      <div id="memoriesView"><p class="loading-text">Loading...</p></div>
+    </div>
     <div class="card full-width">
       <button class="summary-row" id="checkinToggleBtn" type="button">
         <span><strong>Weekly Family Check-in 📝</strong><br><span class="muted" style="font-weight:normal;">What went well? What should we change?</span></span>
@@ -734,7 +726,53 @@
         <div class="error hidden" id="meetingError"></div>
       </div>
     </div>
+        <div class="card full-width">
+      <h3>Settings ⚙️</h3>
+      <div class="settings-row">
+        <button class="settings-link" data-settings-toggle="invite">📧 Invite family ›</button>
+        <button class="settings-link" data-settings-toggle="notify">🔔 Notifications ›</button>
+        <button class="settings-link" data-settings-toggle="google">📅 Google Calendar ›</button>
+        <button class="settings-link" id="parentAdminLinkBtn" type="button">🔒 Parents ›</button>
+        <button class="settings-link" id="logoutBtn" type="button">🚪 Log out</button>
+      </div>
+    </div>
+    <div class="card full-width hidden" id="invitePanel">
+      <h3 id="inviteHeading">Invite family</h3>
+      <p class="muted" id="inviteBlurb">Share this so other family members can log in from their own device.</p>
+      <div class="join-code" id="joinCodeDisplay">------</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+        <button class="small" type="button" id="emailInviteBtn" style="margin:0; width:auto;">📧 Invite by email</button>
+        <button class="small secondary" type="button" id="copyInviteBtn" style="margin:0; width:auto;">📋 Copy invite</button>
+      </div>
+      <p class="muted" style="font-size:0.75rem; margin:6px 0 0;">Tell them the family PIN yourself (it's not in the email). Each person then taps "👤 Who's using this phone?" and picks their name.</p>
+    </div>
+    <div class="card full-width hidden" id="notifyPanel">
+      <h3>Notifications 🔔</h3>
+      <p class="muted">Turn on notifications for this device so it pings you about new events — pick who's using this device first.</p>
+      <select id="notifyMemberSelect"></select>
+      <div style="display:flex; gap: 8px; margin-top: 12px;">
+        <button class="secondary" id="enableNotifyBtn" style="margin-top:0;">Enable notifications</button>
+        <button class="small" id="testNotifyBtn" style="margin-top:0; display:none;">Send a test</button>
+      </div>
+      <p class="muted" id="notifyStatus" style="margin-top:8px;"></p>
+      <div class="error hidden" id="notifyError"></div>
+    </div>
+    <div class="card full-width hidden" id="googlePanel">
+      <h3>Google Calendar 📅</h3>
+      <p class="muted" id="googleCalStatus">Checking Google Calendar connection...</p>
+      <button class="small secondary" id="connectGoogleBtn" style="display:none;">Connect Google Calendar</button>
+      <button class="small secondary" id="disconnectGoogleBtn" style="display:none;">Disconnect Google Calendar</button>
+      <div class="error hidden" id="googleCalError"></div>
+    </div>
+</section>
 
+    <nav id="tabBar" aria-label="Sections">
+      <button type="button" data-tab="today"><span>🌟</span>Today</button>
+      <button type="button" data-tab="plan"><span>📅</span>Plan</button>
+      <button type="button" data-tab="food"><span>🍳</span>Food</button>
+      <button type="button" data-tab="rewards"><span>🎁</span>Rewards</button>
+      <button type="button" data-tab="family"><span>👨‍👩‍👧</span>Family</button>
+    </nav>
   </div>
 
 </div>
@@ -814,8 +852,9 @@
   </div>
 </div>
 
-<script src="/vendor/html2canvas.min.js"></script>
 <script>
+let currentTab = "today";   // which section (bottom tab) is showing
+let calendarStale = false;  // calendar needs a redraw next time Plan opens
 let state = { token: localStorage.getItem("ftf_token") || null, family: null, members: [] };
 
 function $(id) { return document.getElementById(id); }
@@ -857,7 +896,22 @@ function addDays(dayStr, n) {
   return ymd(d);
 }
 
+// Several cards ask for the same thing while the app loads (e.g. the week's
+// stars). Identical GETs within 2 seconds share one trip to the server; any
+// change (POST/DELETE) clears this so you always see fresh data after it.
+const apiGetCache = new Map();
 async function api(path, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  if (method !== "GET") { apiGetCache.clear(); return apiFetch(path, options); }
+  const hit = apiGetCache.get(path);
+  if (hit && Date.now() - hit.at < 2000) return structuredCloneSafe(await hit.promise);
+  const promise = apiFetch(path, options);
+  apiGetCache.set(path, { at: Date.now(), promise });
+  promise.catch(() => apiGetCache.delete(path));
+  return structuredCloneSafe(await promise);
+}
+function structuredCloneSafe(v) { try { return structuredClone(v); } catch (err) { return JSON.parse(JSON.stringify(v)); } }
+async function apiFetch(path, options = {}) {
   const headers = options.headers || {};
   headers["Content-Type"] = "application/json";
   if (state.token) headers["Authorization"] = "Bearer " + state.token;
@@ -923,21 +977,20 @@ $("tryDemoBtn").onclick = () => withBusyButton($("tryDemoBtn"), "Setting up the 
     state.token = data.token; localStorage.setItem("ftf_token", data.token);
     await loadHome();
     $("signupWelcomeTitle").textContent = "👋 Welcome to the Smith family!";
-    $("signupWelcomeText").innerHTML = `This is a demo family made just for you. <b>Try this:</b> tap Mia's tab and tick off her last habit to win the day 🎉 — then explore the calendar, planner and recipes. To come back to it later, log in with this code and PIN <b>${escapeHtml(data.pin)}</b>.`;
+    $("signupWelcomeText").innerHTML = `<b>Try this:</b> tap <b>Mia</b> and tick her last habit to win the day 🎉 Then tap the buttons at the bottom to explore.<br><span class="muted" style="font-size:0.85rem;">Come back later with this code + PIN <b>${escapeHtml(data.pin)}</b></span>`;
     showSignupWelcome();
   } catch (err) { showError("demoError", err.message); }
 });
 
 function showSignupWelcome() {
-  show("signupWelcome"); show("signupWelcomeDoneBtn"); hide("inviteHeading"); hide("inviteBlurb");
-  show("invitePanel");
+  show("signupWelcome"); show("signupWelcomeDoneBtn");
+  show("welcomeCard"); showTab("today");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 $("signupWelcomeDoneBtn").onclick = () => {
   $("signupWelcomeTitle").textContent = "🎉 Your family is ready!";
   $("signupWelcomeText").innerHTML = "This is your <b>family code</b>. Write it down — you'll need it <b>and your PIN</b> to log in on another phone or after logging out.";
-  hide("signupWelcome"); hide("signupWelcomeDoneBtn"); show("inviteHeading"); show("inviteBlurb");
-  hide("invitePanel");
+  hide("welcomeCard");
 };
 
 $("logoutBtn").onclick = () => {
@@ -971,7 +1024,7 @@ function setMe(id) {
 function applyMeDefaults() {
   const me = getMe();
   const person = me && me !== "shared" ? state.members.find((m) => m.id === me) : null;
-  $("whoAmIBtn").textContent = person ? `👤 ${person.display_name} ▾` : me === "shared" ? "👤 Everyone (shared) ▾" : "👤 Who's using this phone?";
+  $("whoAmIBtn").textContent = person ? `👤 ${person.display_name} ▾` : me === "shared" ? "👥 Everyone ▾" : "👤 Who are you?";
   if (person) {
     habitsActiveMemberId = person.id;
     calendarMemberFilter = person.id;
@@ -1072,24 +1125,30 @@ async function loadHome() {
   if (!getMe() && me.members.length === 1) { try { localStorage.setItem("ftf_me", me.members[0].id); } catch (err) {} }
   applyMeDefaults();
   if (window.refreshDevFab) window.refreshDevFab();
+  const firstShow = $("homeScreen").classList.contains("hidden");
   hide("authScreen"); show("homeScreen");
+  if (firstShow) showTab("today");
+  $("welcomeJoinCode").textContent = me.family.joinCode;
   $("familyNameHeading").textContent = me.family.name + " 🌱";
   $("joinCodeDisplay").textContent = me.family.joinCode;
 
   renderMembers();
+  // Today (Win the Day) loads first so it's on screen as fast as possible;
+  // the other sections fill in behind it.
+  await renderHabits().catch((err) => { console.error("Failed to load habits:", err); toast(`Couldn't load habits — ${err.message}`, true); });
   // Each card renders independently — if one fails (e.g. the database is
   // missing a column a newer version of the app expects), the rest of the
   // home screen still loads instead of the whole page breaking.
   const sections = [
-    ["calendar", renderEvents], ["habits", renderHabits], ["reward shop", renderRewards],
+    ["calendar", renderEvents], ["reward shop", renderRewards],
     ["recipes", renderRecipes], ["this week's meals", renderMealPlan], ["shopping list", renderShopping],
     ["weekly check-in", loadMeeting], ["family memories", renderMemories], ["planner", loadPlannerMovementIdeas],
   ];
   await Promise.all(sections.map(([name, fn]) =>
     fn().catch((err) => { console.error(`Failed to load ${name}:`, err); toast(`Couldn't load ${name} — ${err.message}`, true); })
   ));
-  await refreshNotifyUi();
-  await refreshGoogleCalUi();
+  calendarStale = false;
+  await Promise.all([refreshNotifyUi().catch(() => {}), refreshGoogleCalUi().catch(() => {})]);
   startReminders();
   // Several people in the family but this phone hasn't said who it is yet.
   if (!getMe() && state.members.length > 1 && state.family.name !== "The Smith Family") showWhoPicker();
@@ -1800,17 +1859,18 @@ function habitTickMessage(res) {
 }
 let lastHabitsData = null; // latest /api/habits response (reminders use it for titles + ticking)
 async function renderHabits() {
-  const data = await api("/api/habits?day=" + todayStr());
-  lastHabitsData = data;
-  $("winDayDate").innerHTML = `📅 Today is <b>${new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" })}</b> — your 3 habits reset every morning.`;
-  const list = $("habitsList"); list.innerHTML = "";
-
   const planWeekStart = mondayOfWeek();
   const planWeekEnd = addDays(planWeekStart, 6);
-  try {
-    const planData = await api(`/api/habit-day-plan?startDay=${planWeekStart}&endDay=${planWeekEnd}`);
-    habitDayPlanItems = planData.items || [];
-  } catch (err) { habitDayPlanItems = []; } // the week plan is a nice-to-have, never blocks the habits card
+  // Both at once (not one after the other) so the card appears faster.
+  const [data, planData] = await Promise.all([
+    api("/api/habits?day=" + todayStr()),
+    api(`/api/habit-day-plan?startDay=${planWeekStart}&endDay=${planWeekEnd}`).catch(() => ({ items: [] })),
+  ]);
+  lastHabitsData = data;
+  $("winDayDate").innerHTML = `📅 <b>${new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" })}</b> · 🎯 Do all 3 to win the day!`;
+  const list = $("habitsList"); list.innerHTML = "";
+
+  habitDayPlanItems = planData.items || []; // the week plan is a nice-to-have, never blocks the habits card
 
   // Tabs — one person's habits shown at a time instead of everyone stacked
   // in one long list. Keeps whoever's already selected if they still exist.
@@ -1908,28 +1968,34 @@ async function renderHabits() {
 
   if ($("googleTodayItemsWrap")) loadGoogleTodayItems($("googleTodayItemsWrap"));
   // Keep the calendar in step: re-fetch events + ticks (cheap, family-sized).
-  if ($("calDaysGrid")) renderEvents().catch(() => renderCalendarGrid());
+  // (only redrawn now if it's on screen — otherwise when Plan is opened)
+  if (currentTab === "plan") renderEvents().catch(() => renderCalendarGrid());
+  else calendarStale = true;
   const activeM = data.members.find((mm) => mm.memberId === habitsActiveMemberId);
   if ($("rewardProgress") && activeM) loadRewardProgress($("rewardProgress"), activeM);
   renderPlannerWeekPlan(activeM, planWeekStart);
 
   list.querySelectorAll("button[data-habit]").forEach((btn) => {
     btn.onclick = async () => {
+      // Show the tick straight away — don't make a kid wait for the server.
+      btn.classList.add("done"); btn.disabled = true;
+      const check = btn.querySelector(".habit-check"); if (check) check.textContent = "✓";
       try {
         const res = await api(`/api/habits/${btn.getAttribute("data-habit")}/complete`, { method: "POST", body: JSON.stringify({ day: todayStr() }) });
-        await renderHabits();
         toast(habitTickMessage(res));
-      } catch (err) { toast(err.message, true); }
+        await renderHabits();
+      } catch (err) { toast(err.message, true); renderHabits().catch(() => {}); }
     };
   });
 
   list.querySelectorAll("button[data-bonus-habit]").forEach((btn) => {
     btn.onclick = async () => {
+      btn.classList.add("done"); btn.disabled = true;
       try {
         await api(`/api/habits/bonus/${btn.getAttribute("data-bonus-habit")}/complete`, { method: "POST", body: JSON.stringify({ day: todayStr() }) });
-        await renderHabits();
         toast("✨ Bonus done — amazing!");
-      } catch (err) { toast(err.message, true); }
+        await renderHabits();
+      } catch (err) { toast(err.message, true); renderHabits().catch(() => {}); }
     };
   });
 
@@ -2428,6 +2494,7 @@ function renderRewardAdmin(data) {
       habitsActiveMemberId = b.getAttribute("data-admin-habits");
       habitEditingMemberId = habitsActiveMemberId;
       await renderHabits();
+      showTab("today");
       $("habitsList").scrollIntoView({ behavior: "smooth", block: "start" });
     };
   });
@@ -2469,6 +2536,7 @@ $("rewardAdminBtn").onclick = () => { rewardAdminOpen = !rewardAdminOpen; render
 $("parentAdminLinkBtn").onclick = () => {
   rewardAdminOpen = true;
   renderRewardAdmin(rewardsListCache || { rewards: [], rules: {} });
+  showTab("rewards");
   $("rewardCard").scrollIntoView({ behavior: "smooth", block: "start" });
 };
 
@@ -2987,7 +3055,7 @@ async function renderMealPlan() {
     }).join("");
 
     dayRow.innerHTML = `<div class="meal-day-label">${MEAL_DAY_LABELS[i]}</div>
-      <div class="meal-day-items">${groupsHtml || '<span class="muted">—</span>'}<div class="meal-type-row"><button class="small secondary" data-meal-add-day="${day}" style="margin:0;">＋ Add</button></div></div>`;
+      <div class="meal-day-items">${groupsHtml || '<span class="muted">—</span>'}<div class="meal-type-row"><button class="meal-add-mini" data-meal-add-day="${day}" title="Add a meal" aria-label="Add a meal">＋</button></div></div>`;
     list.appendChild(dayRow);
 
     dayItems.forEach((item) => {
@@ -3899,7 +3967,19 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
     el.classList.remove("hidden");
   }
 
+  function loadHtml2canvas() {
+    if (window.html2canvas) return Promise.resolve();
+    return new Promise((resolve) => {
+      const sc = document.createElement("script");
+      sc.src = "/vendor/html2canvas.min.js";
+      sc.onload = resolve; sc.onerror = resolve;
+      document.head.appendChild(sc);
+    });
+  }
+
   async function captureElement(el, label) {
+    setStatus("📸 Getting ready...");
+    await loadHtml2canvas();
     if (!window.html2canvas) {
       setStatus("The screenshot tool didn't load on this device. Use your computer's own screenshot (Mac: Cmd+Shift+4) and then 📁 Upload image.", true);
       return;
@@ -4115,6 +4195,30 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
   const code = (new URLSearchParams(location.search).get("code") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
   if (code) { $("loginJoinCode").value = code; $("tabLogin").click(); }
 })();
+
+// --- Sections (bottom tab bar) ---
+// One section at a time so the screen never feels busy. Win the Day
+// ("Today") is always the first thing you see.
+const TABS = ["today", "plan", "food", "rewards", "family"];
+function showTab(name) {
+  if (!TABS.includes(name)) name = "today";
+  const changed = name !== currentTab;
+  currentTab = name;
+  document.querySelectorAll(".tab-page").forEach((sec) => sec.classList.toggle("tab-off", sec.getAttribute("data-section") !== name));
+  document.querySelectorAll("#tabBar [data-tab]").forEach((b) => {
+    const on = b.getAttribute("data-tab") === name;
+    b.classList.toggle("active", on);
+    b.setAttribute("aria-current", on ? "page" : "false");
+  });
+  if (changed) window.scrollTo({ top: 0 });
+  // The calendar measures itself, so redraw it when its section appears.
+  if (name === "plan") {
+    if (calendarStale && state.family) { calendarStale = false; renderEvents().catch(() => {}); }
+    else if (typeof renderCalendarGrid === "function") { try { renderCalendarGrid(); } catch (err) {} }
+  }
+}
+document.querySelectorAll("#tabBar [data-tab]").forEach((b) => { b.onclick = () => showTab(b.getAttribute("data-tab")); });
+showTab("today");
 
 // --- Boot ---
 (async function boot() {

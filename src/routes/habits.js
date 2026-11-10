@@ -67,42 +67,32 @@ export async function getHabits(request, familyId, env) {
   if (!validDay(day)) return errorResponse("day must be formatted YYYY-MM-DD.");
 
   const db = env.DB;
-  const members = await db
-    .prepare("SELECT id, display_name, role, color FROM members WHERE family_id = ? ORDER BY created_at ASC")
-    .bind(familyId)
-    .all();
-
-  const habitsRes = await db
-    .prepare("SELECT id, member_id, slot, title, emoji FROM weekly_habits WHERE family_id = ? ORDER BY member_id, slot")
-    .bind(familyId)
-    .all();
-
-  const completionsRes = await db
-    .prepare("SELECT habit_id FROM habit_completions WHERE family_id = ? AND day = ?")
-    .bind(familyId, day)
-    .all();
-  const completedHabitIds = new Set((completionsRes.results || []).map((r) => r.habit_id));
-
-  const streaksRes = await db
-    .prepare(
+  // Every lookup below is independent, so they all go to the database at
+  // once (one round trip instead of seven in a row — much faster when the
+  // database is far away).
+  const [planReady, bonusReady] = await Promise.all([ensureHabitPlanTime(db), ensureBonusTables(db)]);
+  const none = Promise.resolve({ results: [] });
+  const [members, habitsRes, completionsRes, streaksRes, planRes, bonusRes, bonusDone] = await Promise.all([
+    db.prepare("SELECT id, display_name, role, color FROM members WHERE family_id = ? ORDER BY created_at ASC").bind(familyId).all(),
+    db.prepare("SELECT id, member_id, slot, title, emoji FROM weekly_habits WHERE family_id = ? ORDER BY member_id, slot").bind(familyId).all(),
+    db.prepare("SELECT habit_id FROM habit_completions WHERE family_id = ? AND day = ?").bind(familyId, day).all(),
+    db.prepare(
       `SELECT hs.member_id, hs.current_streak, hs.longest_streak FROM habit_streaks hs
        INNER JOIN members m ON m.id = hs.member_id WHERE m.family_id = ?`
-    )
-    .bind(familyId)
-    .all();
+    ).bind(familyId).all(),
+    // Something planned for this exact day (from the Planner) swaps in for
+    // the usual habit in that slot, just for today.
+    planReady
+      ? db.prepare("SELECT member_id, slot, title, time FROM habit_day_plan WHERE family_id = ? AND day = ? AND title IS NOT NULL").bind(familyId, day).all()
+      : none,
+    bonusReady ? db.prepare("SELECT id, member_id, slot, title, emoji FROM bonus_habits WHERE family_id = ? ORDER BY slot").bind(familyId).all() : none,
+    bonusReady ? db.prepare("SELECT bonus_habit_id FROM bonus_completions WHERE family_id = ? AND day = ?").bind(familyId, day).all() : none,
+  ]);
+  const completedHabitIds = new Set((completionsRes.results || []).map((r) => r.habit_id));
   const streakByMember = {};
   for (const s of streaksRes.results || []) streakByMember[s.member_id] = s;
-
-  // Something planned for this exact day (from the Planner) swaps in for
-  // the usual habit in that slot, just for today.
   const todayPlan = {};
-  if (await ensureHabitPlanTime(db)) {
-    const planRes = await db
-      .prepare("SELECT member_id, slot, title, time FROM habit_day_plan WHERE family_id = ? AND day = ? AND title IS NOT NULL")
-      .bind(familyId, day)
-      .all();
-    for (const p of planRes.results || []) todayPlan[`${p.member_id}:${p.slot}`] = p;
-  }
+  for (const p of planRes.results || []) todayPlan[`${p.member_id}:${p.slot}`] = p;
 
   const habitsByMember = {};
   for (const h of habitsRes.results || []) {
@@ -123,20 +113,10 @@ export async function getHabits(request, familyId, env) {
   // Bonus habits (optional extras). If the tables can't be set up, everyone
   // just has none — the 3 main habits are unaffected.
   const bonusByMember = {};
-  if (await ensureBonusTables(db)) {
-    const bonusRes = await db
-      .prepare("SELECT id, member_id, slot, title, emoji FROM bonus_habits WHERE family_id = ? ORDER BY slot")
-      .bind(familyId)
-      .all();
-    const bonusDone = await db
-      .prepare("SELECT bonus_habit_id FROM bonus_completions WHERE family_id = ? AND day = ?")
-      .bind(familyId, day)
-      .all();
-    const bonusDoneIds = new Set((bonusDone.results || []).map((r) => r.bonus_habit_id));
-    for (const b of bonusRes.results || []) {
-      if (!bonusByMember[b.member_id]) bonusByMember[b.member_id] = [];
-      bonusByMember[b.member_id].push({ id: b.id, slot: b.slot, title: b.title, emoji: b.emoji || "", completed: bonusDoneIds.has(b.id) });
-    }
+  const bonusDoneIds = new Set((bonusDone.results || []).map((r) => r.bonus_habit_id));
+  for (const b of bonusRes.results || []) {
+    if (!bonusByMember[b.member_id]) bonusByMember[b.member_id] = [];
+    bonusByMember[b.member_id].push({ id: b.id, slot: b.slot, title: b.title, emoji: b.emoji || "", completed: bonusDoneIds.has(b.id) });
   }
 
   const result = (members.results || []).map((m) => {
@@ -158,11 +138,12 @@ export async function getHabits(request, familyId, env) {
     };
   });
 
-  for (const r of result) {
-    r.weekWonDays = await wonDaysThisWeek(db, r.memberId, day);
-    r.daysWonThisWeek = r.weekWonDays.length;
-    r.starsThisWeek = await starsThisWeek(db, r.memberId, day);
-  }
+  await Promise.all(result.map(async (r) => {
+    const [won, stars] = await Promise.all([wonDaysThisWeek(db, r.memberId, day), starsThisWeek(db, r.memberId, day)]);
+    r.weekWonDays = won;
+    r.daysWonThisWeek = won.length;
+    r.starsThisWeek = stars;
+  }));
 
   return json({ ok: true, day, members: result });
 }

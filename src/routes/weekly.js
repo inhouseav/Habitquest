@@ -24,29 +24,33 @@ export async function getWeekly(request, familyId, env) {
   const url = new URL(request.url);
   const day = validDay(url.searchParams.get("day")) ? url.searchParams.get("day") : new Date().toISOString().slice(0, 10);
   const db = env.DB;
-  if (!(await ensureWeeklyGoals(db))) return errorResponse("Weekly rewards aren't available right now.", 500);
-  await ensureRewardColumns(db);
-  const goal = await familyGoal(db, familyId);
+  const [weeklyReady] = await Promise.all([ensureWeeklyGoals(db), ensureRewardColumns(db)]);
+  if (!weeklyReady) return errorResponse("Weekly rewards aren't available right now.", 500);
   const weekOf = mondayOf(day);
   const unlockDay = rewardDayOf(day);
   // Only unlock if the phone's "today" really is today (± time zones) —
   // so nobody can unlock early by asking about Saturday on a Wednesday.
   const unlockOpen = day >= unlockDay && isTickableDay(day);
 
-  const members = (await db.prepare("SELECT id, display_name, role FROM members WHERE family_id = ? ORDER BY created_at ASC").bind(familyId).all()).results || [];
-  const out = [];
-  for (const m of members) {
-    const stars = await starsThisWeek(db, m.id, day);
-    let row = await db
-      .prepare("SELECT g.id, g.reward_id, g.status, r.title AS reward_title FROM weekly_goals g LEFT JOIN rewards r ON r.id = g.reward_id WHERE g.member_id = ? AND g.week_of = ?")
-      .bind(m.id, weekOf)
-      .first();
+  // All independent, so asked at once (fewer slow round trips).
+  const [goal, membersRes] = await Promise.all([
+    familyGoal(db, familyId),
+    db.prepare("SELECT id, display_name, role FROM members WHERE family_id = ? ORDER BY created_at ASC").bind(familyId).all(),
+  ]);
+  const members = membersRes.results || [];
+  const out = await Promise.all(members.map(async (m) => {
+    const [stars, found] = await Promise.all([
+      starsThisWeek(db, m.id, day),
+      db.prepare("SELECT g.id, g.reward_id, g.status, r.title AS reward_title FROM weekly_goals g LEFT JOIN rewards r ON r.id = g.reward_id WHERE g.member_id = ? AND g.week_of = ?")
+        .bind(m.id, weekOf).first(),
+    ]);
+    let row = found;
     // Unlock automatically once it's reward day and the goal is reached.
     if (row && row.status === "working" && row.reward_id && unlockOpen && stars >= goal) {
       await db.prepare("UPDATE weekly_goals SET status = 'earned', earned_at = datetime('now') WHERE id = ?").bind(row.id).run();
       row = { ...row, status: "earned" };
     }
-    out.push({
+    return {
       memberId: m.id,
       name: m.display_name,
       role: m.role,
@@ -55,8 +59,8 @@ export async function getWeekly(request, familyId, env) {
       rewardId: row ? row.reward_id : null,
       rewardTitle: row ? row.reward_title : null,
       status: row ? row.status : "none",
-    });
-  }
+    };
+  }));
 
   const toGive = ((await db
     .prepare(`SELECT g.id, g.week_of, g.member_id, m.display_name AS name, r.title AS reward_title

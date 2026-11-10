@@ -28,3 +28,9 @@ bucket_name = "habitquest-photos"
 # Part of the Cloudflare account (free daily allowance), no API key needed.
 [ai]
 binding = "AI"
+
+# Speed: run the app's server code close to the database (instead of close
+# to the phone), so the many small database lookups each request makes are
+# quick. Static files (the app itself) are still served from nearby.
+[placement]
+mode = "smart"

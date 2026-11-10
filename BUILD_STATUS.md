@@ -4,6 +4,13 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Faster + simpler: sections with a bottom tab bar (2026-11-10)
+
+- **Sections:** the app is now 5 sections with a bottom tab bar: 🌟 Today (Win the Day — always first), 📅 Plan (calendar, Planner, Need an idea), 🍳 Food (meals, shopping, recipes, cookbook), 🎁 Rewards, 👨‍👩‍👧 Family (members, memories, check-in, then Settings: invite, notifications, Google, Parents, log out). One section on screen at a time. Who-are-you chip in the header.
+- **Phone / iPad / laptop:** single column on phones; on iPad and laptop the cards inside a section sit side by side. Checked on iPhone, iPad portrait + landscape, laptop.
+- **Simpler text:** Today header is one line (date · do all 3 to win); shorter demo welcome; meal days use a small ＋.
+- **Speed:** server code runs next to the database (`[placement] mode = "smart"` in wrangler.toml); habits and weekly lookups run in parallel; Today loads first and the other sections fill in behind it; ticking a habit shows ✓ instantly; identical lookups within 2s share one request; the calendar only redraws when Plan is open; the screenshot tool (html2canvas) loads only when the 💡 is used.
+
 ## ✅ Launch: welcome page, invite links, family recipe pack, demo pictures (2026-11-10)
 
 - **Welcome page** `/welcome` (public/welcome.html): "Ready to Win the Day?", a tap-to-try 3-habit demo, how it works (4 steps), how stars work (1/2/1, 12 ⭐ unlocks Saturday), features, and join steps. `/welcome?code=ABC123` shows the family code and its "Let's go!" opens the app with the code already filled in (`/?code=`). Login screen links to it ("New here? See how it works").
