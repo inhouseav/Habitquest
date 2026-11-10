@@ -4,6 +4,10 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Tap a calendar day to add an event (2026-11-10)
+
+- Each day in the calendar is tappable (small ＋ in the corner): it opens the Add Event form with that day's date filled in (4pm, or the next hour if it's later today), the day highlighted and a ✕ to close. Tapping an existing event still opens that event. The old "+ Add an event" button is gone; a hint says "👆 Tap a day to add something to it". Works in week, 2-week and month views on phone, iPad and laptop.
+
 ## ✅ Stars are personal — no side-by-side comparisons (2026-11-10)
 
 - Family members list no longer shows star counts (Give Kudos stays for parents).

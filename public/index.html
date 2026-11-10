@@ -165,7 +165,11 @@
   .cal-day { min-height: 64px; min-width: 0; border-radius: 10px; background: #fff; padding: 4px; font-size: 0.7rem; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
   .cal-day.other-month { background: transparent; opacity: 0.35; }
   .cal-day.today { outline: 2px solid var(--terracotta); }
-  .cal-day-num { font-weight: 700; font-size: 0.75rem; }
+  .cal-day-num { font-weight: 700; font-size: 0.75rem; display: flex; align-items: center; }
+  .cal-day[data-date-key] { cursor: pointer; transition: box-shadow 0.15s; }
+  .cal-day[data-date-key]:hover { box-shadow: inset 0 0 0 2px var(--terracotta); }
+  .cal-day-add { margin-left: auto; width: 18px; height: 18px; border-radius: 50%; background: var(--sage); color: var(--text); font-size: 0.8rem; line-height: 18px; text-align: center; font-weight: 700; flex: 0 0 auto; }
+  .cal-day.picked { box-shadow: inset 0 0 0 2px var(--terracotta); background: #fff6ef; }
   .cal-event-chip { border-radius: 6px; padding: 2px 4px; color: #183F35; font-size: 0.62rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
   .cal-habit-markers { display: flex; flex-wrap: wrap; gap: 3px; margin-top: auto; padding-top: 2px; }
   .cal-habit-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(24, 63, 53, 0.15); }
@@ -490,8 +494,10 @@
       <div class="cal-grid" id="calWeekdayRow"></div>
       <div class="cal-grid" id="calDaysGrid"></div>
       <div id="eventDetailPanel" class="hidden" style="margin-top: 10px; padding: 12px; background: #fff; border-radius: 12px;"></div>
-      <button class="small secondary" id="showAddEventBtn">+ Add an event</button>
-      <div id="addEventForm" class="hidden" style="margin-top: 12px;">
+      <p class="muted" id="calTapHint" style="font-size:0.8rem; margin:8px 0 0;">👆 Tap a day to add something to it</p>
+      <button class="small secondary hidden" id="showAddEventBtn">+ Add an event</button>
+      <div id="addEventForm" class="hidden" style="margin-top: 12px; background:#fff; border-radius:16px; padding:12px;">
+        <div style="display:flex; align-items:center; gap:8px;"><b id="addEventDayLabel" style="font-size:1.05rem;">➕ Add an event</b><button type="button" class="small secondary" id="cancelAddEventBtn" style="margin:0 0 0 auto; width:auto;">✕</button></div>
         <label>Title</label>
         <input id="newEventTitle" placeholder="e.g. Bike ride in the park" />
         <label>For</label>
@@ -925,7 +931,8 @@
 
 <script>
 let currentTab = "today";   // which section (bottom tab) is showing
-let calendarStale = false;  // calendar needs a redraw next time Plan opens
+let calendarStale = false;
+let addEventDay = null;     // the calendar day the Add Event form is open for  // calendar needs a redraw next time Plan opens
 let state = { token: localStorage.getItem("ftf_token") || null, family: null, members: [] };
 
 function $(id) { return document.getElementById(id); }
@@ -1604,7 +1611,9 @@ function renderCalendarGrid() {
       : "";
     const dayName = cell.key ? new Date(cell.key + "T00:00:00").toLocaleDateString([], { weekday: "long" }) : "";
     const emptyNote = cell.key && !chips && !planChips ? `<div class="cal-empty-note">Nothing planned</div>` : "";
-    div.innerHTML = `<div class="cal-day-num"><span class="cal-day-name">${dayName} </span>${cell.day}</div>${chips}${planChips}${emptyNote}${habitMarkers}`;
+    const addMark = cell.key ? `<span class="cal-day-add" aria-hidden="true">＋</span>` : "";
+    div.innerHTML = `<div class="cal-day-num"><span class="cal-day-name">${dayName} </span>${cell.day}${addMark}</div>${chips}${planChips}${emptyNote}${habitMarkers}`;
+    if (cell.key) { div.setAttribute("title", "Tap to add an event"); if (cell.key === addEventDay) div.classList.add("picked"); }
     if (cell.key) div.setAttribute("data-date-key", cell.key);
     grid.appendChild(div);
   });
@@ -1689,9 +1698,32 @@ function showEventDetail(eventId) {
   };
 }
 
+// Tap a day (anywhere but an event) to add an event on that day.
+function openAddEventForDay(day) {
+  addEventDay = day;
+  const isToday = day === todayStr();
+  let time = "16:00";
+  if (isToday) { const h = new Date().getHours() + 1; if (h >= 16) time = String(Math.min(h, 21)).padStart(2, "0") + ":00"; }
+  $("newEventStart").value = `${day}T${time}`;
+  $("addEventDayLabel").textContent = "➕ " + new Date(day + "T00:00:00").toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" });
+  show("addEventForm"); hide("eventDetailPanel"); hide("calTapHint");
+  $("calDaysGrid").querySelectorAll(".cal-day.picked").forEach((c) => c.classList.remove("picked"));
+  const cell = $("calDaysGrid").querySelector(`.cal-day[data-date-key="${day}"]`); if (cell) cell.classList.add("picked");
+  $("addEventForm").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  setTimeout(() => $("newEventTitle").focus({ preventScroll: true }), 250);
+}
+function closeAddEvent() {
+  addEventDay = null; hide("addEventForm"); show("calTapHint");
+  $("calDaysGrid").querySelectorAll(".cal-day.picked").forEach((c) => c.classList.remove("picked"));
+}
+$("cancelAddEventBtn").onclick = closeAddEvent;
 $("calDaysGrid").addEventListener("click", (evt) => {
   const chip = evt.target.closest(".cal-event-chip");
-  if (!chip) return;
+  if (!chip) {
+    const cell = evt.target.closest(".cal-day[data-date-key]");
+    if (cell) openAddEventForDay(cell.getAttribute("data-date-key"));
+    return;
+  }
   if (chip.hasAttribute("data-plan-chip")) { toast("⭐ A planned habit — tick it in Win the Day on the day. Change it in Planner → Plan my week."); return; }
   showEventDetail(chip.getAttribute("data-event-id"));
 });
@@ -1732,7 +1764,7 @@ if (calExpandBtn) {
   };
 }
 
-$("showAddEventBtn").onclick = () => show("addEventForm");
+$("showAddEventBtn").onclick = () => openAddEventForDay(todayStr());
 $("newEventRepeatCheck").onchange = () => {
   const checked = $("newEventRepeatCheck").checked;
   if (checked) {
@@ -1765,7 +1797,7 @@ $("addEventBtn").onclick = async () => {
       recurrence,
     })});
     $("newEventTitle").value = ""; $("newEventRepeatCheck").checked = false; hide("newEventRepeatUntilWrap");
-    renderEventMemberChecks(); hide("addEventForm"); await renderEvents();
+    renderEventMemberChecks(); closeAddEvent(); await renderEvents();
     toast(recurrence ? "🔁 Added — it'll repeat every week until then!" : "Event added!");
   } catch (err) { showError("eventError", err.message); }
 };
