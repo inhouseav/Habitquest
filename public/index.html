@@ -59,6 +59,11 @@
   .recipe-detail ul, .recipe-detail ol { margin: 4px 0; padding-left: 20px; }
   .recipe-detail li { margin-bottom: 2px; }
   .loading-text { opacity: 0.5; font-size: 0.85rem; font-style: italic; }
+  #whoPopup { position: fixed; inset: 0; z-index: 2900; background: rgba(24, 63, 53, 0.35); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  #whoPopup.hidden { display: none; }
+  #whoCard { background: #fffdf7; border-radius: 22px; padding: 22px; width: min(380px, 100%); box-shadow: 0 14px 40px rgba(0,0,0,0.25); text-align: center; }
+  #whoList { display: flex; flex-direction: column; gap: 8px; }
+  #whoList button { margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 1rem; }
   #reminderPopup { position: fixed; inset: 0; z-index: 3000; background: rgba(24, 63, 53, 0.35); display: flex; align-items: center; justify-content: center; padding: 16px; }
   #reminderPopup.hidden { display: none; }
   #reminderCard { background: #fffdf7; border-radius: 22px; padding: 22px 22px 18px; width: min(360px, 100%); box-shadow: 0 14px 40px rgba(0,0,0,0.25); text-align: center; animation: reminderPop 0.25s ease; }
@@ -234,6 +239,12 @@
   .habit-today-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: #F8E3D1; font-size: 0.68rem; font-weight: 700; vertical-align: middle; text-decoration: none; }
   .planner-habit-check { display: flex; gap: 8px; align-items: flex-start; font-size: 0.8rem; font-weight: 400; margin: 8px 0; cursor: pointer; }
   .planner-habit-check input { width: auto; margin: 2px 0 0; }
+  .meal-day-row.drag-over { background: #fff6ee; border-radius: 10px; }
+  .meal-for { font-weight: 700; }
+  .reward-progress { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #eee3cf; }
+  .reward-line { font-size: 0.85rem; margin-top: 3px; }
+  .reward-bar { height: 8px; border-radius: 999px; background: #F2EBDD; margin-top: 5px; overflow: hidden; }
+  .reward-bar span { display: block; height: 100%; background: #E0A339; border-radius: 999px; }
   .habit-quick-picks { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
   .habit-quick-pick { width: auto; margin: 0; padding: 3px 10px; font-size: 0.72rem; border-radius: 999px; background: #fff; color: var(--text); border: 1px solid #eee3cf; cursor: pointer; }
   .habit-quick-pick:hover { background: var(--sage); }
@@ -346,6 +357,7 @@
       <button class="settings-link" data-settings-toggle="invite">Invite family ›</button>
       <button class="settings-link" data-settings-toggle="notify">Notifications ›</button>
       <button class="settings-link" data-settings-toggle="google">Google Calendar ›</button>
+      <button class="settings-link" id="whoAmIBtn" type="button">👤 Who's using this phone?</button>
     </div>
 
     <div class="card full-width hidden" id="invitePanel">
@@ -356,6 +368,11 @@
       <h3 id="inviteHeading">Invite family</h3>
       <p class="muted" id="inviteBlurb">Share this so other family members can log in from their own device.</p>
       <div class="join-code" id="joinCodeDisplay">------</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+        <button class="small" type="button" id="emailInviteBtn" style="margin:0; width:auto;">📧 Invite by email</button>
+        <button class="small secondary" type="button" id="copyInviteBtn" style="margin:0; width:auto;">📋 Copy invite</button>
+      </div>
+      <p class="muted" style="font-size:0.75rem; margin:6px 0 0;">Tell them the family PIN yourself (it's not in the email). Each person then taps "👤 Who's using this phone?" and picks their name.</p>
       <button class="small hidden" type="button" id="signupWelcomeDoneBtn">Got it 👍</button>
     </div>
 
@@ -433,6 +450,10 @@
           <button class="small" id="plannerPickDayConfirmBtn" style="flex:1;">Add to calendar</button>
           <button class="small secondary" type="button" id="plannerPickDayCancelBtn" style="flex:0; white-space:nowrap;">Cancel</button>
         </div>
+      </div>
+      <div style="margin-top:14px; padding-top:10px; border-top:1px dashed #eee3cf;">
+        <button type="button" class="small secondary" id="plannerWeekToggleBtn" style="margin:0; width:auto;">📅 Plan my week ▾</button>
+        <div id="plannerWeekPlanWrap" class="hidden"></div>
       </div>
     </div>
 
@@ -614,6 +635,8 @@
           <input type="checkbox" id="newMealTogether" style="width:auto;" />
           👨‍👩‍👧 We're all eating this together
         </label>
+        <label>Who's it for?</label>
+        <select id="newMealFor"><option value="">🌍 Everyone</option></select>
         <button id="addMealBtn">Suggest</button>
       </div>
       <div class="error hidden" id="mealError"></div>
@@ -677,6 +700,15 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="whoPopup" class="hidden" role="dialog" aria-label="Who's using this phone?">
+  <div id="whoCard">
+    <div style="font-size:2.2rem;">👤</div>
+    <h3 style="margin:6px 0 2px;">Who's using this phone?</h3>
+    <p class="muted" style="margin:0 0 12px; font-size:0.85rem;">You'll see your own habits, calendar and reminders first — plus everything the whole family is doing. You can change this any time.</p>
+    <div id="whoList"></div>
+    <button type="button" class="secondary" id="whoSharedBtn" style="margin-top:8px;">👨‍👩‍👧 We share this device — show everyone</button>
+  </div>
+</div>
 <div id="reminderPopup" class="hidden" role="alertdialog" aria-live="assertive">
   <div id="reminderCard">
     <div id="reminderEmoji">⏰</div>
@@ -861,16 +893,92 @@ $("signupWelcomeDoneBtn").onclick = () => {
 
 $("logoutBtn").onclick = () => {
   localStorage.removeItem("ftf_token"); state.token = null; state.family = null;
-  reminderQueue = []; reminderCurrent = null; hide("reminderPopup"); lastHabitsData = null;
+  reminderQueue = []; reminderCurrent = null; hide("reminderPopup"); lastHabitsData = null; hide("whoPopup");
   if (window.refreshDevFab) window.refreshDevFab();
   $("signupWelcomeDoneBtn").onclick();
   hide("homeScreen"); show("authScreen");
 };
 
 // --- Home ---
+// --- Who's using this phone? ---
+// Each family member logs into the same family on their own phone, then
+// picks themselves once. That person becomes the default view on this
+// device: their habits tab, their calendar (their events + whole-family
+// ones), their reminders, voting and planning. "shared" = show everyone.
+function getMe() {
+  let v = null;
+  try { v = localStorage.getItem("ftf_me"); } catch (err) {}
+  if (v === "shared") return "shared";
+  return v && state.members.some((m) => m.id === v) ? v : null;
+}
+function setMe(id) {
+  try {
+    localStorage.setItem("ftf_me", id);
+    if (id === "shared") { localStorage.removeItem("ftf_notify_member"); }
+    else { localStorage.setItem("ftf_notify_member", id); localStorage.setItem("ftf_active_member", id); }
+  } catch (err) {}
+  applyMeDefaults();
+}
+function applyMeDefaults() {
+  const me = getMe();
+  const person = me && me !== "shared" ? state.members.find((m) => m.id === me) : null;
+  $("whoAmIBtn").textContent = person ? `👤 ${person.display_name} ▾` : me === "shared" ? "👤 Everyone (shared) ▾" : "👤 Who's using this phone?";
+  if (person) {
+    habitsActiveMemberId = person.id;
+    calendarMemberFilter = person.id;
+  } else {
+    calendarMemberFilter = "all";
+  }
+}
+function showWhoPicker() {
+  $("whoList").innerHTML = state.members.map((m) =>
+    `<button type="button" data-who="${m.id}"><span class="member-dot" style="background:${m.color || "#ccc"}; margin:0;"></span>${escapeHtml(m.display_name)}</button>`).join("");
+  $("whoList").querySelectorAll("[data-who]").forEach((b) => {
+    b.onclick = async () => { setMe(b.getAttribute("data-who")); hide("whoPopup"); await refreshForMe(); toast(`👋 Hi ${memberNameFor(b.getAttribute("data-who"))}!`); };
+  });
+  show("whoPopup");
+}
+async function refreshForMe() {
+  renderMembers();
+  await Promise.all([renderHabits().catch(() => {}), Promise.resolve(renderCalendarGrid())]);
+  if ($("plannerForMemberSelect")) renderPlannerForMemberOptions();
+}
+$("whoAmIBtn").onclick = showWhoPicker;
+$("whoSharedBtn").onclick = async () => { setMe("shared"); hide("whoPopup"); await refreshForMe(); };
+
+// Invite by email (opens your email app with the message ready) or copy it.
+function inviteText() {
+  const code = state.family ? state.family.joinCode : "";
+  const name = state.family ? state.family.name : "our family";
+  return `Join ${name} on Fuel the Fun! 🌱\n\n1. Open ${location.origin}\n2. Tap "Log in"\n3. Family code: ${code}\n4. PIN: ask me for it\n5. Tap "👤 Who's using this phone?" and pick your name\n\nThen add your favourite recipes, exercise and home ideas so we can plan together!`;
+}
+$("emailInviteBtn").onclick = () => {
+  const subject = encodeURIComponent(`Join ${state.family ? state.family.name : "our family"} on Fuel the Fun`);
+  window.location.href = `mailto:?subject=${subject}&body=${encodeURIComponent(inviteText())}`;
+};
+$("copyInviteBtn").onclick = async () => {
+  try { await navigator.clipboard.writeText(inviteText()); toast("📋 Invite copied — paste it into a message or email"); }
+  catch (err) { toast("Couldn't copy — use Invite by email instead.", true); }
+};
+
+// When you come back to the app (switch tabs/apps), quietly reload so you
+// see what the rest of the family changed — unless you're mid-typing.
+let lastHomeLoad = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible" || !state.token || $("homeScreen").classList.contains("hidden")) return;
+  if (Date.now() - lastHomeLoad < 30000) return;
+  const typing = document.activeElement && ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
+  if (typing || habitEditingMemberId || !$("whoPopup").classList.contains("hidden")) return;
+  loadHome().catch(() => {});
+});
+
 async function loadHome() {
   const me = await api("/api/me");
   state.family = me.family; state.members = me.members;
+  lastHomeLoad = Date.now();
+  // A brand-new family's only member is obviously the person holding the phone.
+  if (!getMe() && me.members.length === 1) { try { localStorage.setItem("ftf_me", me.members[0].id); } catch (err) {} }
+  applyMeDefaults();
   if (window.refreshDevFab) window.refreshDevFab();
   hide("authScreen"); show("homeScreen");
   $("familyNameHeading").textContent = me.family.name + " 🌱";
@@ -891,6 +999,8 @@ async function loadHome() {
   await refreshNotifyUi();
   await refreshGoogleCalUi();
   startReminders();
+  // Several people in the family but this phone hasn't said who it is yet.
+  if (!getMe() && state.members.length > 1 && state.family.name !== "The Smith Family") showWhoPicker();
 }
 
 function renderMembers() {
@@ -917,6 +1027,10 @@ function renderMembers() {
   const savedVoter = localStorage.getItem("ftf_active_member") || savedNotifyMember;
   if (savedVoter) mealVoterSelect.value = savedVoter;
   mealVoterSelect.onchange = () => localStorage.setItem("ftf_active_member", mealVoterSelect.value);
+  const mealFor = $("newMealFor");
+  if (mealFor) mealFor.innerHTML = '<option value="">🌍 Everyone</option>' + state.members.map((m) => `<option value="${m.id}">${escapeHtml(m.display_name)}</option>`).join("");
+  const aiMe = getMe();
+  if (aiMe && aiMe !== "shared") aiSelect.value = aiMe;
   list.querySelectorAll("button[data-member]").forEach((btn) => { btn.onclick = () => giveStar(btn.getAttribute("data-member")); });
   renderEventMemberChecks();
   renderCalMemberTabs();
@@ -1409,6 +1523,7 @@ function renderPlannerForMemberOptions() {
   select.innerHTML = '<option value="">🌍 Everyone</option>' +
     state.members.map((m) => `<option value="${m.id}">${m.display_name}</option>`).join("");
   if (state.members.some((m) => m.id === prevValue)) select.value = prevValue;
+  else { const me = getMe(); if (me && me !== "shared") select.value = me; }
 }
 
 document.querySelectorAll("[data-planner-tab]").forEach((btn) => {
@@ -1638,15 +1753,11 @@ async function renderHabits() {
           </div>`
         : "";
 
-      const planExpanded = habitPlanExpandedMembers.has(m.memberId);
       bodyHtml = `<div class="habit-rows">${habitsHtml}</div>
         ${progressLine}
         ${bonusHtml}
         <div id="googleTodayItemsWrap" data-member="${m.memberId}" style="margin-top:6px;"></div>
-        <div style="margin-top:12px; padding-top:10px; border-top:1px dashed #eee3cf;">
-          <button type="button" class="small secondary" data-toggle-habit-plan="${m.memberId}" style="margin:0;">📅 Plan my week ${planExpanded ? "▴" : "▾"}</button>
-          ${planExpanded ? habitWeekPlanHtml(m, planWeekStart) : ""}
-        </div>`;
+        <div class="reward-progress" id="rewardProgress" data-member="${m.memberId}"></div>`;
     }
 
     row.innerHTML = headerHtml + bodyHtml;
@@ -1654,6 +1765,9 @@ async function renderHabits() {
   });
 
   if ($("googleTodayItemsWrap")) loadGoogleTodayItems($("googleTodayItemsWrap"));
+  const activeM = data.members.find((mm) => mm.memberId === habitsActiveMemberId);
+  if ($("rewardProgress") && activeM) loadRewardProgress($("rewardProgress"), activeM);
+  renderPlannerWeekPlan(activeM, planWeekStart);
 
   list.querySelectorAll("button[data-habit]").forEach((btn) => {
     btn.onclick = async () => {
@@ -1743,8 +1857,9 @@ async function renderHabits() {
     };
   });
 
-  // --- Plan the week: tap or drag a habit chip onto a day ---
-  list.querySelectorAll("[data-habit-plan-chip]").forEach((chip) => {
+  // --- Plan the week (now shown in the Planner card): tap or drag a habit chip onto a day ---
+  const planQueryAll = (sel) => [...list.querySelectorAll(sel), ...$("plannerWeekPlanWrap").querySelectorAll(sel)];
+  planQueryAll("[data-habit-plan-chip]").forEach((chip) => {
     chip.ondragstart = (evt) => {
       evt.dataTransfer.setData("text/habit-plan-slot", chip.getAttribute("data-plan-slot"));
       evt.dataTransfer.setData("text/habit-plan-member", chip.getAttribute("data-plan-member"));
@@ -1758,7 +1873,7 @@ async function renderHabits() {
       renderHabits();
     };
   });
-  list.querySelectorAll("[data-habit-plan-pick-day]").forEach((btn) => {
+  planQueryAll("[data-habit-plan-pick-day]").forEach((btn) => {
     btn.onclick = async () => {
       if (!habitPlanPicking) return;
       const { memberId, slot } = habitPlanPicking;
@@ -1766,10 +1881,10 @@ async function renderHabits() {
       await assignHabitPlan(memberId, slot, btn.getAttribute("data-habit-plan-pick-day"));
     };
   });
-  list.querySelectorAll("[data-habit-plan-pick-cancel]").forEach((btn) => {
+  planQueryAll("[data-habit-plan-pick-cancel]").forEach((btn) => {
     btn.onclick = () => { habitPlanPicking = null; renderHabits(); };
   });
-  list.querySelectorAll("[data-habit-plan-remove]").forEach((btn) => {
+  planQueryAll("[data-habit-plan-remove]").forEach((btn) => {
     btn.onclick = async () => {
       try {
         await api(`/api/habit-day-plan/${btn.getAttribute("data-habit-plan-remove")}`, { method: "DELETE" });
@@ -1777,7 +1892,7 @@ async function renderHabits() {
       } catch (err) { toast(err.message, true); }
     };
   });
-  list.querySelectorAll("[data-habit-plan-time]").forEach((input) => {
+  planQueryAll("[data-habit-plan-time]").forEach((input) => {
     input.onchange = async () => {
       const id = input.getAttribute("data-habit-plan-time");
       try {
@@ -1788,7 +1903,7 @@ async function renderHabits() {
       } catch (err) { toast(err.message, true); }
     };
   });
-  list.querySelectorAll(".habit-plan-day-row").forEach((row) => {
+  planQueryAll(".habit-plan-day-row").forEach((row) => {
     row.ondragover = (evt) => { evt.preventDefault(); row.classList.add("drag-over"); };
     row.ondragleave = () => row.classList.remove("drag-over");
     row.ondrop = async (evt) => {
@@ -1800,6 +1915,48 @@ async function renderHabits() {
       await assignHabitPlan(memberId, Number(slot), row.getAttribute("data-habit-plan-day"));
     };
   });
+}
+
+// "Plan my week" lives in the Planner card, for whoever's tab is showing in
+// Win the Day (normally "me" on this phone).
+let plannerWeekOpen = false;
+function renderPlannerWeekPlan(m, weekStart) {
+  const wrap = $("plannerWeekPlanWrap");
+  $("plannerWeekToggleBtn").textContent = `📅 Plan my week${m ? " — " + m.displayName : ""} ${plannerWeekOpen ? "▴" : "▾"}`;
+  wrap.classList.toggle("hidden", !plannerWeekOpen);
+  if (!plannerWeekOpen) return;
+  if (!m) { wrap.innerHTML = '<p class="muted">Add a family member first.</p>'; return; }
+  const html = habitWeekPlanHtml(m, weekStart);
+  wrap.innerHTML = html || `<p class="muted" style="margin-top:8px;">${escapeHtml(m.displayName)} hasn't picked their 3 habits yet — do that in Win the Day first.</p>`;
+}
+$("plannerWeekToggleBtn").onclick = () => { plannerWeekOpen = !plannerWeekOpen; renderHabits(); };
+
+// Stars + how close you are to the next reward, under Win the Day.
+let rewardsListCache = null;
+async function loadRewardProgress(el, m) {
+  try {
+    const [stars, rewards] = await Promise.all([
+      api("/api/stars?memberId=" + m.memberId),
+      rewardsListCache ? Promise.resolve(rewardsListCache) : api("/api/rewards").then((r) => (rewardsListCache = r)),
+    ]);
+    const balance = stars.balance || 0;
+    const list = (rewards.rewards || []).slice().sort((a, b) => a.star_cost - b.star_cost);
+    if (el.getAttribute("data-member") !== m.memberId) return;
+    if (!list.length) {
+      el.innerHTML = `<div class="reward-line">⭐ <b>${balance}</b> star${balance === 1 ? "" : "s"} · <span class="muted">add rewards in the Reward shop to save up for</span></div>`;
+      return;
+    }
+    const canGet = list.filter((r) => r.star_cost <= balance);
+    const next = list.find((r) => r.star_cost > balance);
+    const parts = [`<div class="reward-line">⭐ <b>${balance}</b> star${balance === 1 ? "" : "s"}</div>`];
+    if (next) {
+      const pct = Math.max(4, Math.round((balance / next.star_cost) * 100));
+      parts.push(`<div class="reward-line">🎁 <b>${next.star_cost - balance}</b> more for <b>${escapeHtml(next.title)}</b></div>
+        <div class="reward-bar"><span style="width:${pct}%"></span></div>`);
+    }
+    if (canGet.length) parts.push(`<div class="reward-line muted">🎉 You can get: ${canGet.map((r) => escapeHtml(r.title)).join(", ")} — redeem in the Reward shop</div>`);
+    el.innerHTML = parts.join("");
+  } catch (err) { el.innerHTML = ""; }
 }
 
 // Builds the "Plan the week" palette + Mon-Sun list under a member's 3
@@ -1951,6 +2108,8 @@ function escapeAttr(s) { return escapeHtml(s); }
 let rewardsExpanded = false;
 async function renderRewards() {
   const data = await api("/api/rewards");
+  rewardsListCache = data;
+  if ($("rewardProgress")) renderHabits().catch(() => {});
   const list = $("rewardsList"); list.innerHTML = "";
   if (!data.rewards.length) { list.innerHTML = '<p class="muted">No rewards yet — add one below!</p>'; return; }
   const REWARD_PREVIEW = 3;
@@ -1977,6 +2136,7 @@ async function renderRewards() {
       try {
         await api(`/api/rewards/${rewardId}/redeem`, { method: "POST", body: JSON.stringify({ memberId }) });
         await loadStars(memberId);
+        renderHabits().catch(() => {});
         toast("Redeemed! Enjoy 🎉");
       } catch (err) { toast(err.message, true); }
     };
@@ -2452,6 +2612,7 @@ async function renderMealPlan() {
     const dayItems = data.items.filter((it) => it.day === day);
     const dayRow = document.createElement("div");
     dayRow.className = "meal-day-row";
+    dayRow.setAttribute("data-meal-drop-day", day);
 
     const groupsHtml = MEAL_TYPE_ORDER.map((typeKey) => {
       const itemsOfType = dayItems.filter((it) => (it.mealType || "other") === typeKey);
@@ -2459,7 +2620,8 @@ async function renderMealPlan() {
       const meta = MEAL_TYPE_META[typeKey] || { label: "Other", emoji: "🍴" };
       const chipsHtml = itemsOfType.map((item) => {
         const open = expandedMealItemId === item.id;
-        return `<button class="meal-chip ${open ? "open" : ""}" data-meal-chip="${item.id}">${escapeHtml(item.title)}${item.together ? " 👨‍👩‍👧" : ""} · 👍${item.votes.length}</button>`;
+        const forName = item.memberId ? memberNameFor(item.memberId) : "";
+        return `<button class="meal-chip ${open ? "open" : ""}" draggable="true" data-meal-chip="${item.id}">${escapeHtml(item.title)}${item.together ? " 👨‍👩‍👧" : ""}${forName ? ` · <span class="meal-for">${escapeHtml(forName)}</span>` : ""} · 👍${item.votes.length}</button>`;
       }).join("");
       return `<div class="meal-type-row"><span class="meal-type-label">${meta.emoji} ${meta.label}</span>${chipsHtml}</div>`;
     }).join("");
@@ -2479,6 +2641,13 @@ async function renderMealPlan() {
           ${addIngredientsBtn}
           <button class="small secondary together-btn" data-together="${item.id}" style="margin:0;">${item.together ? "👨‍👩‍👧 Together" : "+ Mark together"}</button>
           <button class="small vote-btn" data-id="${item.id}">👍 Vote (${item.votes.length})</button>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:8px;">
+          <label style="margin:0; font-size:0.78rem;">📅 Move to</label>
+          <select class="small" data-meal-move="${item.id}" style="width:auto; margin:0;">${MEAL_DAY_LABELS.map((lbl, di) => { const d = addDays(start, di); return `<option value="${d}" ${d === item.day ? "selected" : ""}>${lbl}</option>`; }).join("")}</select>
+          <label style="margin:0; font-size:0.78rem;">For</label>
+          <select class="small" data-meal-for="${item.id}" style="width:auto; margin:0;"><option value="">🌍 Everyone</option>${state.members.map((m) => `<option value="${m.id}" ${m.id === item.memberId ? "selected" : ""}>${escapeHtml(m.display_name)}</option>`).join("")}</select>
+          <button class="small secondary" data-meal-delete="${item.id}" style="margin:0; background:#fde2de;">🗑 Remove</button>
         </div>`;
       list.appendChild(detail);
     });
@@ -2498,6 +2667,45 @@ async function renderMealPlan() {
       renderMealPlan();
     };
   });
+  const updateMeal = async (id, changes, msg) => {
+    try {
+      await api(`/api/meal-plan/${id}/update`, { method: "POST", body: JSON.stringify(changes) });
+      await renderMealPlan();
+      if (msg) toast(msg);
+    } catch (err) { toast(err.message, true); }
+  };
+  list.querySelectorAll("[data-meal-move]").forEach((sel) => {
+    sel.onchange = () => updateMeal(sel.getAttribute("data-meal-move"), { day: sel.value }, "📅 Meal moved");
+  });
+  list.querySelectorAll("[data-meal-for]").forEach((sel) => {
+    sel.onchange = () => updateMeal(sel.getAttribute("data-meal-for"), { memberId: sel.value || null }, "Updated who it's for");
+  });
+  list.querySelectorAll("[data-meal-delete]").forEach((btn) => {
+    btn.onclick = async () => {
+      try {
+        await api(`/api/meal-plan/${btn.getAttribute("data-meal-delete")}`, { method: "DELETE" });
+        expandedMealItemId = null;
+        await renderMealPlan();
+        toast("🗑 Meal removed");
+      } catch (err) { toast(err.message, true); }
+    };
+  });
+  // Drag a meal onto another day (computer); on a phone, tap it → Move to.
+  list.querySelectorAll("[data-meal-chip]").forEach((chip) => {
+    chip.ondragstart = (evt) => { evt.dataTransfer.setData("text/meal-id", chip.getAttribute("data-meal-chip")); evt.dataTransfer.effectAllowed = "move"; };
+  });
+  list.querySelectorAll("[data-meal-drop-day]").forEach((row) => {
+    row.ondragover = (evt) => { if ([...evt.dataTransfer.types].includes("text/meal-id")) { evt.preventDefault(); row.classList.add("drag-over"); } };
+    row.ondragleave = () => row.classList.remove("drag-over");
+    row.ondrop = (evt) => {
+      const id = evt.dataTransfer.getData("text/meal-id");
+      row.classList.remove("drag-over");
+      if (!id) return;
+      evt.preventDefault();
+      updateMeal(id, { day: row.getAttribute("data-meal-drop-day") }, "📅 Meal moved");
+    };
+  });
+
   list.querySelectorAll("button[data-meal-add-day]").forEach((btn) => {
     btn.onclick = () => {
       $("newMealDay").value = btn.getAttribute("data-meal-add-day");
@@ -2586,7 +2794,8 @@ $("showAddMealBtn").onclick = () => { $("newMealDay").value = todayStr(); show("
 $("addMealBtn").onclick = async () => {
   clearError("mealError");
   try {
-    await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day: $("newMealDay").value, title: $("newMealTitle").value, mealType: $("newMealType").value, together: $("newMealTogether").checked })});
+    const mealFor = $("newMealTogether").checked ? "" : $("newMealFor").value;
+    await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day: $("newMealDay").value, title: $("newMealTitle").value, mealType: $("newMealType").value, together: $("newMealTogether").checked, memberId: mealFor || null })});
     $("newMealTitle").value = ""; $("newMealTogether").checked = false; hide("addMealForm"); await renderMealPlan();
   } catch (err) { showError("mealError", err.message); }
 };
@@ -3065,6 +3274,10 @@ function markReminderShown(key) {
   try { localStorage.setItem("ftf_reminders_shown", JSON.stringify({ day: todayStr(), keys: [...shown] })); } catch (err) {}
 }
 function reminderDeviceMember() {
+  // Follows "👤 Who's using this phone?" — shared device = everyone's.
+  const me = getMe();
+  if (me === "shared") return null;
+  if (me) return me;
   let id = null;
   try { id = localStorage.getItem("ftf_notify_member"); } catch (err) {}
   return id && state.members.some((m) => m.id === id) ? id : null;

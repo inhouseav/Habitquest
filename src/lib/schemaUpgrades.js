@@ -6,6 +6,7 @@
 
 let bonusReady = false;
 let planTimeReady = false;
+let mealMemberReady = false;
 
 async function columnNames(db, table) {
   const rows = await db.prepare(`SELECT name FROM pragma_table_info('${table}')`).all();
@@ -64,4 +65,18 @@ export async function ensureHabitPlanTime(db) {
     planTimeReady = false;
   }
   return planTimeReady;
+}
+
+/** Who a planned meal is for: NULL = the whole family, or one member's id. */
+export async function ensureMealMember(db) {
+  if (mealMemberReady) return true;
+  try {
+    if (!(await columnNames(db, "meal_plan_items")).has("member_id")) {
+      await db.prepare("ALTER TABLE meal_plan_items ADD COLUMN member_id TEXT").run().catch(() => {});
+    }
+    mealMemberReady = (await columnNames(db, "meal_plan_items")).has("member_id");
+  } catch (err) {
+    mealMemberReady = false;
+  }
+  return mealMemberReady;
 }

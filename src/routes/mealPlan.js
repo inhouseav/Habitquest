@@ -1,4 +1,5 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
+import { ensureMealMember } from "../lib/schemaUpgrades.js";
 import { newId } from "../lib/crypto.js";
 
 function validDay(day) {
@@ -26,9 +27,10 @@ export async function listMealPlan(request, familyId, env) {
   }
 
   const db = env.DB;
+  const hasMember = await ensureMealMember(db);
   const items = await db
     .prepare(
-      "SELECT id, day, recipe_id as recipeId, title, votes, together, meal_type as mealType FROM meal_plan_items WHERE family_id = ? AND day BETWEEN ? AND ? ORDER BY day ASC, created_at ASC"
+      `SELECT id, day, recipe_id as recipeId, title, votes, together, meal_type as mealType${hasMember ? ", member_id as memberId" : ""} FROM meal_plan_items WHERE family_id = ? AND day BETWEEN ? AND ? ORDER BY day ASC, created_at ASC`
     )
     .bind(familyId, startDay, endDay)
     .all();
@@ -62,13 +64,28 @@ export async function proposeMeal(request, familyId, env) {
     if (!recipe) return errorResponse("Recipe not found.", 404);
   }
 
-  const itemId = newId();
-  await db
-    .prepare("INSERT INTO meal_plan_items (id, family_id, day, recipe_id, title, votes, together, meal_type) VALUES (?, ?, ?, ?, ?, '[]', ?, ?)")
-    .bind(itemId, familyId, day, recipeId, title, together, mealType)
-    .run();
+  // Optional: who it's for (blank = the whole family).
+  let memberId = null;
+  if (body.memberId) {
+    const m = await db.prepare("SELECT id FROM members WHERE id = ? AND family_id = ?").bind(body.memberId, familyId).first();
+    if (!m) return errorResponse("Family member not found.", 404);
+    memberId = m.id;
+  }
 
-  return json({ ok: true, item: { id: itemId, day, recipeId, title, votes: [], together: !!together, mealType } });
+  const itemId = newId();
+  if (memberId && (await ensureMealMember(db))) {
+    await db
+      .prepare("INSERT INTO meal_plan_items (id, family_id, day, recipe_id, title, votes, together, meal_type, member_id) VALUES (?, ?, ?, ?, ?, '[]', ?, ?, ?)")
+      .bind(itemId, familyId, day, recipeId, title, together, mealType, memberId)
+      .run();
+  } else {
+    await db
+      .prepare("INSERT INTO meal_plan_items (id, family_id, day, recipe_id, title, votes, together, meal_type) VALUES (?, ?, ?, ?, ?, '[]', ?, ?)")
+      .bind(itemId, familyId, day, recipeId, title, together, mealType)
+      .run();
+  }
+
+  return json({ ok: true, item: { id: itemId, day, recipeId, title, votes: [], together: !!together, mealType, memberId } });
 }
 
 /** POST /api/meal-plan/:id/vote — toggle this member's vote on a meal option. */
@@ -114,4 +131,39 @@ export async function toggleTogether(itemId, familyId, env) {
   await db.prepare("UPDATE meal_plan_items SET together = ? WHERE id = ?").bind(nextValue, itemId).run();
 
   return json({ ok: true, together: !!nextValue });
+}
+
+/** DELETE /api/meal-plan/:id — remove a planned meal. */
+export async function deleteMeal(itemId, familyId, env) {
+  const db = env.DB;
+  const item = await db.prepare("SELECT id FROM meal_plan_items WHERE id = ? AND family_id = ?").bind(itemId, familyId).first();
+  if (!item) return errorResponse("Meal not found.", 404);
+  await db.prepare("DELETE FROM meal_plan_items WHERE id = ?").bind(itemId).run();
+  return json({ ok: true });
+}
+
+/**
+ * POST /api/meal-plan/:id/update — { day?, memberId? } move a meal to
+ * another day and/or change who it's for (memberId null = whole family).
+ */
+export async function updateMeal(itemId, request, familyId, env) {
+  const body = (await readJson(request)) || {};
+  const db = env.DB;
+  const item = await db.prepare("SELECT id FROM meal_plan_items WHERE id = ? AND family_id = ?").bind(itemId, familyId).first();
+  if (!item) return errorResponse("Meal not found.", 404);
+  if (body.day !== undefined) {
+    if (!validDay(body.day)) return errorResponse("day must be formatted YYYY-MM-DD.");
+    await db.prepare("UPDATE meal_plan_items SET day = ? WHERE id = ?").bind(body.day, itemId).run();
+  }
+  if (body.memberId !== undefined) {
+    if (!(await ensureMealMember(db))) return errorResponse("Can't set who it's for right now.", 500);
+    let memberId = null;
+    if (body.memberId) {
+      const m = await db.prepare("SELECT id FROM members WHERE id = ? AND family_id = ?").bind(body.memberId, familyId).first();
+      if (!m) return errorResponse("Family member not found.", 404);
+      memberId = m.id;
+    }
+    await db.prepare("UPDATE meal_plan_items SET member_id = ? WHERE id = ?").bind(memberId, itemId).run();
+  }
+  return json({ ok: true });
 }

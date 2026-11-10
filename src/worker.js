@@ -176,6 +176,10 @@ async function handleApi(request, env, url) {
   if (mealVoteMatch && method === "POST") {
     return mealPlanRoutes.toggleVote(mealVoteMatch[1], request, familyId, env);
   }
+  const mealUpdateMatch = path.match(/^\/api\/meal-plan\/([^/]+)\/update$/);
+  if (mealUpdateMatch && method === "POST") return mealPlanRoutes.updateMeal(mealUpdateMatch[1], request, familyId, env);
+  const mealDeleteMatch = path.match(/^\/api\/meal-plan\/([^/]+)$/);
+  if (mealDeleteMatch && method === "DELETE") return mealPlanRoutes.deleteMeal(mealDeleteMatch[1], familyId, env);
   const mealTogetherMatch = path.match(/^\/api\/meal-plan\/([^/]+)\/together$/);
   if (mealTogetherMatch && method === "POST") {
     return mealPlanRoutes.toggleTogether(mealTogetherMatch[1], familyId, env);

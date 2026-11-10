@@ -4,6 +4,16 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Family testing day: who's using this phone, meals per person, rewards progress (2026-11-10)
+
+- **👤 Who's using this phone?** Each family member logs into the same family on their own phone and picks themselves (asked automatically when a family has 2+ people and the phone hasn't chosen; button in the top row to change). Stored per device (`ftf_me`). Sets the default habits tab, calendar view (their events + Everyone events), Planner "For", meal voting, AI idea person, and reminders. "We share this device" = everyone.
+- **Refresh on return:** coming back to the app reloads the cards (skipped if you're mid-typing or editing habits) so other family members' changes show up.
+- **📧 Invite by email / 📋 Copy invite** in Invite family (link + family code; PIN deliberately left out).
+- **Meals:** tap a meal → 📅 Move to (any day), For (Everyone / one person), 🗑 Remove; drag between days on a computer. `meal_plan_items.member_id` auto-added (record: migration 019).
+- **Win the Day** shows ⭐ stars, "🎁 N more for <next reward>" with a progress bar, and rewards you can already get.
+- **Plan my week** moved into the Planner card (for the person showing in Win the Day).
+- Tested with two browsers at once (Bevan laptop + Mia phone, same family). All earlier journeys pass.
+
 ## ✅ Maddie's 9 notes: Win the Day, pick lists, Planner top 5 → day's habit, AI recipe pictures, cookbook (2026-11-10)
 
 - **Win the Day** is the habits card's new name (they're daily habits).
