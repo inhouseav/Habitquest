@@ -1,5 +1,6 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
+import { hasParentSession } from "../lib/parent.js";
 
 const MAX_TITLE_LENGTH = 60;
 const VALID_CATEGORIES = ["movement", "home"];
@@ -62,8 +63,9 @@ export async function useMovementIdea(id, familyId, env) {
 }
 
 /** DELETE /api/movement-ideas/:id — removes an idea from this family's Planner list. */
-export async function deleteMovementIdea(id, familyId, env) {
+export async function deleteMovementIdea(id, familyId, env, request) {
   const db = env.DB;
+  if (request && !(await hasParentSession(db, request, familyId))) return errorResponse("🔒 Only a parent can remove ideas.", 403);
   const existing = await db.prepare("SELECT id FROM movement_ideas WHERE id = ? AND family_id = ?").bind(id, familyId).first();
   if (!existing) return errorResponse("Not found.", 404);
   await db.prepare("DELETE FROM movement_ideas WHERE id = ?").bind(id).run();

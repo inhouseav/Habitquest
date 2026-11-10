@@ -1,5 +1,6 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { POINTS, KUDOS_PER_DAY, awardOnce, isTickableDay } from "../lib/points.js";
+import { resolveParentActor } from "../lib/parent.js";
 import { newId } from "../lib/crypto.js";
 
 const MAX_REASON_LENGTH = 100;
@@ -65,8 +66,8 @@ export async function awardStars(request, familyId, env) {
 
   const member = await db.prepare("SELECT id, display_name FROM members WHERE id = ? AND family_id = ?").bind(body.memberId || "", familyId).first();
   if (!member) return errorResponse("Family member not found.", 404);
-  const actor = await db.prepare("SELECT id, role FROM members WHERE id = ? AND family_id = ?").bind(body.actorId || "", familyId).first();
-  if (!actor || actor.role !== "parent") return errorResponse("Only a parent can give kudos stars.", 403);
+  const actor = await resolveParentActor(db, request, familyId, body.actorId || "");
+  if (!actor) return errorResponse("Only a parent can give kudos stars (unlock with the parent PIN).", 403);
   if (actor.id === member.id) return errorResponse("You can't give kudos to yourself.", 400);
 
   const day = typeof body.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.day) ? body.day : new Date().toISOString().slice(0, 10);

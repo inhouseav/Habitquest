@@ -3,6 +3,7 @@ import { hashPin, verifyPin, newId, newJoinCode } from "../lib/crypto.js";
 import { createSession } from "../lib/sessions.js";
 import { VALID_COLORS } from "./members.js";
 import { seedDemoFamily, DEMO_PIN } from "../lib/demoSeed.js";
+import { parentStatus } from "../lib/parent.js";
 
 const MAX_NAME_LENGTH = 60;
 const PIN_MIN_LENGTH = 4;
@@ -166,7 +167,7 @@ export async function login(request, env) {
 }
 
 /** GET /api/me — returns the family + members for the current session. */
-export async function me(familyId, env) {
+export async function me(familyId, env, request) {
   const db = env.DB;
   const family = await db
     .prepare("SELECT id, name, join_code FROM families WHERE id = ?")
@@ -183,6 +184,7 @@ export async function me(familyId, env) {
     ok: true,
     family: { id: family.id, name: family.name, joinCode: family.join_code },
     members: members.results || [],
+    parent: request ? await parentStatus(db, request, familyId) : { parentPinSet: false, unlockedParentId: null },
   });
 }
 

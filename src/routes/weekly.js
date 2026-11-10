@@ -1,6 +1,7 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
 import { ensureWeeklyGoals, ensureRewardColumns } from "../lib/schemaUpgrades.js";
+import { resolveParentActor } from "../lib/parent.js";
 import { WEEKLY_GOAL_DEFAULT, REWARD_DAY, mondayOf, rewardDayOf, starsThisWeek, isTickableDay } from "../lib/points.js";
 
 // The weekly reward loop, so parents don't have to think about it:
@@ -98,8 +99,8 @@ export async function markGiven(goalId, request, familyId, env) {
   const body = (await readJson(request)) || {};
   const db = env.DB;
   if (!(await ensureWeeklyGoals(db))) return errorResponse("Weekly rewards aren't available right now.", 500);
-  const actor = await db.prepare("SELECT role FROM members WHERE id = ? AND family_id = ?").bind(body.actorId || "", familyId).first();
-  if (!actor || actor.role !== "parent") return errorResponse("Only a parent can mark a reward as given.", 403);
+  const actor = await resolveParentActor(db, request, familyId, body.actorId || "");
+  if (!actor) return errorResponse("Only a parent can mark a reward as given (unlock with the parent PIN).", 403);
   const goal = await db.prepare("SELECT id, status FROM weekly_goals WHERE id = ? AND family_id = ?").bind(goalId, familyId).first();
   if (!goal) return errorResponse("Not found.", 404);
   if (goal.status !== "earned") return errorResponse("That reward hasn't been earned yet.", 400);
@@ -112,8 +113,8 @@ export async function saveWeeklySettings(request, familyId, env) {
   const body = (await readJson(request)) || {};
   const db = env.DB;
   if (!(await ensureWeeklyGoals(db))) return errorResponse("Weekly rewards aren't available right now.", 500);
-  const actor = await db.prepare("SELECT role FROM members WHERE id = ? AND family_id = ?").bind(body.actorId || "", familyId).first();
-  if (!actor || actor.role !== "parent") return errorResponse("Only a parent can change the weekly goal.", 403);
+  const actor = await resolveParentActor(db, request, familyId, body.actorId || "");
+  if (!actor) return errorResponse("Only a parent can change the weekly goal (unlock with the parent PIN).", 403);
   const goal = Number(body.goal);
   if (!Number.isInteger(goal) || goal < 3 || goal > 40) return errorResponse("Pick a weekly goal between 3 and 40 stars.");
   await db.prepare("UPDATE families SET weekly_goal = ? WHERE id = ?").bind(goal, familyId).run();

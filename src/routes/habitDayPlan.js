@@ -1,6 +1,7 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
 import { ensureHabitPlanTime } from "../lib/schemaUpgrades.js";
+import { hasParentSession } from "../lib/parent.js";
 
 function validTime(t) {
   return typeof t === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
@@ -50,6 +51,9 @@ export async function addHabitDayPlan(request, familyId, env) {
   const db = env.DB;
   const member = await db.prepare("SELECT id FROM members WHERE id = ? AND family_id = ?").bind(memberId, familyId).first();
   if (!member) return errorResponse("Family member not found.", 404);
+  if (title && !(await hasParentSession(db, request, familyId))) {
+    return errorResponse("🔒 Only a parent can swap in a different habit for a day.", 403);
+  }
   let habit = await db.prepare("SELECT id FROM weekly_habits WHERE member_id = ? AND slot = ?").bind(memberId, slot).first();
   if (!habit && title) {
     const habitId = newId();

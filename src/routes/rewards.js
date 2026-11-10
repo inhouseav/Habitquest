@@ -2,6 +2,7 @@ import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
 import { ensureRewardColumns } from "../lib/schemaUpgrades.js";
 import { POINTS, KUDOS_PER_DAY, WEEKLY_GOAL_DEFAULT } from "../lib/points.js";
+import { resolveParentActor } from "../lib/parent.js";
 
 const MAX_TITLE_LENGTH = 80;
 
@@ -50,7 +51,10 @@ export async function createReward(request, familyId, env) {
   const forMember = body.memberId ? await memberById(db, familyId, body.memberId) : null;
   if (body.memberId && !forMember) return errorResponse("Family member not found.", 404);
   const creator = await memberById(db, familyId, body.createdBy);
-  const status = creator && creator.role === "child" ? "pending" : "approved";
+  // Ready straight away only if a parent (unlocked with the parent PIN, once
+  // one is set) added it; anyone else's waits for a parent to OK it.
+  const parentCreator = creator ? await resolveParentActor(db, request, familyId, creator.id) : null;
+  const status = parentCreator ? "approved" : "pending";
 
   const rewardId = newId();
   if (extra) {
@@ -69,8 +73,8 @@ export async function updateReward(rewardId, request, familyId, env) {
   const body = (await readJson(request)) || {};
   const db = env.DB;
   if (!(await ensureRewardColumns(db))) return errorResponse("Can't change rewards right now.", 500);
-  const actor = await memberById(db, familyId, body.actorId);
-  if (!actor || actor.role !== "parent") return errorResponse("Only a parent can change or approve rewards.", 403);
+  const actor = await resolveParentActor(db, request, familyId, body.actorId);
+  if (!actor) return errorResponse("Only a parent can change or approve rewards (unlock with the parent PIN).", 403);
   const reward = await db.prepare("SELECT id FROM rewards WHERE id = ? AND family_id = ?").bind(rewardId, familyId).first();
   if (!reward) return errorResponse("Reward not found.", 404);
 
@@ -106,8 +110,9 @@ export async function deleteReward(rewardId, request, familyId, env) {
     .bind(rewardId, familyId)
     .first();
   if (!reward) return errorResponse("Reward not found.", 404);
-  const actor = await memberById(db, familyId, url.searchParams.get("actorId"));
-  const isParent = actor && actor.role === "parent";
+  const claimed = await memberById(db, familyId, url.searchParams.get("actorId"));
+  const actor = claimed;
+  const isParent = !!(await resolveParentActor(db, request, familyId, claimed ? claimed.id : null));
   const ownPending = actor && extra && reward.status === "pending" && reward.created_by === actor.id;
   if (!isParent && !ownPending) return errorResponse("Only a parent can remove this reward.", 403);
   await db.prepare("DELETE FROM reward_redemptions WHERE reward_id = ?").bind(rewardId).run();

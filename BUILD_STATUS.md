@@ -4,6 +4,13 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Parent PIN + parent admin area (2026-11-10)
+
+- A **parent PIN**, separate from the family PIN (refuses to be the same). Set it in **🔒 Parents ›** (top row) / **🔒 Parent admin** (Reward shop). Unlocking stores the parent on *this phone's session* (`sessions.parent_member_id`), so parent powers are checked on the server, not just by the name picked.
+- Picking a parent's name in 👤 Who's using this phone asks for the parent PIN; picking a child / shared locks parent mode. 5 wrong parent PINs → 10-minute pause. "Lock parent mode" button for handing a phone to a kid.
+- Once a parent PIN exists, only an unlocked parent can: set anyone's habits (Parent admin → ✏️ each person), swap in a day's habit from the Planner, remove Planner ideas, approve/edit/remove rewards, give kudos, set the weekly goal, mark rewards given. Kids can still tick habits, plan their week, choose their weekly reward and suggest rewards (pending). Before a PIN is set, everything works as before.
+- Columns auto-added (record: migration 022). Tested: parent laptop + child phone, wrong PIN, child sending a parent's id directly to 4 parent-only routes (all refused), lock/unlock.
+
 ## ✅ Rewards v2: weekly goal, unlocks Saturday, hard to cheat (2026-11-10)
 
 Replaces the earlier "buy rewards with stars" shop (too many stars, easy to game).

@@ -2,6 +2,7 @@ import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
 import { ensureBonusTables, ensureHabitPlanTime } from "../lib/schemaUpgrades.js";
 import { POINTS, awardOnce, wonDaysThisWeek, starsThisWeek, isTickableDay } from "../lib/points.js";
+import { hasParentSession } from "../lib/parent.js";
 
 const MAX_BONUS = 2;
 
@@ -209,6 +210,9 @@ export async function setHabits(request, familyId, env) {
     .bind(memberId, familyId)
     .first();
   if (!member) return errorResponse("Family member not found.", 404);
+  if (!(await hasParentSession(db, request, familyId))) {
+    return errorResponse("🔒 A parent sets the habits — ask them to unlock with the parent PIN.", 403);
+  }
 
   const seenSlots = new Set();
   for (const h of habits) {

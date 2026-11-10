@@ -23,6 +23,7 @@ import * as aiRecipeIntakeRoutes from "./routes/aiRecipeIntake.js";
 import * as movementIdeasRoutes from "./routes/movementIdeas.js";
 import * as habitDayPlanRoutes from "./routes/habitDayPlan.js";
 import * as weeklyRoutes from "./routes/weekly.js";
+import * as parentRoutes from "./lib/parent.js";
 
 async function handleHealth(env) {
   const hasDb = !!env.DB;
@@ -95,7 +96,10 @@ async function handleApi(request, env, url) {
   const { familyId, response } = await requireFamily(request, env);
   if (response) return response;
 
-  if (path === "/api/me" && method === "GET") return familyRoutes.me(familyId, env);
+  if (path === "/api/me" && method === "GET") return familyRoutes.me(familyId, env, request);
+  if (path === "/api/parent/pin" && method === "POST") return parentRoutes.setParentPin(request, familyId, env);
+  if (path === "/api/parent/unlock" && method === "POST") return parentRoutes.unlockParent(request, familyId, env);
+  if (path === "/api/parent/lock" && method === "POST") return parentRoutes.lockParent(request, familyId, env);
 
   if (path === "/api/members" && method === "GET") return memberRoutes.listMembers(familyId, env);
   if (path === "/api/members" && method === "POST") return memberRoutes.addMember(request, familyId, env);
@@ -119,7 +123,7 @@ async function handleApi(request, env, url) {
   if (path === "/api/movement-ideas" && method === "POST") return movementIdeasRoutes.addMovementIdea(request, familyId, env);
   const movementIdeaDeleteMatch = path.match(/^\/api\/movement-ideas\/([^/]+)$/);
   if (movementIdeaDeleteMatch && method === "DELETE") {
-    return movementIdeasRoutes.deleteMovementIdea(movementIdeaDeleteMatch[1], familyId, env);
+    return movementIdeasRoutes.deleteMovementIdea(movementIdeaDeleteMatch[1], familyId, env, request);
   }
   const movementIdeaUseMatch = path.match(/^\/api\/movement-ideas\/([^/]+)\/use$/);
   if (movementIdeaUseMatch && method === "POST") {

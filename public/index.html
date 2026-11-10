@@ -387,6 +387,7 @@
       <button class="settings-link" data-settings-toggle="notify">Notifications ›</button>
       <button class="settings-link" data-settings-toggle="google">Google Calendar ›</button>
       <button class="settings-link" id="whoAmIBtn" type="button">👤 Who's using this phone?</button>
+      <button class="settings-link" id="parentAdminLinkBtn" type="button">🔒 Parents ›</button>
     </div>
 
     <div class="card full-width hidden" id="invitePanel">
@@ -568,7 +569,7 @@
     <div class="card" id="rewardCard">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <h3 style="margin:0;">Reward shop 🎁</h3>
-        <button type="button" class="small secondary" id="rewardAdminBtn" style="margin:0; width:auto;">⚙️ Rewards & points</button>
+        <button type="button" class="small secondary" id="rewardAdminBtn" style="margin:0; width:auto;">🔒 Parent admin</button>
       </div>
       <p class="muted" style="margin-top:6px;">🎯 Reach the weekly star goal and your chosen reward unlocks on <b>Saturday morning</b>.</p>
       <div id="weeklyOverview"></div>
@@ -744,6 +745,15 @@
     <p class="muted" style="margin:0 0 12px; font-size:0.85rem;">You'll see your own habits, calendar and reminders first — plus everything the whole family is doing. You can change this any time.</p>
     <div id="whoList"></div>
     <button type="button" class="secondary" id="whoSharedBtn" style="margin-top:8px;">👨‍👩‍👧 We share this device — show everyone</button>
+    <div id="whoPinStep" class="hidden" style="margin-top:12px;">
+      <p style="margin:0 0 6px;">🔒 <b id="whoPinName">Parent</b>, enter the <b>parent PIN</b>:</p>
+      <input id="whoPinInput" type="password" inputmode="numeric" placeholder="Parent PIN" />
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button type="button" id="whoPinOkBtn" style="margin:0;">Unlock</button>
+        <button type="button" class="secondary" id="whoPinCancelBtn" style="margin:0;">Back</button>
+      </div>
+      <div class="error hidden" id="whoPinError"></div>
+    </div>
   </div>
 </div>
 <div id="reminderPopup" class="hidden" role="alertdialog" aria-live="assertive">
@@ -970,8 +980,23 @@ function applyMeDefaults() {
 function showWhoPicker() {
   $("whoList").innerHTML = state.members.map((m) =>
     `<button type="button" data-who="${m.id}"><span class="member-dot" style="background:${m.color || "#ccc"}; margin:0;"></span>${escapeHtml(m.display_name)}</button>`).join("");
+  hide("whoPinStep"); show("whoList"); show("whoSharedBtn");
   $("whoList").querySelectorAll("[data-who]").forEach((b) => {
-    b.onclick = async () => { setMe(b.getAttribute("data-who")); hide("whoPopup"); await refreshForMe(); toast(`👋 Hi ${memberNameFor(b.getAttribute("data-who"))}!`); };
+    b.onclick = async () => {
+      const id = b.getAttribute("data-who");
+      const m = state.members.find((mm) => mm.id === id);
+      // Parents must enter the parent PIN (once one is set) to be "them" on this phone.
+      if (m && m.role === "parent" && state.parent && state.parent.parentPinSet && state.parent.unlockedParentId !== id) {
+        whoPinFor = id;
+        $("whoPinName").textContent = m.display_name;
+        $("whoPinInput").value = ""; clearError("whoPinError");
+        hide("whoList"); hide("whoSharedBtn"); show("whoPinStep");
+        $("whoPinInput").focus();
+        return;
+      }
+      if (!m || m.role !== "parent") await lockParentMode();
+      setMe(id); hide("whoPopup"); await refreshForMe(); toast(`👋 Hi ${memberNameFor(id)}!`);
+    };
   });
   show("whoPopup");
 }
@@ -981,7 +1006,34 @@ async function refreshForMe() {
   if ($("plannerForMemberSelect")) renderPlannerForMemberOptions();
 }
 $("whoAmIBtn").onclick = showWhoPicker;
-$("whoSharedBtn").onclick = async () => { setMe("shared"); hide("whoPopup"); await refreshForMe(); };
+$("whoSharedBtn").onclick = async () => { await lockParentMode(); setMe("shared"); hide("whoPopup"); await refreshForMe(); };
+
+// --- Parent PIN (unlock parent mode on this phone) ---
+let whoPinFor = null;
+async function lockParentMode() {
+  if (state.parent && state.parent.unlockedParentId) {
+    await api("/api/parent/lock", { method: "POST", body: "{}" }).catch(() => {});
+    state.parent.unlockedParentId = null;
+  }
+}
+async function unlockParentMode(memberId, pin) {
+  await api("/api/parent/unlock", { method: "POST", body: JSON.stringify({ memberId, pin }) });
+  state.parent.unlockedParentId = memberId;
+}
+$("whoPinOkBtn").onclick = async () => {
+  clearError("whoPinError");
+  try {
+    await unlockParentMode(whoPinFor, $("whoPinInput").value);
+    setMe(whoPinFor); hide("whoPopup"); await refreshForMe();
+    toast(`🔓 Parent mode on for ${memberNameFor(whoPinFor)}`);
+  } catch (err) { showError("whoPinError", err.message); }
+};
+$("whoPinInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("whoPinOkBtn").click(); });
+$("whoPinCancelBtn").onclick = () => { hide("whoPinStep"); show("whoList"); show("whoSharedBtn"); };
+// Kids (and locked parents) can't program habits once a parent PIN exists.
+function canProgram() {
+  return !(state.parent && state.parent.parentPinSet) || isParentHere();
+}
 
 // Invite by email (opens your email app with the message ready) or copy it.
 function inviteText() {
@@ -1012,6 +1064,7 @@ document.addEventListener("visibilitychange", () => {
 async function loadHome() {
   const me = await api("/api/me");
   state.family = me.family; state.members = me.members;
+  state.parent = me.parent || { parentPinSet: false, unlockedParentId: null };
   lastHomeLoad = Date.now();
   // A brand-new family's only member is obviously the person holding the phone.
   if (!getMe() && me.members.length === 1) { try { localStorage.setItem("ftf_me", me.members[0].id); } catch (err) {} }
@@ -1627,7 +1680,10 @@ function wirePlannerAddIdea(category, inputId, btnId) {
 }
 wirePlannerAddIdea("movement", "plannerCustomMovement", "plannerAddCustomMovementBtn");
 wirePlannerAddIdea("home", "plannerCustomHome", "plannerAddCustomHomeBtn");
-$("plannerManageBtn").onclick = () => setPlannerManaging(!plannerManaging);
+$("plannerManageBtn").onclick = () => {
+  if (!canProgram()) { toast("🔒 Ask a parent — they can manage the ideas lists.", true); return; }
+  setPlannerManaging(!plannerManaging);
+};
 
 // Which of the 3 daily habit slots a Planner item fills.
 function plannerSlotFor(item) {
@@ -1648,7 +1704,8 @@ function openPlannerPickPanel(item, presetDay) {
   $("plannerPickDayLabel").textContent = isRecipe ? "Add to this week's meals on..." : "Add to the calendar...";
   $("plannerPickDayInput").value = presetDay || todayStr();
   if (!$("plannerPickTimeInput").value) $("plannerPickTimeInput").value = isRecipe ? "17:30" : "16:00";
-  $("plannerMakeHabitCheck").checked = true;
+  $("plannerMakeHabitCheck").checked = canProgram();
+  $("plannerMakeHabitCheck").closest("label").classList.toggle("hidden", !canProgram());
   renderPlannerForMemberOptions();
   updatePlannerHabitLabel();
   show("plannerPickDayWrap");
@@ -1777,7 +1834,7 @@ async function renderHabits() {
     const wonBadge = m.dayWon ? `<span class="day-won-badge">🎉 Day won!</span>` : "";
     const headerHtml = `<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;">
       <div><span class="member-dot" style="background:${m.color || '#ccc'}"></span><strong>${m.displayName}</strong> ${streakBadge} ${wonBadge}</div>
-      <button class="small secondary" data-edit-member="${m.memberId}">${m.totalHabits ? 'Edit' : 'Choose'} habits ✏️</button>
+      ${canProgram() ? `<button class="small secondary" data-edit-member="${m.memberId}">${m.totalHabits ? 'Edit' : 'Choose'} habits ✏️</button>` : `<span class="muted" style="font-size:0.75rem;">🔒 Habits are set by a parent</span>`}
     </div>`;
 
     let bodyHtml;
@@ -1790,10 +1847,12 @@ async function renderHabits() {
         const h = m.habits.find((hh) => hh.slot === slot);
         const slotMeta = HABIT_SLOT_META[slot];
         if (!h) {
-          return `<div class="habit-row-empty" data-edit-member="${m.memberId}">
+          return canProgram()
+            ? `<div class="habit-row-empty" data-edit-member="${m.memberId}">
             <span style="font-size:1rem; flex-shrink:0;">${slotMeta.emoji}</span>
             <span class="muted">+ Add a ${slotMeta.label.toLowerCase()} habit</span>
-          </div>`;
+          </div>`
+            : `<div class="habit-row-empty"><span style="font-size:1rem; flex-shrink:0;">${slotMeta.emoji}</span><span class="muted">A parent will add your ${slotMeta.label.toLowerCase()} habit</span></div>`;
         }
         return `
         <div style="display:flex; align-items:center; gap:6px;">
@@ -2227,7 +2286,9 @@ function meMember() {
 }
 function isParentHere() {
   const m = meMember();
-  return !!(m && m.role === "parent");
+  if (!m || m.role !== "parent") return false;
+  const p = state.parent || {};
+  return !p.parentPinSet || p.unlockedParentId === m.id;
 }
 let rewardAdminOpen = false;
 
@@ -2282,7 +2343,7 @@ async function renderWeeklyOverview() {
 function renderRewardAdmin(data) {
   const panel = $("rewardAdminPanel");
   panel.classList.toggle("hidden", !rewardAdminOpen);
-  $("rewardAdminBtn").textContent = rewardAdminOpen ? "✓ Done" : "⚙️ Rewards & points";
+  $("rewardAdminBtn").textContent = rewardAdminOpen ? "✓ Done" : "🔒 Parent admin";
   if (!rewardAdminOpen) return;
   const rules = data.rules || {};
   const goal = (weeklyCache && weeklyCache.goal) || rules.weeklyGoalDefault || 12;
@@ -2296,10 +2357,36 @@ function renderRewardAdmin(data) {
       </ul>
       <p class="muted" style="margin:6px 0 0; font-size:0.78rem;">🔒 No cheating: habits can only be ticked for today, bonus habits are just for fun (no stars), only parents give kudos (never to themselves), and stars can't be spent — rewards just unlock.</p>
     </div>`;
+  const pinSet = !!(state.parent && state.parent.parentPinSet);
+  const mm = meMember();
   if (!isParentHere()) {
-    panel.innerHTML = rulesHtml + `<div class="admin-box"><b>Parents</b><p class="muted" style="margin:4px 0 0;">Only a parent can set the weekly goal and approve, change or remove rewards. On a parent's phone, tap 👤 at the top and pick the parent's name.</p></div>`;
+    const lockedParent = mm && mm.role === "parent" && pinSet;
+    panel.innerHTML = rulesHtml + (lockedParent
+      ? `<div class="admin-box"><b>🔒 Parent admin is locked</b><p class="muted" style="margin:4px 0 6px;">Enter the parent PIN to manage rewards and set everyone's habits.</p>
+          <div style="display:flex; gap:6px;"><input id="adminUnlockPin" type="password" inputmode="numeric" placeholder="Parent PIN" style="margin:0; flex:1;" /><button type="button" class="small" id="adminUnlockBtn" style="margin:0; width:auto;">Unlock</button></div></div>`
+      : `<div class="admin-box"><b>🔒 Parents only</b><p class="muted" style="margin:4px 0 0;">Parents set everyone's habits, the weekly goal and the rewards. On a parent's phone, tap 👤 at the top and pick the parent's name${pinSet ? " (it asks for the parent PIN)" : ""}.</p></div>`);
+    if ($("adminUnlockBtn")) $("adminUnlockBtn").onclick = async () => {
+      try { await unlockParentMode(mm.id, $("adminUnlockPin").value); toast("🔓 Parent mode on"); await refreshForMe(); renderRewardAdmin(rewardsListCache || data); }
+      catch (err) { toast(err.message, true); }
+    };
     return;
   }
+  const pinHtml = pinSet
+    ? `<div class="admin-box"><b>🔐 Parent PIN</b> <span class="muted">is set — parent mode is on for this phone.</span>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
+          <button type="button" class="small secondary" id="lockParentBtn" style="margin:0; width:auto;">🔒 Lock parent mode (hand phone to a kid)</button>
+          <button type="button" class="small secondary" id="changePinToggleBtn" style="margin:0; width:auto;">Change PIN</button>
+        </div>
+        <div id="changePinForm" class="hidden" style="margin-top:6px;">
+          <input id="currentParentPin" type="password" inputmode="numeric" placeholder="Current parent PIN" />
+          <input id="newParentPin" type="password" inputmode="numeric" placeholder="New parent PIN (4–8 digits)" />
+          <button type="button" class="small" id="saveParentPinBtn" style="margin:6px 0 0; width:auto;">Save new PIN</button>
+        </div></div>`
+    : `<div class="admin-box to-give"><b>🔐 Set a parent PIN</b><p class="muted" style="margin:4px 0 6px;">Right now anyone who picks a parent's name gets parent powers. Set a PIN only the grown-ups know (different from the family PIN).</p>
+        <input id="newParentPin" type="password" inputmode="numeric" placeholder="Parent PIN (4–8 digits)" />
+        <button type="button" class="small" id="saveParentPinBtn" style="margin:6px 0 0; width:auto;">Set parent PIN</button></div>`;
+  const kidsHtml = `<div class="admin-box"><b>📝 Everyone's habits</b><p class="muted" style="margin:4px 0 6px;">Set each person's 3 daily habits (and bonus ones).</p>
+      ${state.members.map((m) => `<button type="button" class="small secondary" data-admin-habits="${m.id}" style="margin:0 6px 6px 0; width:auto;">✏️ ${escapeHtml(m.display_name)}</button>`).join("")}</div>`;
   const memberOpts = (sel) => '<option value="">🌍 Anyone</option>' + state.members.map((m) => `<option value="${m.id}" ${m.id === sel ? "selected" : ""}>${escapeHtml(m.display_name)}</option>`).join("");
   const pending = data.rewards.filter((r) => r.status === "pending");
   const rowHtml = (r) => `<div class="admin-reward-row" data-admin-reward="${r.id}">
@@ -2308,7 +2395,7 @@ function renderRewardAdmin(data) {
       ${r.status === "pending" ? `<button type="button" class="small" data-admin-approve>✅ OK it</button>` : `<button type="button" class="small secondary" data-admin-save>Save</button>`}
       <button type="button" class="small secondary" data-admin-delete style="background:#fde2de;">🗑</button>
     </div>`;
-  panel.innerHTML = rulesHtml +
+  panel.innerHTML = pinHtml + kidsHtml + rulesHtml +
     `<div class="admin-box"><b>🎯 Weekly star goal</b>
       <div style="display:flex; gap:6px; align-items:center; margin-top:6px;">
         <input type="number" id="weeklyGoalInput" min="3" max="40" value="${goal}" style="width:80px; margin:0;" /> <span>⭐ a week</span>
@@ -2319,6 +2406,29 @@ function renderRewardAdmin(data) {
     `<div class="admin-box"><b>⏳ Waiting for OK (${pending.length})</b>${pending.length ? pending.map(rowHtml).join("") : '<p class="muted" style="margin:4px 0 0;">Nothing waiting — kids\' new rewards show up here.</p>'}</div>` +
     `<div class="admin-box"><b>All rewards</b>${data.rewards.filter((r) => r.status !== "pending").map(rowHtml).join("") || '<p class="muted" style="margin:4px 0 0;">None yet.</p>'}</div>`;
 
+  $("saveParentPinBtn").onclick = async () => {
+    try {
+      await api("/api/parent/pin", { method: "POST", body: JSON.stringify({ memberId: mm.id, pin: $("newParentPin").value, currentPin: $("currentParentPin") ? $("currentParentPin").value : undefined }) });
+      state.parent.parentPinSet = true; state.parent.unlockedParentId = mm.id;
+      toast("🔐 Parent PIN saved — parent mode is on for this phone");
+      renderRewardAdmin(rewardsListCache || data);
+    } catch (err) { toast(err.message, true); }
+  };
+  if ($("changePinToggleBtn")) $("changePinToggleBtn").onclick = () => $("changePinForm").classList.toggle("hidden");
+  if ($("lockParentBtn")) $("lockParentBtn").onclick = async () => {
+    await lockParentMode();
+    toast("🔒 Parent mode locked on this phone");
+    await refreshForMe();
+    renderRewardAdmin(rewardsListCache || data);
+  };
+  panel.querySelectorAll("[data-admin-habits]").forEach((b) => {
+    b.onclick = async () => {
+      habitsActiveMemberId = b.getAttribute("data-admin-habits");
+      habitEditingMemberId = habitsActiveMemberId;
+      await renderHabits();
+      $("habitsList").scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+  });
   $("weeklyGoalSaveBtn").onclick = async () => {
     try {
       await api("/api/weekly/settings", { method: "POST", body: JSON.stringify({ actorId: getMe(), goal: Number($("weeklyGoalInput").value) }) });
@@ -2354,6 +2464,11 @@ function renderRewardAdmin(data) {
   });
 }
 $("rewardAdminBtn").onclick = () => { rewardAdminOpen = !rewardAdminOpen; renderRewardAdmin(rewardsListCache || { rewards: [], rules: {} }); };
+$("parentAdminLinkBtn").onclick = () => {
+  rewardAdminOpen = true;
+  renderRewardAdmin(rewardsListCache || { rewards: [], rules: {} });
+  $("rewardCard").scrollIntoView({ behavior: "smooth", block: "start" });
+};
 
 $("showAddRewardBtn").onclick = () => {
   const mm = meMember();
