@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ready to Win the Day? · Fuel the Fun 🌱</title>
+<meta name="description" content="Fuel the Fun — pick 3 healthy habits, win the day, earn stars and unlock a reward every Saturday. Made for families." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #FAF6ED; --card: #FFFDF8; --text: #183F35; --sage: #E4EAD9;
+    --terracotta: #BE7050; --peach: #F8E3D1; --blue: #E2ECEE; --gold: #F8E8C7; --star: #E0A339;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.5; }
+  h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; margin: 0; }
+  .hand { font-family: "Kalam", cursive; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 16px; }
+  a.btn, button.btn { display: inline-block; text-decoration: none; text-align: center; border: none; cursor: pointer; font-weight: 700; font-size: 1.05rem; border-radius: 999px; padding: 15px 28px; background: var(--terracotta); color: #fff; box-shadow: 0 6px 18px rgba(190, 112, 80, 0.35); transition: transform 0.15s ease; }
+  a.btn:hover { transform: translateY(-2px) scale(1.02); }
+  a.btn.secondary { background: var(--sage); color: var(--text); box-shadow: none; }
+
+  /* --- Hero --- */
+  .hero { padding: 40px 0 28px; text-align: center; position: relative; overflow: hidden; }
+  .brand { font-weight: 700; font-size: 1rem; letter-spacing: 0.02em; opacity: 0.8; }
+  .hero h1 { font-size: clamp(2.3rem, 7vw, 4.2rem); line-height: 1.05; margin: 14px 0 10px; }
+  .hero h1 .pop { color: var(--terracotta); display: inline-block; animation: wiggle 2.6s ease-in-out infinite; }
+  .hero p.lead { font-size: clamp(1.05rem, 2.6vw, 1.3rem); max-width: 600px; margin: 0 auto 22px; opacity: 0.85; }
+  @keyframes wiggle { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg) scale(1.04); } }
+  .float { position: absolute; font-size: 2rem; opacity: 0.85; animation: floaty 6s ease-in-out infinite; pointer-events: none; }
+  @keyframes floaty { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-14px) rotate(8deg); } }
+  @media (prefers-reduced-motion: reduce) { .float, .hero h1 .pop { animation: none; } }
+
+  /* --- Phone mock: today's 3 habits --- */
+  .demo { max-width: 360px; margin: 26px auto 0; background: var(--card); border-radius: 26px; padding: 18px; box-shadow: 0 14px 40px rgba(24, 63, 53, 0.12); text-align: left; }
+  .demo .who { font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+  .demo .who span.badge { background: var(--gold); border-radius: 999px; padding: 2px 10px; font-size: 0.8rem; }
+  .habit { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #eee3cf; border-radius: 14px; padding: 11px 12px; margin-top: 8px; cursor: pointer; font-weight: 600; user-select: none; transition: background 0.2s; }
+  .habit .tick { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--terracotta); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 0.85rem; flex-shrink: 0; }
+  .habit.done { background: #EEF4EA; }
+  .habit.done .tick { background: var(--terracotta); }
+  .habit.done .label { text-decoration: line-through; opacity: 0.7; }
+  .demo .meter { margin-top: 12px; font-size: 0.9rem; }
+  .bar { height: 10px; border-radius: 999px; background: #F2EBDD; overflow: hidden; margin-top: 5px; }
+  .bar span { display: block; height: 100%; width: 0; background: var(--star); border-radius: 999px; transition: width 0.4s ease; }
+  .won { display: none; margin-top: 10px; text-align: center; font-weight: 700; color: var(--terracotta); font-size: 1.1rem; }
+  .won.show { display: block; animation: pop 0.4s ease; }
+  @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .demo-hint { text-align: center; font-size: 0.8rem; opacity: 0.6; margin-top: 8px; }
+
+  /* --- Sections --- */
+  section { padding: 34px 0; }
+  section h2 { font-size: clamp(1.6rem, 4.5vw, 2.3rem); text-align: center; margin-bottom: 6px; }
+  section .sub { text-align: center; opacity: 0.75; margin: 0 auto 22px; max-width: 560px; }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  .step { background: var(--card); border-radius: 20px; padding: 18px; box-shadow: 0 2px 12px rgba(24, 63, 53, 0.06); position: relative; }
+  .step .num { position: absolute; top: -12px; left: 16px; background: var(--terracotta); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; }
+  .step .big { font-size: 2.2rem; }
+  .step h3 { font-size: 1.15rem; margin: 6px 0 4px; }
+  .step p { margin: 0; font-size: 0.92rem; opacity: 0.85; }
+
+  .stars { background: linear-gradient(135deg, var(--gold), var(--peach)); border-radius: 28px; padding: 26px 20px; }
+  .star-rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 8px; }
+  .rule { background: rgba(255, 255, 255, 0.75); border-radius: 16px; padding: 14px; text-align: center; }
+  .rule .val { font-size: 1.8rem; font-weight: 800; color: var(--terracotta); }
+  .rule .what { font-size: 0.9rem; }
+  .week { display: flex; gap: 6px; justify-content: center; margin: 20px auto 8px; max-width: 460px; }
+  .week div { flex: 1; text-align: center; font-weight: 700; font-size: 0.8rem; }
+  .week i { display: flex; align-items: center; justify-content: center; height: 40px; margin-top: 4px; border-radius: 12px; background: rgba(255, 255, 255, 0.7); font-style: normal; font-size: 1.1rem; }
+  .week .w i { background: var(--terracotta); color: #fff; }
+  .week .sat i { background: #fff; box-shadow: 0 0 0 3px var(--terracotta) inset; font-size: 1.4rem; }
+  .stars .note { text-align: center; font-size: 0.95rem; margin: 6px 0 0; }
+
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .feature { background: var(--card); border-radius: 18px; padding: 16px; box-shadow: 0 2px 12px rgba(24, 63, 53, 0.06); }
+  .feature .ico { font-size: 1.8rem; }
+  .feature h3 { font-size: 1.05rem; margin: 4px 0; }
+  .feature p { margin: 0; font-size: 0.9rem; opacity: 0.85; }
+  .feature:nth-child(3n+1) { background: var(--card); }
+  .feature:nth-child(3n+2) { background: #F7FAF3; }
+  .feature:nth-child(3n) { background: #FDF6EF; }
+
+  .join { background: var(--text); color: #fff; border-radius: 28px; padding: 28px 22px; text-align: center; }
+  .join h2 { color: #fff; }
+  .join .sub { color: #fff; opacity: 0.85; }
+  .join ol { text-align: left; max-width: 460px; margin: 0 auto 20px; padding-left: 22px; }
+  .join li { margin: 8px 0; }
+  .code { display: inline-block; background: var(--gold); color: var(--text); border-radius: 12px; padding: 4px 12px; font-weight: 800; letter-spacing: 0.15em; font-size: 1.15rem; }
+  .join a.btn { background: var(--star); color: var(--text); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); }
+  .promise { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+  .promise span { background: var(--sage); color: var(--text); border-radius: 999px; padding: 6px 14px; font-size: 0.85rem; font-weight: 600; }
+  footer { text-align: center; padding: 26px 0 40px; font-size: 0.85rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+  <header class="hero">
+    <span class="float" style="top:30px; left:6%;">🍓</span>
+    <span class="float" style="top:90px; right:7%; animation-delay:-2s;">🚲</span>
+    <span class="float" style="top:250px; left:4%; animation-delay:-4s;">⭐</span>
+    <span class="float" style="top:300px; right:5%; animation-delay:-1s;">🥕</span>
+    <div class="wrap">
+      <div class="brand">🌱 Fuel the Fun</div>
+      <h1>Ready to <span class="pop">Win the Day?</span></h1>
+      <p class="lead">Pick <b>3 healthy habits</b>, tick them off every day, earn stars and unlock a <b>reward every Saturday</b>. Made for kids — with the whole family cheering along.</p>
+      <a class="btn" id="startBtn" href="/">Let's go! 🚀</a>
+
+      <div class="demo" aria-label="Try it: tick off today's 3 habits">
+        <div class="who"><span>🌟 Your day</span><span class="badge" id="demoStars">0 ⭐</span></div>
+        <div class="habit" data-demo><span class="tick"></span><span>🏃</span><span class="label">Ride my bike</span></div>
+        <div class="habit" data-demo><span class="tick"></span><span>🍳</span><span class="label">Help cook dinner</span></div>
+        <div class="habit" data-demo><span class="tick"></span><span>🏡</span><span class="label">Make my bed</span></div>
+        <div class="meter">🎯 This week: <b id="demoWeek">8</b> / 12 ⭐<div class="bar"><span id="demoBar"></span></div></div>
+        <div class="won" id="demoWon">🎉 Day won! 🔥 Keep the streak going!</div>
+        <div class="demo-hint hand">psst… tap them to try it!</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section>
+      <h2>How it works</h2>
+      <p class="sub">Spend a few minutes on the app, then put it down and go do the fun stuff for real.</p>
+      <div class="steps">
+        <div class="step"><span class="num">1</span><div class="big">🎯</div><h3>Get your 3 habits</h3><p>One to <b>move</b>, one to <b>cook</b> and one for <b>home</b> — set up with a grown-up, picked from things you love.</p></div>
+        <div class="step"><span class="num">2</span><div class="big">✅</div><h3>Win the day</h3><p>Do all 3 to win the day and build your 🔥 streak. Each one ticked = 1 ⭐.</p></div>
+        <div class="step"><span class="num">3</span><div class="big">🎁</div><h3>Pick your reward</h3><p>Choose what you're working towards this week — movie night, a park trip, choosing dinner…</p></div>
+        <div class="step"><span class="num">4</span><div class="big">🥳</div><h3>Unlock it Saturday</h3><p>Reach <b>12 ⭐</b> by the weekend and your reward unlocks Saturday morning!</p></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="stars">
+        <h2>⭐ How stars work</h2>
+        <div class="star-rules">
+          <div class="rule"><div class="val">1 ⭐</div><div class="what">for each habit you tick</div></div>
+          <div class="rule"><div class="val">2 ⭐</div><div class="what">for a <b>family activity</b> you do together</div></div>
+          <div class="rule"><div class="val">1 ⭐</div><div class="what">kudos from a parent for being awesome</div></div>
+          <div class="rule"><div class="val">12 ⭐</div><div class="what">in a week = your reward unlocks!</div></div>
+        </div>
+        <div class="week" aria-label="A week of winning">
+          <div class="w">M<i>✓</i></div><div class="w">T<i>✓</i></div><div>W<i></i></div><div class="w">T<i>✓</i></div><div class="w">F<i>✓</i></div><div class="sat">S<i>🎁</i></div><div>S<i></i></div>
+        </div>
+        <p class="note">Missed a day? No stress — <b>4 good days</b> is enough. 💪</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Everything in one place</h2>
+      <p class="sub">Built for kids 7–12 and their families, from what real dietitians recommend.</p>
+      <div class="features">
+        <div class="feature"><div class="ico">🌟</div><h3>Win the Day</h3><p>Your 3 habits, streaks, and a Mon–Sun strip of the days you've won.</p></div>
+        <div class="feature"><div class="ico">📋</div><h3>Planner</h3><p>Your top 5 favourite activities — drag one onto a day and it becomes that day's habit.</p></div>
+        <div class="feature"><div class="ico">📅</div><h3>Family calendar</h3><p>Your own things plus the whole family's, with ⏰ pop-up reminders.</p></div>
+        <div class="feature"><div class="ico">🍳</div><h3>Recipes & cookbook</h3><p>Family favourites with yummy pictures, lunchbox builder, and a family cookbook.</p></div>
+        <div class="feature"><div class="ico">🥗</div><h3>Meals & shopping</h3><p>Plan the week's meals, vote on dinner, and the shopping list fills itself.</p></div>
+        <div class="feature"><div class="ico">👨‍👩‍👧</div><h3>Family activities</h3><p>Bike rides, garden time, cooking together — worth double stars for everyone.</p></div>
+        <div class="feature"><div class="ico">🎁</div><h3>Rewards</h3><p>Kids suggest rewards, parents OK them — and they unlock every Saturday.</p></div>
+        <div class="feature"><div class="ico">🔒</div><h3>Parent controls</h3><p>A parent PIN for setting habits and rewards, so the stars stay fair.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="join">
+        <h2>Join your family 🌱</h2>
+        <p class="sub">It takes about a minute.</p>
+        <ol>
+          <li>Tap <b>Let's go!</b> below (or open <b id="siteUrl">habitquest.ihav.workers.dev</b>).</li>
+          <li>Choose <b>Log in</b> and type the family code<span id="codeLine"></span>.</li>
+          <li>Type the <b>family PIN</b> (ask a grown-up 🤫).</li>
+          <li>Tap <b>👤 Who's using this phone?</b> and pick your name.</li>
+          <li>Pick this week's reward — then go <b>win the day!</b> 🏆</li>
+        </ol>
+        <a class="btn" id="joinBtn" href="/">Let's go! 🚀</a>
+        <div class="promise"><span>🙅 No calorie counting</span><span>💚 Never about weight</span><span>🏃 Off the screen, into real life</span></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>Made with 💚 by Maddie for the Tobias Project · Fuel the Fun 🌱</footer>
+
+<script>
+  // Family code from the invite link (welcome?code=ABC123) shows on the page
+  // and is carried into the app so the login box is already filled in.
+  (function () {
+    const code = (new URLSearchParams(location.search).get("code") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+    const target = code ? "/?code=" + encodeURIComponent(code) : "/";
+    document.getElementById("startBtn").href = target;
+    document.getElementById("joinBtn").href = target;
+    document.getElementById("siteUrl").textContent = location.host || "habitquest.ihav.workers.dev";
+    if (code) document.getElementById("codeLine").innerHTML = ': <span class="code">' + code + "</span> (already filled in for you)";
+  })();
+
+  // Tiny "try it" demo: tick the 3 habits to win the day.
+  (function () {
+    const rows = document.querySelectorAll("[data-demo]");
+    const stars = document.getElementById("demoStars");
+    const week = document.getElementById("demoWeek");
+    const bar = document.getElementById("demoBar");
+    const won = document.getElementById("demoWon");
+    const base = 8;
+    function update() {
+      const n = document.querySelectorAll("[data-demo].done").length;
+      stars.textContent = n + " ⭐";
+      week.textContent = base + n;
+      bar.style.width = Math.min(100, ((base + n) / 12) * 100) + "%";
+      won.classList.toggle("show", n === 3);
+    }
+    rows.forEach((r) => r.addEventListener("click", () => {
+      r.classList.toggle("done");
+      r.querySelector(".tick").textContent = r.classList.contains("done") ? "✓" : "";
+      update();
+    }));
+    update();
+  })();
+</script>
+</body>
+</html>

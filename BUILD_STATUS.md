@@ -4,6 +4,13 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Launch: welcome page, invite links, family recipe pack, demo pictures (2026-11-10)
+
+- **Welcome page** `/welcome` (public/welcome.html): "Ready to Win the Day?", a tap-to-try 3-habit demo, how it works (4 steps), how stars work (1/2/1, 12 ⭐ unlocks Saturday), features, and join steps. `/welcome?code=ABC123` shows the family code and its "Let's go!" opens the app with the code already filled in (`/?code=`). Login screen links to it ("New here? See how it works").
+- **Invite by email** text now links to `/welcome?code=<family code>` with step-by-step instructions (PIN not included).
+- **🇦🇺 Add family favourites pack** (Recipes): the Walkers' 6 favourites starred + 16 popular Aussie family recipes/lunchboxes/snacks (`src/lib/recipePack.js`); skips existing titles (starring them if a favourite); AI pictures made in the background.
+- **Demo family recipe pictures:** made once with Workers AI into shared `demo/…` keys in R2 and reused by every demo family (`src/lib/demoPictures.js`); removing a demo photo never deletes the shared file. First demo after deploy makes them (in the background).
+
 ## ✅ Parent PIN + parent admin area (2026-11-10)
 
 - A **parent PIN**, separate from the family PIN (refuses to be the same). Set it in **🔒 Parents ›** (top row) / **🔒 Parent admin** (Reward shop). Unlocking stores the parent on *this phone's session* (`sessions.parent_member_id`), so parent powers are checked on the server, not just by the name picked.

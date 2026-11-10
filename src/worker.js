@@ -65,7 +65,7 @@ async function requireFamily(request, env) {
   return { familyId, response: null };
 }
 
-async function handleApi(request, env, url) {
+async function handleApi(request, env, url, ctx) {
   const path = url.pathname;
   const method = request.method;
 
@@ -73,7 +73,7 @@ async function handleApi(request, env, url) {
   if (path === "/api/health" && method === "GET") return handleHealth(env);
   if (path === "/api/family/signup" && method === "POST") return familyRoutes.signup(request, env);
   if (path === "/api/family/login" && method === "POST") return familyRoutes.login(request, env);
-  if (path === "/api/family/demo" && method === "POST") return familyRoutes.demo(request, env);
+  if (path === "/api/family/demo" && method === "POST") return familyRoutes.demo(request, env, ctx);
   if (path === "/api/push/public-key" && method === "GET") {
     return json({ ok: true, publicKey: env.VAPID_PUBLIC_KEY || null });
   }
@@ -234,12 +234,12 @@ async function handleApi(request, env, url) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (url.pathname.startsWith("/api/")) {
       try {
-        return await handleApi(request, env, url);
+        return await handleApi(request, env, url, ctx);
       } catch (err) {
         return errorResponse(`Server error: ${err.message || err}`, 500);
       }

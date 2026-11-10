@@ -1,5 +1,6 @@
 import { json, errorResponse } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
+import { isSharedDemoPicture } from "../lib/demoPictures.js";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_BYTES = 8 * 1024 * 1024; // 8MB — plenty for a phone photo, keeps R2 usage small
@@ -95,7 +96,8 @@ export async function deletePhoto(photoId, familyId, env) {
   const row = await env.DB.prepare("SELECT r2_key FROM cookbook_photos WHERE id = ? AND family_id = ?").bind(photoId, familyId).first();
   if (!row) return errorResponse("Photo not found.", 404);
 
-  if (env.PHOTOS) await env.PHOTOS.delete(row.r2_key).catch(() => {});
+  // Demo families share their pictures — removing one only unlinks it.
+  if (env.PHOTOS && !isSharedDemoPicture(row.r2_key)) await env.PHOTOS.delete(row.r2_key).catch(() => {});
   await env.DB.prepare("DELETE FROM cookbook_photos WHERE id = ?").bind(photoId).run();
 
   return json({ ok: true });

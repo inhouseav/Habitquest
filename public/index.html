@@ -341,6 +341,7 @@
   <!-- AUTH SCREEN -->
   <div id="authScreen">
     <h1>Fuel the Fun 🌱</h1>
+    <p style="margin:-2px 0 12px;"><a href="/welcome" style="color:var(--terracotta); font-weight:700;">✨ New here? See how it works →</a></p>
     <div class="tabs">
       <div class="tab active" id="tabLogin">Log in</div>
       <div class="tab" id="tabSignup">Start a family</div>
@@ -1040,7 +1041,7 @@ function canProgram() {
 function inviteText() {
   const code = state.family ? state.family.joinCode : "";
   const name = state.family ? state.family.name : "our family";
-  return `Join ${name} on Fuel the Fun! 🌱\n\n1. Open ${location.origin}\n2. Tap "Log in"\n3. Family code: ${code}\n4. PIN: ask me for it\n5. Tap "👤 Who's using this phone?" and pick your name\n\nThen add your favourite recipes, exercise and home ideas so we can plan together!`;
+  return `Ready to Win the Day? 🌟 Join ${name} on Fuel the Fun!\n\nSee how it works and join here:\n${location.origin}/welcome?code=${code}\n\n1. Tap "Let's go!"\n2. Choose "Log in" — our family code ${code} is already filled in\n3. Type the family PIN (ask me for it)\n4. Tap "👤 Who's using this phone?" and pick your name\n5. Pick this week's reward, then go win the day!\n\nAdd your favourite recipes, exercise and home ideas so we can plan together. 🍳🚲🏡`;
 }
 $("emailInviteBtn").onclick = () => {
   const subject = encodeURIComponent(`Join ${state.family ? state.family.name : "our family"} on Fuel the Fun`);
@@ -4107,6 +4108,12 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
 
   refreshDevFab();
   if (devMode) renderNotes();
+})();
+
+// Invite links (…/?code=ABC123 from the welcome page) fill in the family code.
+(function prefillJoinCode() {
+  const code = (new URLSearchParams(location.search).get("code") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+  if (code) { $("loginJoinCode").value = code; $("tabLogin").click(); }
 })();
 
 // --- Boot ---

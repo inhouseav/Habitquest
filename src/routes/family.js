@@ -4,6 +4,7 @@ import { createSession } from "../lib/sessions.js";
 import { VALID_COLORS } from "./members.js";
 import { seedDemoFamily, DEMO_PIN } from "../lib/demoSeed.js";
 import { parentStatus } from "../lib/parent.js";
+import { attachDemoPictures } from "../lib/demoPictures.js";
 
 const MAX_NAME_LENGTH = 60;
 const PIN_MIN_LENGTH = 4;
@@ -193,7 +194,7 @@ export async function me(familyId, env, request) {
  * brand-new, fully filled-in demo family dated around the visitor's own
  * today, and logs them straight into it. Every call is a separate copy.
  */
-export async function demo(request, env) {
+export async function demo(request, env, ctx) {
   const body = (await readJson(request)) || {};
   const today = typeof body.today === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.today)
     ? body.today
@@ -203,5 +204,9 @@ export async function demo(request, env) {
   const db = env.DB;
   const { familyId, joinCode } = await seedDemoFamily(db, { today, tzOffsetMinutes: offset });
   const token = await createSession(db, familyId);
+  // Recipe pictures: shared ones attach instantly; if one has never been
+  // made yet, it's made in the background so the visitor isn't kept waiting.
+  const pictures = attachDemoPictures(env, familyId, newId);
+  if (ctx && ctx.waitUntil) ctx.waitUntil(pictures); else await pictures;
   return json({ ok: true, token, demo: true, pin: DEMO_PIN, family: { id: familyId, joinCode } });
 }
