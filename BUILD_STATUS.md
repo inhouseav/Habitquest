@@ -4,6 +4,15 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Rewards v2: weekly goal, unlocks Saturday, hard to cheat (2026-11-10)
+
+Replaces the earlier "buy rewards with stars" shop (too many stars, easy to game).
+- **Stars:** 1 per habit ticked, 2 for a family activity (Planner "Everyone"; once per day), 1 per parent kudos (max 2/day per child). No win-the-day/week bonus stars; bonus habits give none. Max ≈ 21/week + family activities.
+- **Weekly goal:** 12 ⭐ by default (parents can change it in ⚙️ Rewards & points). Each person picks one reward for the week in Win the Day. From **Saturday morning**, if they've reached the goal, it unlocks automatically ("earned") and appears in the parents' "🎉 Earned — to give" list; a parent taps ✅ Given. Nothing is ever "spent".
+- **Anti-cheat:** ticks only for today (server allows its UTC date ±1 for time zones); kudos parents-only, never to yourself, capped; the old open `/api/stars` that accepted any amount is locked down; the old redeem route is switched off; unlock only when the phone's "today" is really Saturday+; kids can't change the goal or approve rewards. Still an honesty system for "who's using this phone" (no separate parent PIN).
+- New: `src/lib/points.js` (rules), `src/routes/weekly.js` (`/api/weekly`, `/choose`, `/settings`, `/:id/given`), table `weekly_goals` + `families.weekly_goal` auto-created (record: migration 021). Demo family has Mia → Movie night, Jack → park.
+- Tested: 13-step parent+child weekly test incl. every cheat attempt, a server clock pinned to Wednesday then Saturday 8am (locked mid-week, unlocks Saturday, parent marks Given), and all earlier journeys.
+
 ## ✅ Rewards system + "what day is it" + calendar in step + starter ideas (2026-11-10)
 
 - **Points rules** (`src/lib/points.js`): habit +1, win the day +2, win the whole week (Mon–Sun) +10, family activity (Planner "Everyone") +2, bonus habit +1. Perfect week = 45 ⭐; ~30 ⭐ ≈ one reward a week (suggested price in the add form).

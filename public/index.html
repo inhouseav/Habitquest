@@ -243,6 +243,8 @@
   .meal-for { font-weight: 700; }
   .reward-progress { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #eee3cf; }
   .reward-line { font-size: 0.85rem; margin-top: 3px; }
+  .reward-earned { margin-top: 6px; padding: 8px 10px; border-radius: 10px; background: #F8E3D1; font-size: 0.9rem; }
+  .week-day.wd-reward span { font-size: 0.75rem; }
   .win-day-date { font-size: 0.85rem; background: #fff; border-radius: 10px; padding: 6px 10px; margin: 0 0 10px; }
   .week-strip { display: flex; gap: 5px; margin: 6px 0 8px; }
   .week-day { flex: 1; text-align: center; font-size: 0.7rem; font-weight: 700; opacity: 0.85; }
@@ -257,6 +259,13 @@
   .reward-bar { height: 8px; border-radius: 999px; background: #F2EBDD; margin-top: 5px; overflow: hidden; }
   .reward-bar span { display: block; height: 100%; background: #E0A339; border-radius: 999px; }
   .pending-pill { background: #F8E3D1; }
+  .reward-list-head { font-weight: 700; font-size: 0.85rem; margin: 10px 0 2px; }
+  .weekly-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 0.82rem; }
+  .weekly-row b { min-width: 52px; }
+  .weekly-mini-bar { flex: 1 1 60px; min-width: 50px; height: 7px; border-radius: 999px; background: #F2EBDD; overflow: hidden; }
+  .weekly-mini-bar span { display: block; height: 100%; background: #E0A339; }
+  .weekly-what { flex-basis: 100%; padding-left: 60px; font-size: 0.78rem; }
+  .to-give { background: #FFF6EA; }
   .admin-box { background: #fff; border-radius: 12px; padding: 10px 12px; margin: 8px 0; font-size: 0.85rem; }
   .points-rules { margin: 6px 0 0; padding-left: 18px; }
   .points-rules li { margin: 2px 0; }
@@ -466,7 +475,7 @@
           <select id="plannerForMemberSelect"><option value="">🌍 Everyone</option></select>
         </div>
         <label class="planner-habit-check"><input type="checkbox" id="plannerMakeHabitCheck" checked />
-          <span>⭐ Make it <span id="plannerHabitWho">everyone's</span> <b id="plannerHabitSlotLabel">Move</b> habit that day — counts toward winning the day<span id="plannerFamilyBonusNote"> (family activity: +2 ⭐ bonus each)</span></span></label>
+          <span>⭐ Make it <span id="plannerHabitWho">everyone's</span> <b id="plannerHabitSlotLabel">Move</b> habit that day — counts toward winning the day<span id="plannerFamilyBonusNote"> (family activity = 2 ⭐ each)</span></span></label>
         <div style="display:flex; gap:8px;">
           <button class="small" id="plannerPickDayConfirmBtn" style="flex:1;">Add to calendar</button>
           <button class="small secondary" type="button" id="plannerPickDayCancelBtn" style="flex:0; white-space:nowrap;">Cancel</button>
@@ -561,16 +570,14 @@
         <h3 style="margin:0;">Reward shop 🎁</h3>
         <button type="button" class="small secondary" id="rewardAdminBtn" style="margin:0; width:auto;">⚙️ Rewards & points</button>
       </div>
-      <p class="muted" style="margin-top:6px;">🎯 Goal: about <b>one reward a week</b>. Win the day to earn stars!</p>
+      <p class="muted" style="margin-top:6px;">🎯 Reach the weekly star goal and your chosen reward unlocks on <b>Saturday morning</b>.</p>
+      <div id="weeklyOverview"></div>
       <div id="rewardAdminPanel" class="hidden"></div>
       <div id="rewardsList"><p class="loading-text">Loading...</p></div>
       <button class="small secondary" id="showAddRewardBtn">+ Add a reward</button>
       <div id="addRewardForm" class="hidden" style="margin-top: 12px;">
         <label>Reward</label>
         <input id="newRewardTitle" placeholder="e.g. Pick the movie night film" />
-        <label>Star cost</label>
-        <input id="newRewardCost" type="number" min="1" placeholder="e.g. 30" />
-        <p class="muted" id="rewardCostHint" style="font-size:0.75rem; margin:2px 0 0;"></p>
         <label>Who's it for?</label>
         <select id="newRewardFor"><option value="">🌍 Anyone</option></select>
         <p class="muted" id="rewardApprovalHint" style="font-size:0.75rem; margin:6px 0 0;"></p>
@@ -1042,7 +1049,7 @@ function renderMembers() {
     const row = document.createElement("div");
     row.className = "member-row compact";
     row.innerHTML = `<span><span class="member-dot" style="background:${m.color || '#ccc'}"></span>${escapeHtml(m.display_name)}<span class="pill">${m.role}</span></span>
-      <span><span id="stars-${m.id}" class="muted">⭐ ...</span> <button class="small" data-member="${m.id}">Give Kudos</button></span>`;
+      <span><span id="stars-${m.id}" class="muted">⭐ ...</span>${isParentHere() && getMe() !== m.id ? ` <button class="small" data-member="${m.id}">Give Kudos</button>` : ""}</span>`;
     list.appendChild(row);
     loadStars(m.id);
     const notifyOpt = document.createElement("option"); notifyOpt.value = m.id; notifyOpt.textContent = m.display_name;
@@ -1149,9 +1156,10 @@ async function loadStars(memberId) {
 
 async function giveStar(memberId) {
   try {
-    await api("/api/stars", { method: "POST", body: JSON.stringify({ memberId, delta: 1, reason: "Given by a family member", idempotencyKey: crypto.randomUUID() })});
+    const res = await api("/api/stars", { method: "POST", body: JSON.stringify({ memberId, actorId: getMe(), day: todayStr() })});
     await loadStars(memberId);
-    toast("⭐ Star given!");
+    renderHabits().catch(() => {});
+    toast(`⭐ Kudos given! (${res.kudosLeftToday} more today)`);
   } catch (err) { toast(err.message, true); }
 }
 
@@ -1725,14 +1733,11 @@ let habitPlanPicking = null; // { memberId, slot, title } — which chip is mid-
 let habitPlanExpandedMembers = new Set(); // memberIds whose "📅 Plan my week" is open — closed by default, kid's daily view stays to just the 3 habits
 // What to say when a habit is ticked, including any bonus stars earned.
 function habitTickMessage(res) {
-  const bonuses = res.bonuses || [];
-  const family = bonuses.find((b) => b.reason.startsWith("Family activity"));
-  const week = bonuses.find((b) => b.reason.startsWith("Won the whole week"));
-  const day = bonuses.find((b) => b.reason.startsWith("Won the day"));
-  const extra = family ? ` 👨‍👩‍👧 +${family.delta} family bonus!` : "";
-  if (week) return `🏆 You won the WHOLE WEEK! +${week.delta} ⭐ bonus!${extra}`;
-  if (res.justWonStreak || day) return `🎉 Day won! +${day ? day.delta : 2} ⭐ bonus · 🔥 ${res.currentStreak || 1} day streak!${extra}`;
-  return `⭐ +1 Nice work!${extra}`;
+  const family = (res.bonuses || []).find((b) => b.reason.startsWith("Family activity"));
+  const starsLine = res.starsThisWeek !== undefined ? ` · ${res.starsThisWeek} ⭐ this week` : "";
+  const fam = family ? " 👨‍👩‍👧 Family activity = 2 ⭐!" : " +1 ⭐";
+  if (res.justWonStreak) return `🎉 Day won! 🔥 ${res.currentStreak || 1} day streak!${fam}${starsLine}`;
+  return `⭐ Nice work!${fam}${starsLine}`;
 }
 let lastHabitsData = null; // latest /api/habits response (reminders use it for titles + ticking)
 async function renderHabits() {
@@ -1816,7 +1821,7 @@ async function renderHabits() {
       const bonusList = m.bonusHabits || [];
       const bonusHtml = bonusList.length
         ? `<div style="margin-top:10px;">
-            <p class="muted" style="font-size:0.72rem; font-weight:700; margin:0 0 4px;">✨ BONUS — extra stars, not needed to win</p>
+            <p class="muted" style="font-size:0.72rem; font-weight:700; margin:0 0 4px;">✨ BONUS — just for fun, not needed to win</p>
             <div class="habit-rows">${bonusList.map((b) => `
               <div style="display:flex; align-items:center; gap:6px;">
                 <button class="habit-row-btn bonus ${b.completed ? 'done' : ''}" data-bonus-habit="${b.id}" ${b.completed ? 'disabled' : ''} style="flex:1;">
@@ -1862,7 +1867,7 @@ async function renderHabits() {
       try {
         await api(`/api/habits/bonus/${btn.getAttribute("data-bonus-habit")}/complete`, { method: "POST", body: JSON.stringify({ day: todayStr() }) });
         await renderHabits();
-        toast("✨ Bonus star!");
+        toast("✨ Bonus done — amazing!");
       } catch (err) { toast(err.message, true); }
     };
   });
@@ -2008,44 +2013,63 @@ function renderPlannerWeekPlan(m, weekStart) {
 }
 $("plannerWeekToggleBtn").onclick = () => { plannerWeekOpen = !plannerWeekOpen; renderHabits(); };
 
-// Stars + how close you are to the next reward, under Win the Day.
+// This week's goal + reward, under Win the Day: a Mon–Sun strip of days
+// won, stars this week vs the goal, and the reward you're working towards
+// (unlocks Saturday morning if you reach the goal).
 let rewardsListCache = null;
+let weeklyCache = null;
 async function loadRewardProgress(el, m) {
   try {
-    const [stars, rewards] = await Promise.all([
-      api("/api/stars?memberId=" + m.memberId),
+    const [weekly, rewards] = await Promise.all([
+      api("/api/weekly?day=" + todayStr()),
       rewardsListCache ? Promise.resolve(rewardsListCache) : api("/api/rewards").then((r) => (rewardsListCache = r)),
     ]);
-    const balance = stars.balance || 0;
-    const rules = rewards.rules || {};
-    const list = (rewards.rewards || [])
-      .filter((r) => r.status !== "pending" && (!r.member_id || r.member_id === m.memberId))
-      .slice().sort((a, b) => a.star_cost - b.star_cost);
-    const won = m.daysWonThisWeek || 0;
+    weeklyCache = weekly;
+    if (el.getAttribute("data-member") !== m.memberId) return;
+    const me = weekly.members.find((x) => x.memberId === m.memberId) || { starsThisWeek: 0, status: "none" };
+    const goal = weekly.goal;
+    const stars = me.starsThisWeek;
     const wonDays = new Set(m.weekWonDays || []);
     const monday = mondayOfWeek();
     const today = todayStr();
-    const weekLine = `<div class="reward-line">🏆 This week: <b>${won}</b> of 7 days won${won >= 7 ? " — week won!" : ` · win all 7 for <b>+${rules.winWeek || 10}</b> ⭐`}</div>
-      <div class="week-strip">${MEAL_DAY_LABELS.map((lbl, i) => {
-        const d = addDays(monday, i);
-        const cls = [wonDays.has(d) ? "wd-won" : "", d === today ? "wd-today" : "", d > today ? "wd-future" : ""].join(" ");
-        return `<div class="week-day ${cls}" title="${d}"><span>${lbl.slice(0, 1)}</span><i>${wonDays.has(d) ? "✓" : ""}</i></div>`;
-      }).join("")}</div>`;
-    if (el.getAttribute("data-member") !== m.memberId) return;
-    if (!list.length) {
-      el.innerHTML = weekLine + `<div class="reward-line">⭐ <b>${balance}</b> star${balance === 1 ? "" : "s"} · <span class="muted">add rewards in the Reward shop to save up for</span></div>`;
-      return;
+    const strip = `<div class="week-strip">${MEAL_DAY_LABELS.map((lbl, i) => {
+      const d = addDays(monday, i);
+      const cls = [wonDays.has(d) ? "wd-won" : "", d === today ? "wd-today" : "", d > today ? "wd-future" : "", i === 5 ? "wd-reward" : ""].join(" ");
+      return `<div class="week-day ${cls}" title="${d}"><span>${i === 5 ? "🎁" : lbl.slice(0, 1)}</span><i>${wonDays.has(d) ? "✓" : ""}</i></div>`;
+    }).join("")}</div>`;
+    const pct = Math.min(100, Math.max(4, Math.round((stars / goal) * 100)));
+    const bar = `<div class="reward-line">🎯 This week: <b>${stars}</b> / ${goal} ⭐</div><div class="reward-bar"><span style="width:${pct}%"></span></div>`;
+
+    const choices = (rewards.rewards || []).filter((r) => r.status !== "pending" && (!r.member_id || r.member_id === m.memberId));
+    let rewardHtml = "";
+    if (me.status === "earned") {
+      rewardHtml = `<div class="reward-earned">🎉 You earned <b>${escapeHtml(me.rewardTitle || "your reward")}</b>! A parent will give it to you.</div>`;
+    } else if (me.status === "given") {
+      rewardHtml = `<div class="reward-line">🎁 Enjoy your <b>${escapeHtml(me.rewardTitle || "reward")}</b>! Pick a new one next week.</div>`;
+    } else if (!choices.length) {
+      rewardHtml = `<div class="reward-line muted">Ask a parent to add rewards in the Reward shop, then pick one to work towards.</div>`;
+    } else {
+      const options = choices.map((r) => `<option value="${r.id}" ${r.id === me.rewardId ? "selected" : ""}>${escapeHtml(r.title)}</option>`).join("");
+      const status = !me.rewardId ? `<span class="muted">Pick what you're working towards this week 👇</span>`
+        : stars >= goal ? (weekly.unlockOpen ? "" : `✅ <b>Goal reached!</b> It unlocks <b>Saturday morning</b>.`)
+        : `<b>${goal - stars}</b> more ⭐ — unlocks Saturday morning if you reach ${goal}.`;
+      rewardHtml = `<div class="reward-line">${status}</div>
+        <div style="display:flex; gap:6px; align-items:center; margin-top:4px;">
+          <span style="font-size:0.85rem;">🎁 This week's reward:</span>
+          <select class="small" data-weekly-choose="${m.memberId}" style="width:auto; margin:0; flex:1;"><option value="">— pick one —</option>${options}</select>
+        </div>`;
     }
-    const canGet = list.filter((r) => r.star_cost <= balance);
-    const next = list.find((r) => r.star_cost > balance);
-    const parts = [weekLine, `<div class="reward-line">⭐ <b>${balance}</b> star${balance === 1 ? "" : "s"}</div>`];
-    if (next) {
-      const pct = Math.max(4, Math.round((balance / next.star_cost) * 100));
-      parts.push(`<div class="reward-line">🎁 <b>${next.star_cost - balance}</b> more for <b>${escapeHtml(next.title)}</b></div>
-        <div class="reward-bar"><span style="width:${pct}%"></span></div>`);
-    }
-    if (canGet.length) parts.push(`<div class="reward-line muted">🎉 You can get: ${canGet.map((r) => escapeHtml(r.title)).join(", ")} — redeem in the Reward shop</div>`);
-    el.innerHTML = parts.join("");
+    el.innerHTML = strip + bar + rewardHtml;
+    const sel = el.querySelector("[data-weekly-choose]");
+    if (sel) sel.onchange = async () => {
+      if (!sel.value) return;
+      try {
+        await api("/api/weekly/choose", { method: "POST", body: JSON.stringify({ memberId: m.memberId, rewardId: sel.value, day: todayStr() }) });
+        toast("🎁 Good choice! Win your days to unlock it on Saturday.");
+        loadRewardProgress(el, m);
+        if (rewardsListCache) renderWeeklyOverview();
+      } catch (err) { toast(err.message, true); }
+    };
   } catch (err) { el.innerHTML = ""; }
 }
 
@@ -2168,7 +2192,7 @@ function habitEditFormHtml(m) {
     </div>`;
   }).join("");
   const bonusSection = `<label style="margin-top:14px; font-size:0.78rem; font-weight:700; opacity:0.7;">✨ Bonus habits (optional)</label>
-    <p class="muted" style="font-size:0.72rem; margin:2px 0 0;">Extra stars if you do them — you still only need your 3 to win the day.</p>
+    <p class="muted" style="font-size:0.72rem; margin:2px 0 0;">Extra challenges just for fun (no stars) — you still only need your 3 to win the day.</p>
     ${bonusInputs}`;
   const slots = [1, 2, 3].map((slot) => {
     const existing = m.habits.find((h) => h.slot === slot);
@@ -2211,56 +2235,47 @@ async function renderRewards() {
   const data = await api("/api/rewards");
   rewardsListCache = data;
   if ($("rewardProgress")) renderHabits().catch(() => {});
-  const rules = data.rules || {};
   const list = $("rewardsList"); list.innerHTML = "";
   const forName = (id) => (id ? memberNameFor(id) : "");
   const visibleRewards = data.rewards.filter((r) => r.status !== "pending" || isParentHere() || r.created_by === getMe());
-  if (!visibleRewards.length) list.innerHTML = '<p class="muted">No rewards yet — add one below!</p>';
-
-  const REWARD_PREVIEW = 4;
-  const shown = rewardsExpanded ? visibleRewards : visibleRewards.slice(0, REWARD_PREVIEW);
-  shown.forEach((r) => {
-    const row = document.createElement("div"); row.className = "list-row";
-    const pending = r.status === "pending";
-    // Only people a reward is for can redeem it; this phone's person first.
-    const eligible = state.members.filter((m) => !r.member_id || m.id === r.member_id);
-    const me = getMe();
-    const options = eligible.map((m) => `<option value="${m.id}" ${m.id === me ? "selected" : ""}>${escapeHtml(m.display_name)}</option>`).join("");
-    row.innerHTML = `<span>${escapeHtml(r.title)} <span class="pill">${r.star_cost} ⭐</span>${r.member_id ? ` <span class="pill">for ${escapeHtml(forName(r.member_id))}</span>` : ""}${pending ? ` <span class="pill pending-pill">⏳ waiting for a parent</span>` : ""}</span>
-      ${pending ? "" : `<span><select class="small" style="width:auto; display:inline-block;" id="redeemer-${r.id}">${options}</select>
-      <button class="small" data-reward="${r.id}">Redeem</button></span>`}`;
-    list.appendChild(row);
-  });
-  if (visibleRewards.length > REWARD_PREVIEW) {
-    const moreBtn = document.createElement("button");
-    moreBtn.className = "summary-row"; moreBtn.style.marginTop = "4px";
-    moreBtn.innerHTML = rewardsExpanded ? "<span>Show fewer</span><span class=\"chevron\">⌄</span>" : `<span>View all (${visibleRewards.length})</span><span class="chevron">›</span>`;
-    moreBtn.onclick = () => { rewardsExpanded = !rewardsExpanded; renderRewards(); };
-    list.appendChild(moreBtn);
-  }
-  list.querySelectorAll("button[data-reward]").forEach((btn) => {
-    btn.onclick = async () => {
-      const rewardId = btn.getAttribute("data-reward");
-      const memberId = $("redeemer-" + rewardId).value;
-      try {
-        await api(`/api/rewards/${rewardId}/redeem`, { method: "POST", body: JSON.stringify({ memberId }) });
-        await loadStars(memberId);
-        renderHabits().catch(() => {});
-        toast("Redeemed! Enjoy 🎉");
-      } catch (err) { toast(err.message, true); }
-    };
-  });
-
-  // Add-reward form helpers
-  $("rewardCostHint").textContent = `A perfect week earns about ${rules.perfectWeek || 45} ⭐. Around ${rules.suggestedWeeklyReward || 30} ⭐ = roughly one reward a week.`;
-  $("newRewardFor").innerHTML = '<option value="">🌍 Anyone</option>' + state.members.map((m) => `<option value="${m.id}">${escapeHtml(m.display_name)}</option>`).join("");
+  list.innerHTML = `<p class="reward-list-head">🎁 Rewards you can work towards</p>` + (visibleRewards.length
+    ? visibleRewards.map((r) => `<div class="list-row"><span>${escapeHtml(r.title)}${r.member_id ? ` <span class="pill">for ${escapeHtml(forName(r.member_id))}</span>` : ` <span class="pill">anyone</span>`}${r.status === "pending" ? ` <span class="pill pending-pill">⏳ waiting for a parent</span>` : ""}</span></div>`).join("")
+    : '<p class="muted">No rewards yet — add one below!</p>');
   const mm = meMember();
+  $("newRewardFor").innerHTML = '<option value="">🌍 Anyone</option>' + state.members.map((m) => `<option value="${m.id}">${escapeHtml(m.display_name)}</option>`).join("");
   if (mm && mm.role === "child") $("newRewardFor").value = mm.id;
   $("rewardApprovalHint").textContent = !mm
     ? "Tip: pick who's using this phone (👤 at the top) so rewards know who added them."
-    : mm.role === "child" ? "A parent will check it and OK it (they might change the price)." : "You're a parent, so it's ready to use straight away.";
-
+    : mm.role === "child" ? "A parent will check it and OK it." : "You're a parent, so it's ready to pick straight away.";
+  await renderWeeklyOverview();
   renderRewardAdmin(data);
+}
+
+// Everyone's week at a glance + (for parents) earned rewards to hand over.
+async function renderWeeklyOverview() {
+  const wrap = $("weeklyOverview");
+  try {
+    const w = await api("/api/weekly?day=" + todayStr());
+    weeklyCache = w;
+    const rows = w.members.map((m) => {
+      const pct = Math.min(100, Math.round((m.starsThisWeek / w.goal) * 100));
+      const what = m.status === "earned" ? `🎉 earned ${escapeHtml(m.rewardTitle || "")}` : m.status === "given" ? `🎁 got ${escapeHtml(m.rewardTitle || "")}` : m.rewardTitle ? `→ ${escapeHtml(m.rewardTitle)}` : `<span class="muted">no reward picked</span>`;
+      return `<div class="weekly-row"><b>${escapeHtml(m.name)}</b><span class="weekly-mini-bar"><span style="width:${pct}%"></span></span><span>${m.starsThisWeek}/${w.goal} ⭐</span><span class="weekly-what">${what}</span></div>`;
+    }).join("");
+    const toGive = isParentHere() && w.toGive.length
+      ? `<div class="admin-box to-give"><b>🎉 Earned — to give (${w.toGive.length})</b>${w.toGive.map((g) => `<div class="weekly-row"><span><b>${escapeHtml(g.name)}</b> earned <b>${escapeHtml(g.reward_title || "a reward")}</b> <span class="muted">(week of ${escapeHtml(g.week_of)})</span></span><button type="button" class="small" data-weekly-given="${g.id}" style="margin:0; width:auto;">✅ Given</button></div>`).join("")}</div>`
+      : "";
+    wrap.innerHTML = toGive + `<div class="admin-box"><b>This week</b> <span class="muted">(goal ${w.goal} ⭐ · unlocks Saturday)</span>${rows}</div>`;
+    wrap.querySelectorAll("[data-weekly-given]").forEach((b) => {
+      b.onclick = async () => {
+        try {
+          await api(`/api/weekly/${b.getAttribute("data-weekly-given")}/given`, { method: "POST", body: JSON.stringify({ actorId: getMe() }) });
+          toast("🎁 Marked as given");
+          await renderWeeklyOverview();
+        } catch (err) { toast(err.message, true); }
+      };
+    });
+  } catch (err) { wrap.innerHTML = ""; }
 }
 
 // --- ⚙️ Rewards & points: the admin area ---
@@ -2270,34 +2285,47 @@ function renderRewardAdmin(data) {
   $("rewardAdminBtn").textContent = rewardAdminOpen ? "✓ Done" : "⚙️ Rewards & points";
   if (!rewardAdminOpen) return;
   const rules = data.rules || {};
+  const goal = (weeklyCache && weeklyCache.goal) || rules.weeklyGoalDefault || 12;
   const rulesHtml = `<div class="admin-box">
-      <b>How stars are earned</b>
+      <b>How it works</b>
       <ul class="points-rules">
-        <li>Each habit ticked <b>+${rules.habit}</b> ⭐ (3 a day)</li>
-        <li>Win the day (all 3) <b>+${rules.winDay}</b> ⭐ bonus</li>
-        <li>Win the whole week (every day Mon–Sun) <b>+${rules.winWeek}</b> ⭐ bonus</li>
-        <li>Family activity (planned for Everyone) <b>+${rules.familyActivity}</b> ⭐ bonus</li>
-        <li>Bonus habit <b>+${rules.bonusHabit}</b> ⭐</li>
+        <li>Each habit ticked = <b>${rules.habit}</b> ⭐ (3 a day)</li>
+        <li>A family activity (planned for Everyone) = <b>${rules.familyActivity}</b> ⭐ (once a day)</li>
+        <li>Kudos from a parent = <b>${rules.kudos}</b> ⭐ (max ${rules.kudosPerDay} a day per child)</li>
+        <li>Each week, reach <b>${goal}</b> ⭐ and your chosen reward unlocks <b>Saturday morning</b></li>
       </ul>
-      <p class="muted" style="margin:4px 0 0; font-size:0.78rem;">A perfect week = <b>${rules.perfectWeek}</b> ⭐. Winning 5 of 7 days ≈ 30 ⭐ — so price a weekly reward around <b>${rules.suggestedWeeklyReward}</b> ⭐.</p>
+      <p class="muted" style="margin:6px 0 0; font-size:0.78rem;">🔒 No cheating: habits can only be ticked for today, bonus habits are just for fun (no stars), only parents give kudos (never to themselves), and stars can't be spent — rewards just unlock.</p>
     </div>`;
   if (!isParentHere()) {
-    panel.innerHTML = rulesHtml + `<div class="admin-box"><b>Parents</b><p class="muted" style="margin:4px 0 0;">Only a parent can approve, change or remove rewards. On a parent's phone, tap 👤 at the top and pick the parent's name.</p></div>`;
+    panel.innerHTML = rulesHtml + `<div class="admin-box"><b>Parents</b><p class="muted" style="margin:4px 0 0;">Only a parent can set the weekly goal and approve, change or remove rewards. On a parent's phone, tap 👤 at the top and pick the parent's name.</p></div>`;
     return;
   }
   const memberOpts = (sel) => '<option value="">🌍 Anyone</option>' + state.members.map((m) => `<option value="${m.id}" ${m.id === sel ? "selected" : ""}>${escapeHtml(m.display_name)}</option>`).join("");
   const pending = data.rewards.filter((r) => r.status === "pending");
   const rowHtml = (r) => `<div class="admin-reward-row" data-admin-reward="${r.id}">
       <input class="small" data-admin-title value="${escapeAttr(r.title)}" />
-      <input class="small" data-admin-cost type="number" min="1" value="${r.star_cost}" style="width:70px;" />
       <select class="small" data-admin-for>${memberOpts(r.member_id)}</select>
       ${r.status === "pending" ? `<button type="button" class="small" data-admin-approve>✅ OK it</button>` : `<button type="button" class="small secondary" data-admin-save>Save</button>`}
       <button type="button" class="small secondary" data-admin-delete style="background:#fde2de;">🗑</button>
     </div>`;
   panel.innerHTML = rulesHtml +
+    `<div class="admin-box"><b>🎯 Weekly star goal</b>
+      <div style="display:flex; gap:6px; align-items:center; margin-top:6px;">
+        <input type="number" id="weeklyGoalInput" min="3" max="40" value="${goal}" style="width:80px; margin:0;" /> <span>⭐ a week</span>
+        <button type="button" class="small" id="weeklyGoalSaveBtn" style="margin:0; width:auto;">Save</button>
+      </div>
+      <p class="muted" style="margin:4px 0 0; font-size:0.75rem;">12 ≈ 4 good days. Most a child can earn in a week is about 21 (plus family activities).</p>
+    </div>` +
     `<div class="admin-box"><b>⏳ Waiting for OK (${pending.length})</b>${pending.length ? pending.map(rowHtml).join("") : '<p class="muted" style="margin:4px 0 0;">Nothing waiting — kids\' new rewards show up here.</p>'}</div>` +
     `<div class="admin-box"><b>All rewards</b>${data.rewards.filter((r) => r.status !== "pending").map(rowHtml).join("") || '<p class="muted" style="margin:4px 0 0;">None yet.</p>'}</div>`;
 
+  $("weeklyGoalSaveBtn").onclick = async () => {
+    try {
+      await api("/api/weekly/settings", { method: "POST", body: JSON.stringify({ actorId: getMe(), goal: Number($("weeklyGoalInput").value) }) });
+      toast("🎯 Weekly goal saved");
+      await renderRewards();
+    } catch (err) { toast(err.message, true); }
+  };
   panel.querySelectorAll("[data-admin-reward]").forEach((row) => {
     const id = row.getAttribute("data-admin-reward");
     const save = async (extra, msg) => {
@@ -2305,7 +2333,6 @@ function renderRewardAdmin(data) {
         await api(`/api/rewards/${id}/update`, { method: "POST", body: JSON.stringify({
           actorId: getMe(),
           title: row.querySelector("[data-admin-title]").value,
-          starCost: Number(row.querySelector("[data-admin-cost]").value),
           memberId: row.querySelector("[data-admin-for]").value || null,
           ...extra,
         })});
@@ -2333,8 +2360,7 @@ $("showAddRewardBtn").onclick = () => {
   $("newRewardFor").value = mm && mm.role === "child" ? mm.id : "";
   $("rewardApprovalHint").textContent = !mm
     ? "Tip: pick who's using this phone (👤 at the top) so rewards know who added them."
-    : mm.role === "child" ? "A parent will check it and OK it (they might change the price)." : "You're a parent, so it's ready to use straight away.";
-  if (!$("newRewardCost").value) $("newRewardCost").value = String((rewardsListCache && rewardsListCache.rules && rewardsListCache.rules.suggestedWeeklyReward) || 30);
+    : mm.role === "child" ? "A parent will check it and OK it." : "You're a parent, so it's ready to pick straight away.";
   show("addRewardForm");
 };
 $("addRewardBtn").onclick = async () => {
@@ -2342,13 +2368,12 @@ $("addRewardBtn").onclick = async () => {
   try {
     const res = await api("/api/rewards", { method: "POST", body: JSON.stringify({
       title: $("newRewardTitle").value,
-      starCost: Number($("newRewardCost").value),
       memberId: $("newRewardFor").value || null,
       createdBy: (meMember() || {}).id || null,
     })});
-    $("newRewardTitle").value = ""; $("newRewardCost").value = ""; hide("addRewardForm");
+    $("newRewardTitle").value = ""; hide("addRewardForm");
     await renderRewards();
-    toast(res.reward.status === "pending" ? "⏳ Added! A parent needs to OK it." : "🎁 Reward added!");
+    toast(res.reward.status === "pending" ? "⏳ Added! A parent needs to OK it." : "🎁 Reward added — pick it in Win the Day!");
   } catch (err) { showError("rewardError", err.message); }
 };
 

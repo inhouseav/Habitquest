@@ -9,7 +9,7 @@
 
 import { hashPin, newId, newJoinCode } from "./crypto.js";
 import { VALID_COLORS } from "../routes/members.js";
-import { ensureBonusTables } from "./schemaUpgrades.js";
+import { ensureBonusTables, ensureWeeklyGoals, ensureRewardColumns } from "./schemaUpgrades.js";
 
 export const DEMO_PIN = "0000";
 export const DEMO_FAMILY_NAME = "The Smith Family";
@@ -101,27 +101,32 @@ export async function seedDemoFamily(db, { today, tzOffsetMinutes = 0 }) {
   add("INSERT INTO habit_streaks (member_id, current_streak, longest_streak, last_won_day) VALUES (?, ?, ?, ?)", jack, 0, 3, addDays(today, -3));
   add("INSERT INTO habit_streaks (member_id, current_streak, longest_streak, last_won_day) VALUES (?, ?, ?, ?)", sam, 1, 2, addDays(today, -1));
 
-  // A few kudos so the star totals feel lived-in.
-  [[mia, 2, "Kudos from Sam — great teamwork at netball"], [jack, 2, "Kudos from Mia — helped tidy up"], [sam, 1, "Kudos from Jack — best pancakes"]]
-    .forEach(([member, delta, reason]) =>
-      add("INSERT INTO star_ledger (id, family_id, member_id, delta, reason, idempotency_key) VALUES (?, ?, ?, ?, ?, ?)",
-        newId(), familyId, member, delta, reason, `demo:${newId()}`));
+  // Kudos from Sam (a parent) today — same shape the real kudos route uses.
+  [[mia, "Kudos from a parent"], [jack, "Kudos from a parent"]].forEach(([member, reason]) =>
+    add("INSERT INTO star_ledger (id, family_id, member_id, delta, reason, idempotency_key) VALUES (?, ?, ?, 1, ?, ?)",
+      newId(), familyId, member, reason, `kudos:1:${member}:${today}`));
 
   // --- Bonus habits (only if this database has them set up) ---
   if (await ensureBonusTables(db)) {
     const bonusRead = newId();
     add("INSERT INTO bonus_habits (id, family_id, member_id, slot, title, emoji) VALUES (?, ?, ?, ?, ?, ?)", bonusRead, familyId, mia, 4, "Read for 15 mins", "📚");
     add("INSERT INTO bonus_habits (id, family_id, member_id, slot, title, emoji) VALUES (?, ?, ?, ?, ?, ?)", newId(), familyId, jack, 4, "Practise piano", "🎹");
-    const ledgerId = newId();
-    add("INSERT INTO star_ledger (id, family_id, member_id, delta, reason, idempotency_key) VALUES (?, ?, ?, 1, ?, ?)",
-      ledgerId, familyId, mia, `Bonus: "Read for 15 mins" on ${addDays(today, -1)}`, `bonus:${bonusRead}:${addDays(today, -1)}`);
-    add("INSERT INTO bonus_completions (id, bonus_habit_id, member_id, family_id, day, star_ledger_id) VALUES (?, ?, ?, ?, ?, ?)",
-      newId(), bonusRead, mia, familyId, addDays(today, -1), ledgerId);
+    add("INSERT INTO bonus_completions (id, bonus_habit_id, member_id, family_id, day) VALUES (?, ?, ?, ?, ?)",
+      newId(), bonusRead, mia, familyId, addDays(today, -1));
   }
 
-  // --- Reward shop ---
-  [["Choose Saturday breakfast 🥞", 8], ["Pick the movie for movie night 🎬", 12], ["Extra 30 minutes at the park 🛝", 5]]
-    .forEach(([title, cost]) => add("INSERT INTO rewards (id, family_id, title, star_cost) VALUES (?, ?, ?, ?)", newId(), familyId, title, cost));
+  // --- Rewards (weekly prizes) + what each kid is working towards ---
+  const rewardIds = {};
+  [["breakfast", "Choose Saturday breakfast 🥞"], ["movie", "Pick the movie for movie night 🎬"], ["park", "Extra 30 minutes at the park 🛝"]]
+    .forEach(([key, title]) => {
+      rewardIds[key] = newId();
+      add("INSERT INTO rewards (id, family_id, title, star_cost) VALUES (?, ?, ?, ?)", rewardIds[key], familyId, title, 12);
+    });
+  await ensureRewardColumns(db);
+  if (await ensureWeeklyGoals(db)) {
+    add("INSERT INTO weekly_goals (id, family_id, member_id, week_of, reward_id) VALUES (?, ?, ?, ?, ?)", newId(), familyId, mia, M, rewardIds.movie);
+    add("INSERT INTO weekly_goals (id, family_id, member_id, week_of, reward_id) VALUES (?, ?, ?, ?, ?)", newId(), familyId, jack, M, rewardIds.park);
+  }
 
   // --- Planner ideas, most-used first ---
   [["Netball practice", "movement", 6], ["Family bike ride", "movement", 4], ["Backyard cricket", "movement", 2], ["Scooter to school", "movement", 1],

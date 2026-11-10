@@ -22,6 +22,7 @@ import * as aiImageRoutes from "./routes/aiImage.js";
 import * as aiRecipeIntakeRoutes from "./routes/aiRecipeIntake.js";
 import * as movementIdeasRoutes from "./routes/movementIdeas.js";
 import * as habitDayPlanRoutes from "./routes/habitDayPlan.js";
+import * as weeklyRoutes from "./routes/weekly.js";
 
 async function handleHealth(env) {
   const hasDb = !!env.DB;
@@ -147,6 +148,11 @@ async function handleApi(request, env, url) {
     return habitDayPlanRoutes.deleteHabitDayPlan(habitDayPlanDeleteMatch[1], familyId, env);
   }
 
+  if (path === "/api/weekly" && method === "GET") return weeklyRoutes.getWeekly(request, familyId, env);
+  if (path === "/api/weekly/choose" && method === "POST") return weeklyRoutes.chooseWeeklyReward(request, familyId, env);
+  if (path === "/api/weekly/settings" && method === "POST") return weeklyRoutes.saveWeeklySettings(request, familyId, env);
+  const weeklyGivenMatch = path.match(/^\/api\/weekly\/([^/]+)\/given$/);
+  if (weeklyGivenMatch && method === "POST") return weeklyRoutes.markGiven(weeklyGivenMatch[1], request, familyId, env);
   if (path === "/api/rewards" && method === "GET") return rewardRoutes.listRewards(familyId, env);
   if (path === "/api/rewards" && method === "POST") return rewardRoutes.createReward(request, familyId, env);
   const rewardUpdateMatch = path.match(/^\/api\/rewards\/([^/]+)\/update$/);

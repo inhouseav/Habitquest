@@ -8,6 +8,7 @@ let bonusReady = false;
 let planTimeReady = false;
 let mealMemberReady = false;
 let rewardColumnsReady = false;
+let weeklyReady = false;
 
 async function columnNames(db, table) {
   const rows = await db.prepare(`SELECT name FROM pragma_table_info('${table}')`).all();
@@ -103,4 +104,34 @@ export async function ensureRewardColumns(db) {
     rewardColumnsReady = false;
   }
   return rewardColumnsReady;
+}
+
+/**
+ * Weekly goals: each person picks one reward to work towards each week;
+ * it unlocks on Saturday if they've reached the family's weekly star goal.
+ * families.weekly_goal = that goal (parents can change it).
+ */
+export async function ensureWeeklyGoals(db) {
+  if (weeklyReady) return true;
+  try {
+    await db.prepare(`CREATE TABLE IF NOT EXISTS weekly_goals (
+      id TEXT PRIMARY KEY,
+      family_id TEXT NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+      member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+      week_of TEXT NOT NULL,
+      reward_id TEXT REFERENCES rewards(id) ON DELETE SET NULL,
+      status TEXT NOT NULL DEFAULT 'working',
+      earned_at TEXT,
+      given_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(member_id, week_of)
+    )`).run();
+    if (!(await columnNames(db, "families")).has("weekly_goal")) {
+      await db.prepare("ALTER TABLE families ADD COLUMN weekly_goal INTEGER").run().catch(() => {});
+    }
+    weeklyReady = (await columnNames(db, "families")).has("weekly_goal");
+  } catch (err) {
+    weeklyReady = false;
+  }
+  return weeklyReady;
 }

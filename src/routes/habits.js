@@ -1,7 +1,7 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
 import { ensureBonusTables, ensureHabitPlanTime } from "../lib/schemaUpgrades.js";
-import { POINTS, awardOnce, daysWonThisWeek, wonDaysThisWeek, mondayOf } from "../lib/points.js";
+import { POINTS, awardOnce, wonDaysThisWeek, starsThisWeek, isTickableDay } from "../lib/points.js";
 
 const MAX_BONUS = 2;
 
@@ -160,6 +160,7 @@ export async function getHabits(request, familyId, env) {
   for (const r of result) {
     r.weekWonDays = await wonDaysThisWeek(db, r.memberId, day);
     r.daysWonThisWeek = r.weekWonDays.length;
+    r.starsThisWeek = await starsThisWeek(db, r.memberId, day);
   }
 
   return json({ ok: true, day, members: result });
@@ -285,6 +286,7 @@ export async function setHabits(request, familyId, env) {
 export async function completeHabit(habitId, request, familyId, env) {
   const body = (await readJson(request)) || {};
   const day = body.day && validDay(body.day) ? body.day : todayStr();
+  if (!isTickableDay(day)) return errorResponse("You can only tick off today's habits.", 400);
 
   const db = env.DB;
   const habit = await db
@@ -340,29 +342,28 @@ export async function completeHabit(habitId, request, familyId, env) {
   const totalCount = totalHabits ? totalHabits.n : 0;
   const streakResult = await maybeAdvanceStreak(db, habit.member_id, day, completedCount, totalCount);
 
-  // Bonus points (see src/lib/points.js). Each is awarded at most once.
+  // A family activity (planned for Everyone) is worth 2 ⭐: the usual 1
+  // plus 1 extra — but only once per person per day, so it can't be farmed.
   const bonuses = [];
-  const award = async (delta, reason, key) => {
-    if (await awardOnce(db, { familyId, memberId: habit.member_id, delta, reason, key, newId })) bonuses.push({ delta, reason });
-  };
   if (await ensureHabitPlanTime(db)) {
     const plan = await db
       .prepare("SELECT is_family, title FROM habit_day_plan WHERE member_id = ? AND slot = ? AND day = ?")
       .bind(habit.member_id, habit.slot, day)
       .first();
-    if (plan && plan.is_family) await award(POINTS.familyActivity, `Family activity: ${plan.title || habit.title}`, `family:${habitId}:${day}`);
-  }
-  if (totalCount > 0 && completedCount >= totalCount) {
-    await award(POINTS.winDay, `Won the day ${day}`, `win:${habit.member_id}:${day}`);
-    if ((await daysWonThisWeek(db, habit.member_id, day)) >= 7) {
-      await award(POINTS.winWeek, `Won the whole week of ${mondayOf(day)}`, `winweek:${habit.member_id}:${mondayOf(day)}`);
+    if (plan && plan.is_family) {
+      const extra = POINTS.familyActivity - POINTS.habit;
+      if (await awardOnce(db, { familyId, memberId: habit.member_id, delta: extra, reason: `Family activity: ${plan.title || habit.title}`, key: `family:${habit.member_id}:${day}`, newId })) {
+        bonuses.push({ delta: extra, reason: `Family activity: ${plan.title || habit.title}` });
+      }
     }
   }
-  const weekWins = await daysWonThisWeek(db, habit.member_id, day);
+  const weekWins = (await wonDaysThisWeek(db, habit.member_id, day)).length;
+  const weekStars = await starsThisWeek(db, habit.member_id, day);
 
   return json({
     bonuses,
     daysWonThisWeek: weekWins,
+    starsThisWeek: weekStars,
     ok: true,
     completionId,
     day,
@@ -392,20 +393,13 @@ export async function completeBonusHabit(bonusId, request, familyId, env) {
 
   const already = await db.prepare("SELECT id FROM bonus_completions WHERE bonus_habit_id = ? AND day = ?").bind(bonusId, day).first();
   if (already) return errorResponse("Already ticked off for today.", 409);
+  if (!isTickableDay(day)) return errorResponse("You can only tick off today's habits.", 400);
 
-  const ledgerId = newId();
-  try {
-    await db
-      .prepare("INSERT INTO star_ledger (id, family_id, member_id, delta, reason, idempotency_key) VALUES (?, ?, ?, 1, ?, ?)")
-      .bind(ledgerId, familyId, habit.member_id, `Bonus: "${habit.title}" on ${day}`, `bonus:${bonusId}:${day}`)
-      .run();
-  } catch (err) {
-    if (String(err.message || err).includes("UNIQUE")) return errorResponse("Already ticked off for today.", 409);
-    throw err;
-  }
+  // Bonus habits are just for fun now — no stars, so they can't be used to
+  // pile up easy points.
   await db
-    .prepare("INSERT INTO bonus_completions (id, bonus_habit_id, member_id, family_id, day, star_ledger_id) VALUES (?, ?, ?, ?, ?, ?)")
-    .bind(newId(), bonusId, habit.member_id, familyId, day, ledgerId)
+    .prepare("INSERT INTO bonus_completions (id, bonus_habit_id, member_id, family_id, day) VALUES (?, ?, ?, ?, ?)")
+    .bind(newId(), bonusId, habit.member_id, familyId, day)
     .run();
   return json({ ok: true, day });
 }

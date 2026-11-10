@@ -1,7 +1,7 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
 import { ensureRewardColumns } from "../lib/schemaUpgrades.js";
-import { POINTS, PERFECT_WEEK, SUGGESTED_WEEKLY_REWARD } from "../lib/points.js";
+import { POINTS, KUDOS_PER_DAY, WEEKLY_GOAL_DEFAULT } from "../lib/points.js";
 
 const MAX_TITLE_LENGTH = 80;
 
@@ -29,7 +29,7 @@ export async function listRewards(familyId, env) {
   return json({
     ok: true,
     rewards: (rewards.results || []).map((r) => ({ ...r, status: r.status || "approved" })),
-    rules: { ...POINTS, perfectWeek: PERFECT_WEEK, suggestedWeeklyReward: SUGGESTED_WEEKLY_REWARD },
+    rules: { ...POINTS, kudosPerDay: KUDOS_PER_DAY, weeklyGoalDefault: WEEKLY_GOAL_DEFAULT },
   });
 }
 
@@ -39,7 +39,9 @@ export async function createReward(request, familyId, env) {
   if (!body) return errorResponse("Invalid request body.");
 
   const title = (body.title || "").trim();
-  const starCost = Number(body.starCost);
+  // Rewards are weekly prizes now (unlocked by the weekly goal), so a price
+  // is optional — kept only because the table needs one.
+  const starCost = body.starCost === undefined || body.starCost === null || body.starCost === "" ? WEEKLY_GOAL_DEFAULT : Number(body.starCost);
   if (!title || title.length > MAX_TITLE_LENGTH) return errorResponse(`Please enter a title (1-${MAX_TITLE_LENGTH} characters).`);
   if (!Number.isInteger(starCost) || starCost <= 0) return errorResponse("Star cost must be a whole number greater than 0.");
 
@@ -113,39 +115,11 @@ export async function deleteReward(rewardId, request, familyId, env) {
   return json({ ok: true });
 }
 
-/** POST /api/rewards/:id/redeem — { memberId } spend stars on an approved reward. */
-export async function redeemReward(rewardId, request, familyId, env) {
-  const body = await readJson(request);
-  if (!body) return errorResponse("Invalid request body.");
-  const memberId = body.memberId;
-  if (!memberId) return errorResponse("memberId is required.");
-
-  const db = env.DB;
-  const extra = await ensureRewardColumns(db);
-  const member = await memberById(db, familyId, memberId);
-  if (!member) return errorResponse("Family member not found.", 404);
-
-  const reward = await db
-    .prepare(`SELECT id, title, star_cost${extra ? ", member_id, status" : ""} FROM rewards WHERE id = ? AND family_id = ?`)
-    .bind(rewardId, familyId)
-    .first();
-  if (!reward) return errorResponse("Reward not found.", 404);
-  if (extra && reward.status === "pending") return errorResponse("This reward is waiting for a parent to OK it.", 400);
-  if (extra && reward.member_id && reward.member_id !== memberId) return errorResponse("That reward is for someone else.", 400);
-
-  const totals = await db.prepare("SELECT COALESCE(SUM(delta), 0) AS balance FROM star_ledger WHERE member_id = ?").bind(memberId).first();
-  if (totals.balance < reward.star_cost) return errorResponse("Not enough stars for that reward yet.", 400);
-
-  const ledgerId = newId();
-  await db
-    .prepare("INSERT INTO star_ledger (id, family_id, member_id, delta, reason, idempotency_key) VALUES (?, ?, ?, ?, ?, ?)")
-    .bind(ledgerId, familyId, memberId, -reward.star_cost, `Redeemed: ${reward.title}`, `reward-redeem:${newId()}`)
-    .run();
-  const redemptionId = newId();
-  await db
-    .prepare("INSERT INTO reward_redemptions (id, family_id, member_id, reward_id, star_ledger_id) VALUES (?, ?, ?, ?, ?)")
-    .bind(redemptionId, familyId, memberId, rewardId, ledgerId)
-    .run();
-  const newTotals = await db.prepare("SELECT COALESCE(SUM(delta), 0) AS balance FROM star_ledger WHERE member_id = ?").bind(memberId).first();
-  return json({ ok: true, redemptionId, newBalance: newTotals.balance });
+/**
+ * POST /api/rewards/:id/redeem — switched off. Rewards are now unlocked by
+ * reaching the weekly goal (see routes/weekly.js), not bought with stars,
+ * so there's no way to spend or game stars in the shop.
+ */
+export async function redeemReward() {
+  return errorResponse("Rewards now unlock each Saturday when you reach your weekly star goal — pick yours in Win the Day!", 400);
 }
