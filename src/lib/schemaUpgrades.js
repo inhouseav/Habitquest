@@ -7,6 +7,7 @@
 let bonusReady = false;
 let planTimeReady = false;
 let mealMemberReady = false;
+let rewardColumnsReady = false;
 
 async function columnNames(db, table) {
   const rows = await db.prepare(`SELECT name FROM pragma_table_info('${table}')`).all();
@@ -59,8 +60,9 @@ export async function ensureHabitPlanTime(db) {
     const cols = await columnNames(db, "habit_day_plan");
     if (!cols.has("time")) await db.prepare("ALTER TABLE habit_day_plan ADD COLUMN time TEXT").run().catch(() => {});
     if (!cols.has("title")) await db.prepare("ALTER TABLE habit_day_plan ADD COLUMN title TEXT").run().catch(() => {});
+    if (!cols.has("is_family")) await db.prepare("ALTER TABLE habit_day_plan ADD COLUMN is_family INTEGER NOT NULL DEFAULT 0").run().catch(() => {});
     const after = await columnNames(db, "habit_day_plan");
-    planTimeReady = after.has("time") && after.has("title");
+    planTimeReady = after.has("time") && after.has("title") && after.has("is_family");
   } catch (err) {
     planTimeReady = false;
   }
@@ -79,4 +81,26 @@ export async function ensureMealMember(db) {
     mealMemberReady = false;
   }
   return mealMemberReady;
+}
+
+/**
+ * Rewards per person + parent approval:
+ *  - member_id:  who it's for (NULL = anyone in the family)
+ *  - status:     'approved' (can be redeemed) or 'pending' (a child added it,
+ *                waiting for a parent to OK it or change the price)
+ *  - created_by: which family member added it
+ */
+export async function ensureRewardColumns(db) {
+  if (rewardColumnsReady) return true;
+  try {
+    const cols = await columnNames(db, "rewards");
+    if (!cols.has("member_id")) await db.prepare("ALTER TABLE rewards ADD COLUMN member_id TEXT").run().catch(() => {});
+    if (!cols.has("status")) await db.prepare("ALTER TABLE rewards ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'").run().catch(() => {});
+    if (!cols.has("created_by")) await db.prepare("ALTER TABLE rewards ADD COLUMN created_by TEXT").run().catch(() => {});
+    const after = await columnNames(db, "rewards");
+    rewardColumnsReady = after.has("member_id") && after.has("status") && after.has("created_by");
+  } catch (err) {
+    rewardColumnsReady = false;
+  }
+  return rewardColumnsReady;
 }

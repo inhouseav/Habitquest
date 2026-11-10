@@ -4,6 +4,16 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Rewards system + "what day is it" + calendar in step + starter ideas (2026-11-10)
+
+- **Points rules** (`src/lib/points.js`): habit +1, win the day +2, win the whole week (Mon–Sun) +10, family activity (Planner "Everyone") +2, bonus habit +1. Perfect week = 45 ⭐; ~30 ⭐ ≈ one reward a week (suggested price in the add form).
+- **Rewards per person + parent override:** a reward can be for one person or anyone. A child's new reward is ⏳ pending until a parent OKs it (and can change the price). Only parents can edit/approve/remove (a child can remove their own pending one). Server checks the role of "who's using this phone" — a family honesty system, not a password. Columns auto-added (record: migration 020).
+- **⚙️ Rewards & points** button on the Reward shop = the admin area: points rules, ⏳ waiting for OK, all rewards (title/price/for/remove).
+- **Win the Day:** "📅 Today is Tuesday, 10 November", a Mon–Sun strip of days won (today ringed), stars, and progress to *your* next reward. Ticking shows bonuses ("🎉 Day won! +2 ⭐ bonus", family bonus, "🏆 won the whole week").
+- **Calendar in step:** habits planned onto days show on the calendar as ⭐ chips (no duplicate when the Planner also made an event); ticks show as dots straight away.
+- **Starter ideas:** empty Move/Home lists show 8 starter ideas (tap to add, or Add all) and they appear as picks in the habit editor.
+- Tested: parent laptop + child phone (pending → approve → redeem, child blocked from approving, reward for Mia can't be redeemed by Bevan, family bonus, 7-day week bonus), plus all earlier journeys.
+
 ## ✅ Family testing day: who's using this phone, meals per person, rewards progress (2026-11-10)
 
 - **👤 Who's using this phone?** Each family member logs into the same family on their own phone and picks themselves (asked automatically when a family has 2+ people and the phone hasn't chosen; button in the top row to change). Stored per device (`ftf_me`). Sets the default habits tab, calendar view (their events + Everyone events), Planner "For", meal voting, AI idea person, and reminders. "We share this device" = everyone.

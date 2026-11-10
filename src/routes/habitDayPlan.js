@@ -21,7 +21,7 @@ export async function listHabitDayPlan(request, familyId, env) {
 
   const hasTime = await ensureHabitPlanTime(env.DB);
   const rows = await env.DB.prepare(
-    `SELECT id, member_id as memberId, slot, day${hasTime ? ", time, title" : ""} FROM habit_day_plan WHERE family_id = ? AND day BETWEEN ? AND ? ORDER BY day ASC`
+    `SELECT id, member_id as memberId, slot, day${hasTime ? ", time, title, is_family as isFamily" : ""} FROM habit_day_plan WHERE family_id = ? AND day BETWEEN ? AND ? ORDER BY day ASC`
   )
     .bind(familyId, startDay, endDay)
     .all();
@@ -43,6 +43,7 @@ export async function addHabitDayPlan(request, familyId, env) {
   const { memberId, slot, day } = body;
   const title = typeof body.title === "string" && body.title.trim() ? body.title.trim().slice(0, 80) : null;
   const time = validTime(body.time) ? body.time : null;
+  const isFamily = body.family ? 1 : 0;
   if (!memberId || ![1, 2, 3].includes(slot)) return errorResponse("Please pick a habit.");
   if (!validDay(day)) return errorResponse("day must be formatted YYYY-MM-DD.");
 
@@ -62,15 +63,15 @@ export async function addHabitDayPlan(request, familyId, env) {
   const existing = await db.prepare("SELECT id FROM habit_day_plan WHERE member_id = ? AND slot = ? AND day = ?").bind(memberId, slot, day).first();
   if (existing) {
     if (extras && (title || time)) {
-      await db.prepare("UPDATE habit_day_plan SET title = COALESCE(?, title), time = COALESCE(?, time) WHERE id = ?").bind(title, time, existing.id).run();
+      await db.prepare("UPDATE habit_day_plan SET title = COALESCE(?, title), time = COALESCE(?, time), is_family = ? WHERE id = ?").bind(title, time, isFamily, existing.id).run();
     }
     return json({ ok: true, item: { id: existing.id, memberId, slot, day, title, time } });
   }
 
   const id = newId();
   if (extras) {
-    await db.prepare("INSERT INTO habit_day_plan (id, family_id, member_id, slot, day, title, time) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .bind(id, familyId, memberId, slot, day, title, time).run();
+    await db.prepare("INSERT INTO habit_day_plan (id, family_id, member_id, slot, day, title, time, is_family) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(id, familyId, memberId, slot, day, title, time, isFamily).run();
   } else {
     await db.prepare("INSERT INTO habit_day_plan (id, family_id, member_id, slot, day) VALUES (?, ?, ?, ?, ?)")
       .bind(id, familyId, memberId, slot, day).run();

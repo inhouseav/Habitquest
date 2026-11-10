@@ -1,6 +1,7 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
 import { ensureBonusTables, ensureHabitPlanTime } from "../lib/schemaUpgrades.js";
+import { POINTS, awardOnce, daysWonThisWeek, wonDaysThisWeek, mondayOf } from "../lib/points.js";
 
 const MAX_BONUS = 2;
 
@@ -156,6 +157,11 @@ export async function getHabits(request, familyId, env) {
     };
   });
 
+  for (const r of result) {
+    r.weekWonDays = await wonDaysThisWeek(db, r.memberId, day);
+    r.daysWonThisWeek = r.weekWonDays.length;
+  }
+
   return json({ ok: true, day, members: result });
 }
 
@@ -282,7 +288,7 @@ export async function completeHabit(habitId, request, familyId, env) {
 
   const db = env.DB;
   const habit = await db
-    .prepare("SELECT id, member_id, title FROM weekly_habits WHERE id = ? AND family_id = ?")
+    .prepare("SELECT id, member_id, slot, title FROM weekly_habits WHERE id = ? AND family_id = ?")
     .bind(habitId, familyId)
     .first();
   if (!habit) return errorResponse("Habit not found.", 404);
@@ -334,7 +340,29 @@ export async function completeHabit(habitId, request, familyId, env) {
   const totalCount = totalHabits ? totalHabits.n : 0;
   const streakResult = await maybeAdvanceStreak(db, habit.member_id, day, completedCount, totalCount);
 
+  // Bonus points (see src/lib/points.js). Each is awarded at most once.
+  const bonuses = [];
+  const award = async (delta, reason, key) => {
+    if (await awardOnce(db, { familyId, memberId: habit.member_id, delta, reason, key, newId })) bonuses.push({ delta, reason });
+  };
+  if (await ensureHabitPlanTime(db)) {
+    const plan = await db
+      .prepare("SELECT is_family, title FROM habit_day_plan WHERE member_id = ? AND slot = ? AND day = ?")
+      .bind(habit.member_id, habit.slot, day)
+      .first();
+    if (plan && plan.is_family) await award(POINTS.familyActivity, `Family activity: ${plan.title || habit.title}`, `family:${habitId}:${day}`);
+  }
+  if (totalCount > 0 && completedCount >= totalCount) {
+    await award(POINTS.winDay, `Won the day ${day}`, `win:${habit.member_id}:${day}`);
+    if ((await daysWonThisWeek(db, habit.member_id, day)) >= 7) {
+      await award(POINTS.winWeek, `Won the whole week of ${mondayOf(day)}`, `winweek:${habit.member_id}:${mondayOf(day)}`);
+    }
+  }
+  const weekWins = await daysWonThisWeek(db, habit.member_id, day);
+
   return json({
+    bonuses,
+    daysWonThisWeek: weekWins,
     ok: true,
     completionId,
     day,

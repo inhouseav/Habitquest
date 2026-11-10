@@ -149,6 +149,10 @@ async function handleApi(request, env, url) {
 
   if (path === "/api/rewards" && method === "GET") return rewardRoutes.listRewards(familyId, env);
   if (path === "/api/rewards" && method === "POST") return rewardRoutes.createReward(request, familyId, env);
+  const rewardUpdateMatch = path.match(/^\/api\/rewards\/([^/]+)\/update$/);
+  if (rewardUpdateMatch && method === "POST") return rewardRoutes.updateReward(rewardUpdateMatch[1], request, familyId, env);
+  const rewardDeleteMatch = path.match(/^\/api\/rewards\/([^/]+)$/);
+  if (rewardDeleteMatch && method === "DELETE") return rewardRoutes.deleteReward(rewardDeleteMatch[1], request, familyId, env);
   const rewardRedeemMatch = path.match(/^\/api\/rewards\/([^/]+)\/redeem$/);
   if (rewardRedeemMatch && method === "POST") {
     return rewardRoutes.redeemReward(rewardRedeemMatch[1], request, familyId, env);

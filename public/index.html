@@ -243,8 +243,28 @@
   .meal-for { font-weight: 700; }
   .reward-progress { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #eee3cf; }
   .reward-line { font-size: 0.85rem; margin-top: 3px; }
+  .win-day-date { font-size: 0.85rem; background: #fff; border-radius: 10px; padding: 6px 10px; margin: 0 0 10px; }
+  .week-strip { display: flex; gap: 5px; margin: 6px 0 8px; }
+  .week-day { flex: 1; text-align: center; font-size: 0.7rem; font-weight: 700; opacity: 0.85; }
+  .week-day i { display: flex; align-items: center; justify-content: center; height: 22px; margin-top: 2px; border-radius: 7px; background: #F2EBDD; font-style: normal; color: #fff; font-size: 0.8rem; }
+  .week-day.wd-won i { background: var(--terracotta); }
+  .week-day.wd-today i { outline: 2px solid var(--terracotta); outline-offset: 1px; }
+  .week-day.wd-today span { color: var(--terracotta); }
+  .week-day.wd-future { opacity: 0.45; }
+  .week-dots { display: flex; gap: 4px; margin: 4px 0 6px; }
+  .week-dots span { width: 12px; height: 12px; border-radius: 3px; background: #F2EBDD; }
+  .week-dots span.on { background: var(--terracotta); }
   .reward-bar { height: 8px; border-radius: 999px; background: #F2EBDD; margin-top: 5px; overflow: hidden; }
   .reward-bar span { display: block; height: 100%; background: #E0A339; border-radius: 999px; }
+  .pending-pill { background: #F8E3D1; }
+  .admin-box { background: #fff; border-radius: 12px; padding: 10px 12px; margin: 8px 0; font-size: 0.85rem; }
+  .points-rules { margin: 6px 0 0; padding-left: 18px; }
+  .points-rules li { margin: 2px 0; }
+  .admin-reward-row { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #eee3cf; }
+  .admin-reward-row input, .admin-reward-row select { margin: 0; width: auto; flex: 1 1 110px; min-width: 0; }
+  .admin-reward-row button { margin: 0; width: auto; }
+  .cal-plan-chip { border: 1px dashed rgba(24, 63, 53, 0.35); }
+  .starter-chip { opacity: 0.85; border-style: dashed; }
   .habit-quick-picks { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
   .habit-quick-pick { width: auto; margin: 0; padding: 3px 10px; font-size: 0.72rem; border-radius: 999px; background: #fff; color: var(--text); border: 1px solid #eee3cf; cursor: pointer; }
   .habit-quick-pick:hover { background: var(--sage); }
@@ -400,6 +420,7 @@
       <h3>Win the Day 🌟</h3>
       <p class="muted" style="margin-bottom:8px;">Everyone has 3 habits to do every day. Plan something special for a day in the Planner and it swaps in just for that day.</p>
       <div style="margin-bottom:10px;"><span style="background:var(--terracotta); color:#fff; border-radius:999px; padding:6px 13px; font-size:0.88rem; font-weight:700; display:inline-block;">🎯 Do all 3 to win the day!</span></div>
+      <div id="winDayDate" class="win-day-date"></div>
       <div id="habitsMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
       <div id="habitsList"><p class="loading-text">Loading...</p></div>
     </div>
@@ -445,7 +466,7 @@
           <select id="plannerForMemberSelect"><option value="">🌍 Everyone</option></select>
         </div>
         <label class="planner-habit-check"><input type="checkbox" id="plannerMakeHabitCheck" checked />
-          <span>⭐ Make it <span id="plannerHabitWho">everyone's</span> <b id="plannerHabitSlotLabel">Move</b> habit that day — counts toward winning the day</span></label>
+          <span>⭐ Make it <span id="plannerHabitWho">everyone's</span> <b id="plannerHabitSlotLabel">Move</b> habit that day — counts toward winning the day<span id="plannerFamilyBonusNote"> (family activity: +2 ⭐ bonus each)</span></span></label>
         <div style="display:flex; gap:8px;">
           <button class="small" id="plannerPickDayConfirmBtn" style="flex:1;">Add to calendar</button>
           <button class="small secondary" type="button" id="plannerPickDayCancelBtn" style="flex:0; white-space:nowrap;">Cancel</button>
@@ -535,15 +556,24 @@
     </div>
 
     <div class="pair-row">
-    <div class="card">
-      <h3>Reward shop 🎁</h3>
+    <div class="card" id="rewardCard">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <h3 style="margin:0;">Reward shop 🎁</h3>
+        <button type="button" class="small secondary" id="rewardAdminBtn" style="margin:0; width:auto;">⚙️ Rewards & points</button>
+      </div>
+      <p class="muted" style="margin-top:6px;">🎯 Goal: about <b>one reward a week</b>. Win the day to earn stars!</p>
+      <div id="rewardAdminPanel" class="hidden"></div>
       <div id="rewardsList"><p class="loading-text">Loading...</p></div>
       <button class="small secondary" id="showAddRewardBtn">+ Add a reward</button>
       <div id="addRewardForm" class="hidden" style="margin-top: 12px;">
         <label>Reward</label>
         <input id="newRewardTitle" placeholder="e.g. Pick the movie night film" />
         <label>Star cost</label>
-        <input id="newRewardCost" type="number" min="1" placeholder="e.g. 5" />
+        <input id="newRewardCost" type="number" min="1" placeholder="e.g. 30" />
+        <p class="muted" id="rewardCostHint" style="font-size:0.75rem; margin:2px 0 0;"></p>
+        <label>Who's it for?</label>
+        <select id="newRewardFor"><option value="">🌍 Anyone</option></select>
+        <p class="muted" id="rewardApprovalHint" style="font-size:0.75rem; margin:6px 0 0;"></p>
         <button id="addRewardBtn">Add reward</button>
       </div>
       <div class="error hidden" id="rewardError"></div>
@@ -940,7 +970,7 @@ function showWhoPicker() {
 }
 async function refreshForMe() {
   renderMembers();
-  await Promise.all([renderHabits().catch(() => {}), Promise.resolve(renderCalendarGrid())]);
+  await Promise.all([renderHabits().catch(() => {}), Promise.resolve(renderCalendarGrid()), renderRewards().catch(() => {})]);
   if ($("plannerForMemberSelect")) renderPlannerForMemberOptions();
 }
 $("whoAmIBtn").onclick = showWhoPicker;
@@ -1229,6 +1259,21 @@ function renderCalendarGrid() {
       eventsByDay[key].push(e);
     });
   });
+  // Habits planned onto days ("Plan my week" / the Planner) show on the
+  // calendar too, so the two always agree. Skipped where a calendar event
+  // with the same name is already there (the Planner makes both).
+  const planChipsByDay = {};
+  const planMembers = (lastHabitsData && lastHabitsData.members) || [];
+  habitDayPlanItems.forEach((it) => {
+    if (calendarMemberFilter !== "all" && it.memberId !== calendarMemberFilter) return;
+    const m = planMembers.find((mm) => mm.memberId === it.memberId);
+    const h = m && m.habits.find((hh) => hh.slot === it.slot);
+    const title = it.title || (h && (h.usualTitle || h.title));
+    if (!title) return;
+    const sameEvent = (eventsByDay[it.day] || []).some((e) => e.title.toLowerCase() === title.toLowerCase());
+    if (sameEvent) return;
+    (planChipsByDay[it.day] = planChipsByDay[it.day] || []).push({ ...it, title, who: m ? m.displayName : "" });
+  });
   const habitsByDay = {};
   allHabitCompletions
     .filter((c) => calendarMemberFilter === "all" || c.memberId === calendarMemberFilter)
@@ -1259,9 +1304,12 @@ function renderCalendarGrid() {
           return `<span class="cal-habit-dot" style="background:${bg}" title="${escapeHtml(label)}"></span>`;
         }).join("")}</div>`
       : "";
+    const planChips = cell.key && planChipsByDay[cell.key]
+      ? planChipsByDay[cell.key].map((it) => `<div class="cal-event-chip cal-plan-chip" data-plan-chip style="background:${memberColorFor(it.memberId) || "#F8E3D1"}33" title="${escapeHtml(`${it.who}: ${it.title}`)}"><span class="cal-chip-time">${it.time ? escapeHtml(formatClock(it.time)) + " " : ""}</span>⭐ ${escapeHtml(it.title)}<span class="cal-chip-who"> · ${escapeHtml(it.who)}</span></div>`).join("")
+      : "";
     const dayName = cell.key ? new Date(cell.key + "T00:00:00").toLocaleDateString([], { weekday: "long" }) : "";
-    const emptyNote = cell.key && !chips ? `<div class="cal-empty-note">Nothing planned</div>` : "";
-    div.innerHTML = `<div class="cal-day-num"><span class="cal-day-name">${dayName} </span>${cell.day}</div>${chips}${emptyNote}${habitMarkers}`;
+    const emptyNote = cell.key && !chips && !planChips ? `<div class="cal-empty-note">Nothing planned</div>` : "";
+    div.innerHTML = `<div class="cal-day-num"><span class="cal-day-name">${dayName} </span>${cell.day}</div>${chips}${planChips}${emptyNote}${habitMarkers}`;
     if (cell.key) div.setAttribute("data-date-key", cell.key);
     grid.appendChild(div);
   });
@@ -1349,6 +1397,7 @@ function showEventDetail(eventId) {
 $("calDaysGrid").addEventListener("click", (evt) => {
   const chip = evt.target.closest(".cal-event-chip");
   if (!chip) return;
+  if (chip.hasAttribute("data-plan-chip")) { toast("⭐ A planned habit — tick it in Win the Day on the day. Change it in Planner → Plan my week."); return; }
   showEventDetail(chip.getAttribute("data-event-id"));
 });
 
@@ -1449,6 +1498,12 @@ async function loadPlannerMovementIdeas() {
   renderPlannerIdeaPalette("home");
 }
 
+// Starter ideas so a brand-new family always has something to tap. They
+// become the family's own once used (saved to the Planner list).
+const STARTER_IDEAS = {
+  movement: ["Bike ride", "Walk the dog", "Kick a ball at the park", "Dance party", "Swimming", "Scooter ride", "Skipping rope", "Trampoline"],
+  home: ["Make my bed", "Set the table", "Feed the pet", "Tidy my room", "Water the plants", "Pack my school bag", "Help hang the washing", "30 mins off screens"],
+};
 const PLANNER_TOP_N = 5;
 let plannerShowAll = { movement: false, home: false };
 let plannerManaging = false;
@@ -1465,7 +1520,15 @@ function renderPlannerIdeaPalette(category) {
   if (!wrap) return;
   const ideas = plannerIdeasByCategory[category] || [];
   if (!ideas.length) {
-    wrap.innerHTML = `<p class="muted" style="margin:0;">${meta.emptyText}</p>`;
+    wrap.innerHTML = `<p class="muted" style="margin:0 0 6px;">✨ Starter ideas — tap one to add it to your list (or type your own below):</p>` +
+      STARTER_IDEAS[category].map((t) => `<button type="button" class="lunchbox-chip starter-chip" data-planner-starter="${escapeAttr(t)}">＋ ${meta.emoji} ${escapeHtml(t)}</button>`).join("") +
+      `<button type="button" class="small secondary" data-planner-starter-all style="margin:0; width:auto;">Add all ${STARTER_IDEAS[category].length}</button>`;
+    const addStarters = async (titles) => {
+      for (const title of titles) await api("/api/movement-ideas", { method: "POST", body: JSON.stringify({ title, category }) }).catch(() => {});
+      await loadPlannerMovementIdeas();
+    };
+    wrap.querySelectorAll("[data-planner-starter]").forEach((b) => { b.onclick = () => addStarters([b.getAttribute("data-planner-starter")]); });
+    wrap.querySelector("[data-planner-starter-all]").onclick = () => addStarters(STARTER_IDEAS[category]);
     return;
   }
   // Ideas arrive most-used first, so the first 5 are your favourites.
@@ -1569,6 +1632,7 @@ function updatePlannerHabitLabel() {
   const memberId = $("plannerForMemberSelect").value;
   const m = state.members.find((mm) => mm.id === memberId);
   $("plannerHabitWho").textContent = m ? `${m.display_name}'s` : "everyone's";
+  $("plannerFamilyBonusNote").classList.toggle("hidden", !!m);
 }
 function openPlannerPickPanel(item, presetDay) {
   plannerPendingItem = item;
@@ -1595,7 +1659,7 @@ async function addPlannerItemAsHabit(item, day, time, memberId) {
   let added = 0;
   for (const id of targets) {
     try {
-      await api("/api/habit-day-plan", { method: "POST", body: JSON.stringify({ memberId: id, slot, day, title, time }) });
+      await api("/api/habit-day-plan", { method: "POST", body: JSON.stringify({ memberId: id, slot, day, title, time, family: !memberId }) });
       added++;
     } catch (err) { /* one person failing shouldn't stop the rest */ }
   }
@@ -1659,10 +1723,22 @@ let habitsActiveMemberId = null;
 let habitDayPlanItems = [];
 let habitPlanPicking = null; // { memberId, slot, title } — which chip is mid-pick-a-day
 let habitPlanExpandedMembers = new Set(); // memberIds whose "📅 Plan my week" is open — closed by default, kid's daily view stays to just the 3 habits
+// What to say when a habit is ticked, including any bonus stars earned.
+function habitTickMessage(res) {
+  const bonuses = res.bonuses || [];
+  const family = bonuses.find((b) => b.reason.startsWith("Family activity"));
+  const week = bonuses.find((b) => b.reason.startsWith("Won the whole week"));
+  const day = bonuses.find((b) => b.reason.startsWith("Won the day"));
+  const extra = family ? ` 👨‍👩‍👧 +${family.delta} family bonus!` : "";
+  if (week) return `🏆 You won the WHOLE WEEK! +${week.delta} ⭐ bonus!${extra}`;
+  if (res.justWonStreak || day) return `🎉 Day won! +${day ? day.delta : 2} ⭐ bonus · 🔥 ${res.currentStreak || 1} day streak!${extra}`;
+  return `⭐ +1 Nice work!${extra}`;
+}
 let lastHabitsData = null; // latest /api/habits response (reminders use it for titles + ticking)
 async function renderHabits() {
   const data = await api("/api/habits?day=" + todayStr());
   lastHabitsData = data;
+  $("winDayDate").innerHTML = `📅 Today is <b>${new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" })}</b> — your 3 habits reset every morning.`;
   const list = $("habitsList"); list.innerHTML = "";
 
   const planWeekStart = mondayOfWeek();
@@ -1765,6 +1841,8 @@ async function renderHabits() {
   });
 
   if ($("googleTodayItemsWrap")) loadGoogleTodayItems($("googleTodayItemsWrap"));
+  // Keep the calendar in step: re-fetch events + ticks (cheap, family-sized).
+  if ($("calDaysGrid")) renderEvents().catch(() => renderCalendarGrid());
   const activeM = data.members.find((mm) => mm.memberId === habitsActiveMemberId);
   if ($("rewardProgress") && activeM) loadRewardProgress($("rewardProgress"), activeM);
   renderPlannerWeekPlan(activeM, planWeekStart);
@@ -1774,8 +1852,7 @@ async function renderHabits() {
       try {
         const res = await api(`/api/habits/${btn.getAttribute("data-habit")}/complete`, { method: "POST", body: JSON.stringify({ day: todayStr() }) });
         await renderHabits();
-        if (res.justWonStreak) toast(`🎉 Day won! 🔥 ${res.currentStreak} day streak!`);
-        else toast("⭐ Nice work!");
+        toast(habitTickMessage(res));
       } catch (err) { toast(err.message, true); }
     };
   });
@@ -1940,15 +2017,28 @@ async function loadRewardProgress(el, m) {
       rewardsListCache ? Promise.resolve(rewardsListCache) : api("/api/rewards").then((r) => (rewardsListCache = r)),
     ]);
     const balance = stars.balance || 0;
-    const list = (rewards.rewards || []).slice().sort((a, b) => a.star_cost - b.star_cost);
+    const rules = rewards.rules || {};
+    const list = (rewards.rewards || [])
+      .filter((r) => r.status !== "pending" && (!r.member_id || r.member_id === m.memberId))
+      .slice().sort((a, b) => a.star_cost - b.star_cost);
+    const won = m.daysWonThisWeek || 0;
+    const wonDays = new Set(m.weekWonDays || []);
+    const monday = mondayOfWeek();
+    const today = todayStr();
+    const weekLine = `<div class="reward-line">🏆 This week: <b>${won}</b> of 7 days won${won >= 7 ? " — week won!" : ` · win all 7 for <b>+${rules.winWeek || 10}</b> ⭐`}</div>
+      <div class="week-strip">${MEAL_DAY_LABELS.map((lbl, i) => {
+        const d = addDays(monday, i);
+        const cls = [wonDays.has(d) ? "wd-won" : "", d === today ? "wd-today" : "", d > today ? "wd-future" : ""].join(" ");
+        return `<div class="week-day ${cls}" title="${d}"><span>${lbl.slice(0, 1)}</span><i>${wonDays.has(d) ? "✓" : ""}</i></div>`;
+      }).join("")}</div>`;
     if (el.getAttribute("data-member") !== m.memberId) return;
     if (!list.length) {
-      el.innerHTML = `<div class="reward-line">⭐ <b>${balance}</b> star${balance === 1 ? "" : "s"} · <span class="muted">add rewards in the Reward shop to save up for</span></div>`;
+      el.innerHTML = weekLine + `<div class="reward-line">⭐ <b>${balance}</b> star${balance === 1 ? "" : "s"} · <span class="muted">add rewards in the Reward shop to save up for</span></div>`;
       return;
     }
     const canGet = list.filter((r) => r.star_cost <= balance);
     const next = list.find((r) => r.star_cost > balance);
-    const parts = [`<div class="reward-line">⭐ <b>${balance}</b> star${balance === 1 ? "" : "s"}</div>`];
+    const parts = [weekLine, `<div class="reward-line">⭐ <b>${balance}</b> star${balance === 1 ? "" : "s"}</div>`];
     if (next) {
       const pct = Math.max(4, Math.round((balance / next.star_cost) * 100));
       parts.push(`<div class="reward-line">🎁 <b>${next.star_cost - balance}</b> more for <b>${escapeHtml(next.title)}</b></div>
@@ -2052,8 +2142,9 @@ const BONUS_SLOTS = [4, 5];
 // Move -> your Planner movement ideas, Cook -> your recipes (favourites
 // first), Home -> your Planner home ideas. Most-used first.
 function habitQuickPickOptions(slot) {
-  if (slot === 1) return (plannerIdeasByCategory.movement || []).map((i) => ({ title: i.title, emoji: "🏃" }));
-  if (slot === 3) return (plannerIdeasByCategory.home || []).map((i) => ({ title: i.title, emoji: "🏡" }));
+  const listOrStarters = (cat) => ((plannerIdeasByCategory[cat] || []).length ? plannerIdeasByCategory[cat].map((i) => i.title) : STARTER_IDEAS[cat]);
+  if (slot === 1) return listOrStarters("movement").map((title) => ({ title, emoji: "🏃" }));
+  if (slot === 3) return listOrStarters("home").map((title) => ({ title, emoji: "🏡" }));
   if (slot === 2) {
     return [...recipesCache]
       .sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0))
@@ -2106,26 +2197,44 @@ function escapeAttr(s) { return escapeHtml(s); }
 
 // --- Rewards ---
 let rewardsExpanded = false;
+function meMember() {
+  const me = getMe();
+  return me && me !== "shared" ? state.members.find((m) => m.id === me) || null : null;
+}
+function isParentHere() {
+  const m = meMember();
+  return !!(m && m.role === "parent");
+}
+let rewardAdminOpen = false;
+
 async function renderRewards() {
   const data = await api("/api/rewards");
   rewardsListCache = data;
   if ($("rewardProgress")) renderHabits().catch(() => {});
+  const rules = data.rules || {};
   const list = $("rewardsList"); list.innerHTML = "";
-  if (!data.rewards.length) { list.innerHTML = '<p class="muted">No rewards yet — add one below!</p>'; return; }
-  const REWARD_PREVIEW = 3;
-  const visible = rewardsExpanded ? data.rewards : data.rewards.slice(0, REWARD_PREVIEW);
-  const memberOptions = state.members.map((m) => `<option value="${m.id}">${escapeHtml(m.display_name)}</option>`).join("");
-  visible.forEach((r) => {
+  const forName = (id) => (id ? memberNameFor(id) : "");
+  const visibleRewards = data.rewards.filter((r) => r.status !== "pending" || isParentHere() || r.created_by === getMe());
+  if (!visibleRewards.length) list.innerHTML = '<p class="muted">No rewards yet — add one below!</p>';
+
+  const REWARD_PREVIEW = 4;
+  const shown = rewardsExpanded ? visibleRewards : visibleRewards.slice(0, REWARD_PREVIEW);
+  shown.forEach((r) => {
     const row = document.createElement("div"); row.className = "list-row";
-    row.innerHTML = `<span>${escapeHtml(r.title)} <span class="pill">${r.star_cost} ⭐</span></span>
-      <span><select class="small" style="width:auto; display:inline-block;" id="redeemer-${r.id}">${memberOptions}</select>
-      <button class="small" data-reward="${r.id}">Redeem</button></span>`;
+    const pending = r.status === "pending";
+    // Only people a reward is for can redeem it; this phone's person first.
+    const eligible = state.members.filter((m) => !r.member_id || m.id === r.member_id);
+    const me = getMe();
+    const options = eligible.map((m) => `<option value="${m.id}" ${m.id === me ? "selected" : ""}>${escapeHtml(m.display_name)}</option>`).join("");
+    row.innerHTML = `<span>${escapeHtml(r.title)} <span class="pill">${r.star_cost} ⭐</span>${r.member_id ? ` <span class="pill">for ${escapeHtml(forName(r.member_id))}</span>` : ""}${pending ? ` <span class="pill pending-pill">⏳ waiting for a parent</span>` : ""}</span>
+      ${pending ? "" : `<span><select class="small" style="width:auto; display:inline-block;" id="redeemer-${r.id}">${options}</select>
+      <button class="small" data-reward="${r.id}">Redeem</button></span>`}`;
     list.appendChild(row);
   });
-  if (data.rewards.length > REWARD_PREVIEW) {
+  if (visibleRewards.length > REWARD_PREVIEW) {
     const moreBtn = document.createElement("button");
     moreBtn.className = "summary-row"; moreBtn.style.marginTop = "4px";
-    moreBtn.innerHTML = rewardsExpanded ? "<span>Show fewer</span><span class=\"chevron\">⌄</span>" : `<span>View all (${data.rewards.length})</span><span class="chevron">›</span>`;
+    moreBtn.innerHTML = rewardsExpanded ? "<span>Show fewer</span><span class=\"chevron\">⌄</span>" : `<span>View all (${visibleRewards.length})</span><span class="chevron">›</span>`;
     moreBtn.onclick = () => { rewardsExpanded = !rewardsExpanded; renderRewards(); };
     list.appendChild(moreBtn);
   }
@@ -2141,13 +2250,105 @@ async function renderRewards() {
       } catch (err) { toast(err.message, true); }
     };
   });
+
+  // Add-reward form helpers
+  $("rewardCostHint").textContent = `A perfect week earns about ${rules.perfectWeek || 45} ⭐. Around ${rules.suggestedWeeklyReward || 30} ⭐ = roughly one reward a week.`;
+  $("newRewardFor").innerHTML = '<option value="">🌍 Anyone</option>' + state.members.map((m) => `<option value="${m.id}">${escapeHtml(m.display_name)}</option>`).join("");
+  const mm = meMember();
+  if (mm && mm.role === "child") $("newRewardFor").value = mm.id;
+  $("rewardApprovalHint").textContent = !mm
+    ? "Tip: pick who's using this phone (👤 at the top) so rewards know who added them."
+    : mm.role === "child" ? "A parent will check it and OK it (they might change the price)." : "You're a parent, so it's ready to use straight away.";
+
+  renderRewardAdmin(data);
 }
-$("showAddRewardBtn").onclick = () => show("addRewardForm");
+
+// --- ⚙️ Rewards & points: the admin area ---
+function renderRewardAdmin(data) {
+  const panel = $("rewardAdminPanel");
+  panel.classList.toggle("hidden", !rewardAdminOpen);
+  $("rewardAdminBtn").textContent = rewardAdminOpen ? "✓ Done" : "⚙️ Rewards & points";
+  if (!rewardAdminOpen) return;
+  const rules = data.rules || {};
+  const rulesHtml = `<div class="admin-box">
+      <b>How stars are earned</b>
+      <ul class="points-rules">
+        <li>Each habit ticked <b>+${rules.habit}</b> ⭐ (3 a day)</li>
+        <li>Win the day (all 3) <b>+${rules.winDay}</b> ⭐ bonus</li>
+        <li>Win the whole week (every day Mon–Sun) <b>+${rules.winWeek}</b> ⭐ bonus</li>
+        <li>Family activity (planned for Everyone) <b>+${rules.familyActivity}</b> ⭐ bonus</li>
+        <li>Bonus habit <b>+${rules.bonusHabit}</b> ⭐</li>
+      </ul>
+      <p class="muted" style="margin:4px 0 0; font-size:0.78rem;">A perfect week = <b>${rules.perfectWeek}</b> ⭐. Winning 5 of 7 days ≈ 30 ⭐ — so price a weekly reward around <b>${rules.suggestedWeeklyReward}</b> ⭐.</p>
+    </div>`;
+  if (!isParentHere()) {
+    panel.innerHTML = rulesHtml + `<div class="admin-box"><b>Parents</b><p class="muted" style="margin:4px 0 0;">Only a parent can approve, change or remove rewards. On a parent's phone, tap 👤 at the top and pick the parent's name.</p></div>`;
+    return;
+  }
+  const memberOpts = (sel) => '<option value="">🌍 Anyone</option>' + state.members.map((m) => `<option value="${m.id}" ${m.id === sel ? "selected" : ""}>${escapeHtml(m.display_name)}</option>`).join("");
+  const pending = data.rewards.filter((r) => r.status === "pending");
+  const rowHtml = (r) => `<div class="admin-reward-row" data-admin-reward="${r.id}">
+      <input class="small" data-admin-title value="${escapeAttr(r.title)}" />
+      <input class="small" data-admin-cost type="number" min="1" value="${r.star_cost}" style="width:70px;" />
+      <select class="small" data-admin-for>${memberOpts(r.member_id)}</select>
+      ${r.status === "pending" ? `<button type="button" class="small" data-admin-approve>✅ OK it</button>` : `<button type="button" class="small secondary" data-admin-save>Save</button>`}
+      <button type="button" class="small secondary" data-admin-delete style="background:#fde2de;">🗑</button>
+    </div>`;
+  panel.innerHTML = rulesHtml +
+    `<div class="admin-box"><b>⏳ Waiting for OK (${pending.length})</b>${pending.length ? pending.map(rowHtml).join("") : '<p class="muted" style="margin:4px 0 0;">Nothing waiting — kids\' new rewards show up here.</p>'}</div>` +
+    `<div class="admin-box"><b>All rewards</b>${data.rewards.filter((r) => r.status !== "pending").map(rowHtml).join("") || '<p class="muted" style="margin:4px 0 0;">None yet.</p>'}</div>`;
+
+  panel.querySelectorAll("[data-admin-reward]").forEach((row) => {
+    const id = row.getAttribute("data-admin-reward");
+    const save = async (extra, msg) => {
+      try {
+        await api(`/api/rewards/${id}/update`, { method: "POST", body: JSON.stringify({
+          actorId: getMe(),
+          title: row.querySelector("[data-admin-title]").value,
+          starCost: Number(row.querySelector("[data-admin-cost]").value),
+          memberId: row.querySelector("[data-admin-for]").value || null,
+          ...extra,
+        })});
+        await renderRewards();
+        toast(msg);
+      } catch (err) { toast(err.message, true); }
+    };
+    const approve = row.querySelector("[data-admin-approve]");
+    if (approve) approve.onclick = () => save({ status: "approved" }, "✅ Reward approved");
+    const saveBtn = row.querySelector("[data-admin-save]");
+    if (saveBtn) saveBtn.onclick = () => save({}, "Saved");
+    row.querySelector("[data-admin-delete]").onclick = async () => {
+      try {
+        await api(`/api/rewards/${id}?actorId=${encodeURIComponent(getMe() || "")}`, { method: "DELETE" });
+        await renderRewards();
+        toast("🗑 Reward removed");
+      } catch (err) { toast(err.message, true); }
+    };
+  });
+}
+$("rewardAdminBtn").onclick = () => { rewardAdminOpen = !rewardAdminOpen; renderRewardAdmin(rewardsListCache || { rewards: [], rules: {} }); };
+
+$("showAddRewardBtn").onclick = () => {
+  const mm = meMember();
+  $("newRewardFor").value = mm && mm.role === "child" ? mm.id : "";
+  $("rewardApprovalHint").textContent = !mm
+    ? "Tip: pick who's using this phone (👤 at the top) so rewards know who added them."
+    : mm.role === "child" ? "A parent will check it and OK it (they might change the price)." : "You're a parent, so it's ready to use straight away.";
+  if (!$("newRewardCost").value) $("newRewardCost").value = String((rewardsListCache && rewardsListCache.rules && rewardsListCache.rules.suggestedWeeklyReward) || 30);
+  show("addRewardForm");
+};
 $("addRewardBtn").onclick = async () => {
   clearError("rewardError");
   try {
-    await api("/api/rewards", { method: "POST", body: JSON.stringify({ title: $("newRewardTitle").value, starCost: Number($("newRewardCost").value) })});
-    $("newRewardTitle").value = ""; $("newRewardCost").value = ""; hide("addRewardForm"); await renderRewards();
+    const res = await api("/api/rewards", { method: "POST", body: JSON.stringify({
+      title: $("newRewardTitle").value,
+      starCost: Number($("newRewardCost").value),
+      memberId: $("newRewardFor").value || null,
+      createdBy: (meMember() || {}).id || null,
+    })});
+    $("newRewardTitle").value = ""; $("newRewardCost").value = ""; hide("addRewardForm");
+    await renderRewards();
+    toast(res.reward.status === "pending" ? "⏳ Added! A parent needs to OK it." : "🎁 Reward added!");
   } catch (err) { showError("rewardError", err.message); }
 };
 
@@ -3376,7 +3577,7 @@ $("reminderDoneBtn").onclick = async () => {
   try {
     const res = await api(`/api/habits/${r.habitId}/complete`, { method: "POST", body: JSON.stringify({ day: todayStr() }) });
     await renderHabits();
-    toast(res.justWonStreak ? `🎉 Day won! 🔥 ${res.currentStreak} day streak!` : "⭐ Nice work!");
+    toast(habitTickMessage(res));
   } catch (err) { toast(err.message, true); }
 };
 
