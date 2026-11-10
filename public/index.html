@@ -64,6 +64,26 @@
   #whoCard { background: #fffdf7; border-radius: 22px; padding: 22px; width: min(380px, 100%); box-shadow: 0 14px 40px rgba(0,0,0,0.25); text-align: center; }
   #whoList { display: flex; flex-direction: column; gap: 8px; }
   #whoList button { margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 1rem; }
+  .ftf-overlay { position: fixed; inset: 0; z-index: 2950; background: rgba(24, 63, 53, 0.4); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .ftf-overlay.hidden { display: none; }
+  .ftf-sheet { background: var(--bg); border-radius: 24px; width: 100%; max-width: 520px; max-height: calc(100vh - 32px); overflow-y: auto; padding: 22px 20px 18px; box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
+  .ftf-sheet h2 { font-size: 1.5rem; margin: 0 0 6px; }
+  .role-toggle { display: flex; gap: 8px; margin: 6px 0 10px; }
+  .role-toggle button { flex: 1; margin: 0; }
+  .setup-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; }
+  .setup-dots i { width: 9px; height: 9px; border-radius: 50%; background: #e2d8c4; }
+  .setup-dots i.on { background: var(--terracotta); width: 22px; border-radius: 99px; }
+  .setup-big { font-size: 3rem; text-align: center; line-height: 1.1; }
+  .setup-list { list-style: none; padding: 0; margin: 12px 0; }
+  .setup-list li { background: #fff; border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; font-weight: 600; }
+  .interest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin: 12px 0; }
+  .interest-grid button, .setup-choice { margin: 0; background: #fff; color: var(--text); border: 2px solid #eadfca; box-shadow: none; font-weight: 700; border-radius: 16px; padding: 10px 8px; }
+  .interest-grid button.on, .setup-choice.on { border-color: var(--terracotta); background: #fff1e8; }
+  .setup-slot { background: #fff; border-radius: 16px; padding: 10px 12px; margin-bottom: 10px; }
+  .setup-slot .choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .setup-slot .setup-choice { width: auto; padding: 7px 11px; font-size: 0.88rem; }
+  .setup-nav { display: flex; gap: 8px; margin-top: 14px; }
+  .setup-nav button { margin: 0; }
   #reminderPopup { position: fixed; inset: 0; z-index: 3000; background: rgba(24, 63, 53, 0.35); display: flex; align-items: center; justify-content: center; padding: 16px; }
   #reminderPopup.hidden { display: none; }
   #reminderCard { background: #fffdf7; border-radius: 22px; padding: 22px 22px 18px; width: min(360px, 100%); box-shadow: 0 14px 40px rgba(0,0,0,0.25); text-align: center; animation: reminderPop 0.25s ease; }
@@ -763,10 +783,10 @@
       <p class="muted" id="inviteBlurb">Share this so other family members can log in from their own device.</p>
       <div class="join-code" id="joinCodeDisplay">------</div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-        <button class="small" type="button" id="emailInviteBtn" style="margin:0; width:auto;">📧 Invite by email</button>
+        <button class="small" type="button" id="emailInviteBtn" style="margin:0; width:auto;">✉️ Invite someone</button>
         <button class="small secondary" type="button" id="copyInviteBtn" style="margin:0; width:auto;">📋 Copy invite</button>
       </div>
-      <p class="muted" style="font-size:0.75rem; margin:6px 0 0;">Tell them the family PIN yourself (it's not in the email). Each person then taps "👤 Who's using this phone?" and picks their name.</p>
+      <p class="muted" style="font-size:0.75rem; margin:6px 0 0;">Type their name and email — it opens Gmail with a personal invite ready to send. Tell them the family PIN yourself (it's never in the email). When they open their link, the app sets them up with a fun 1-minute quiz.</p>
     </div>
     <div class="card full-width hidden" id="notifyPanel">
       <h3>Notifications 🔔</h3>
@@ -817,6 +837,39 @@
       <div class="error hidden" id="whoPinError"></div>
     </div>
   </div>
+</div>
+<div id="invitePopup" class="ftf-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="invitePopupTitle">
+  <div class="ftf-sheet">
+    <div id="inviteStepForm">
+      <h2 id="invitePopupTitle">✉️ Invite someone</h2>
+      <p class="muted" style="margin:0 0 10px;">They'll get a personal link that sets them up in a minute.</p>
+      <label>Their name</label>
+      <input id="inviteName" maxlength="40" placeholder="e.g. Mia" autocomplete="off" />
+      <div class="role-toggle">
+        <button type="button" class="small" data-invite-role="child">🧒 Kid</button>
+        <button type="button" class="small secondary" data-invite-role="parent">👩 Parent</button>
+      </div>
+      <label>Their email</label>
+      <input id="inviteEmail" type="email" placeholder="name@gmail.com" autocomplete="off" />
+      <p class="error hidden" id="inviteError"></p>
+      <div class="setup-nav"><button type="button" class="secondary" id="inviteCancelBtn">Cancel</button><button type="button" id="inviteNextBtn">Make the invite →</button></div>
+    </div>
+    <div id="inviteStepSend" class="hidden">
+      <div class="setup-big">💌</div>
+      <h2 style="text-align:center;" id="inviteReadyTitle">Invite ready!</h2>
+      <p class="muted" style="text-align:center; margin:0 0 12px;" id="inviteReadyText"></p>
+      <button type="button" id="inviteGmailBtn">📧 Open Gmail and send</button>
+      <div class="setup-nav">
+        <button type="button" class="secondary small" id="inviteMailAppBtn">Other email app</button>
+        <button type="button" class="secondary small" id="inviteCopyBtn">📋 Copy invite</button>
+      </div>
+      <p class="muted" style="font-size:0.78rem; margin:10px 0 0;">🔒 Remember to tell them the family PIN yourself — it's not in the email.</p>
+      <button type="button" class="secondary" id="inviteDoneBtn" style="margin-top:12px;">Done</button>
+    </div>
+  </div>
+</div>
+<div id="setupPopup" class="ftf-overlay hidden" role="dialog" aria-modal="true">
+  <div class="ftf-sheet"><div class="setup-dots" id="setupDots"></div><div id="setupBody"></div></div>
 </div>
 <div id="reminderPopup" class="hidden" role="alertdialog" aria-live="assertive">
   <div id="reminderCard">
@@ -1118,9 +1171,69 @@ function inviteText() {
   const name = state.family ? state.family.name : "our family";
   return `Ready to Win the Day? 🌟 Join ${name} on Fuel the Fun!\n\nSee how it works and join here:\n${location.origin}/welcome?code=${code}\n\n1. Tap "Let's go!"\n2. Choose "Log in" — our family code ${code} is already filled in\n3. Type the family PIN (ask me for it)\n4. Tap "👤 Who's using this phone?" and pick your name\n5. Pick this week's reward, then go win the day!\n\nAdd your favourite recipes, exercise and home ideas so we can plan together. 🍳🚲🏡`;
 }
+// ✉️ Invite someone: name + email → (adds them to the family if new) →
+// opens Gmail in the browser with a personal invite. Their link carries
+// who they are, so the app skips "who are you?" and runs a fun setup quiz.
+// Emails are only used to open Gmail — never stored.
+let inviteRole = "child";
+let inviteMade = null; // { name, email, memberId, link }
+function personalInviteLink(memberId, name) {
+  const code = state.family ? state.family.joinCode : "";
+  return `${location.origin}/welcome?code=${encodeURIComponent(code)}&who=${encodeURIComponent(memberId)}&name=${encodeURIComponent(name)}`;
+}
+function personalInviteText(inv) {
+  const fam = state.family ? state.family.name : "our family";
+  const from = (meMember() || {}).display_name;
+  const kid = inv.role !== "parent";
+  return `Hi ${inv.name}! 🌟\n\nYou're invited to join ${fam} on Fuel the Fun — the app where we have fun AND build healthy habits together.\n\n👉 Tap your personal link:\n${inv.link}\n\nThen:\n1. Tap "Let's go!" (our family code ${state.family ? state.family.joinCode : ""} is already filled in)\n2. Type the family PIN — ${from ? "ask " + from : "ask a parent"} (it's not in this email)\n3. Answer a quick fun quiz: what you love doing${kid ? ", your 3 habits and the reward you want to work towards 🎁" : " and your 3 habits"}\n\n⭐ How it works: tick your 3 habits each day to Win the Day. 1 star per habit, 2 for family activities, a bonus for trying a new food — and 12 stars by Saturday unlocks your reward!\n\nSee you in the app 💚${from ? "\n" + from : ""}`;
+}
+function setInviteRole(role) {
+  inviteRole = role;
+  document.querySelectorAll("[data-invite-role]").forEach((b) => b.classList.toggle("secondary", b.getAttribute("data-invite-role") !== role));
+}
+document.querySelectorAll("[data-invite-role]").forEach((b) => { b.onclick = () => setInviteRole(b.getAttribute("data-invite-role")); });
 $("emailInviteBtn").onclick = () => {
-  const subject = encodeURIComponent(`Join ${state.family ? state.family.name : "our family"} on Fuel the Fun`);
-  window.location.href = `mailto:?subject=${subject}&body=${encodeURIComponent(inviteText())}`;
+  $("inviteName").value = ""; $("inviteEmail").value = ""; clearError("inviteError"); setInviteRole("child");
+  show("inviteStepForm"); hide("inviteStepSend"); show("invitePopup");
+  setTimeout(() => $("inviteName").focus(), 50);
+};
+$("inviteCancelBtn").onclick = () => hide("invitePopup");
+$("inviteDoneBtn").onclick = () => hide("invitePopup");
+$("invitePopup").addEventListener("click", (e) => { if (e.target.id === "invitePopup") hide("invitePopup"); });
+$("inviteEmail").addEventListener("keydown", (e) => { if (e.key === "Enter") $("inviteNextBtn").click(); });
+$("inviteNextBtn").onclick = () => withBusyButton($("inviteNextBtn"), "Making it...", async () => {
+  clearError("inviteError");
+  const name = $("inviteName").value.trim();
+  const email = $("inviteEmail").value.trim();
+  if (!name) return showError("inviteError", "What's their name?");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError("inviteError", "That email doesn't look right.");
+  try {
+    let member = state.members.find((m) => m.display_name.trim().toLowerCase() === name.toLowerCase());
+    if (!member) {
+      const res = await api("/api/members", { method: "POST", body: JSON.stringify({ displayName: name, role: inviteRole }) });
+      await loadHome();
+      member = state.members.find((m) => m.id === res.member.id) || { id: res.member.id, display_name: name, role: inviteRole };
+    }
+    inviteMade = { name: member.display_name, email, role: member.role, memberId: member.id };
+    inviteMade.link = personalInviteLink(member.id, member.display_name);
+    $("inviteReadyTitle").textContent = `${member.display_name}'s invite is ready!`;
+    $("inviteReadyText").innerHTML = `Sending to <b>${escapeHtml(email)}</b>. ${member.display_name} is in the family now — their link sets them up.`;
+    hide("inviteStepForm"); show("inviteStepSend");
+  } catch (err) { showError("inviteError", err.message); }
+});
+function inviteSubject() { return `${inviteMade.name}, you're invited to Fuel the Fun! 🌟`; }
+$("inviteGmailBtn").onclick = () => {
+  const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(inviteMade.email)}&su=${encodeURIComponent(inviteSubject())}&body=${encodeURIComponent(personalInviteText(inviteMade))}`;
+  const w = window.open(url, "_blank");
+  if (!w) location.href = url;
+  toast("📧 Gmail opened — press Send there");
+};
+$("inviteMailAppBtn").onclick = () => {
+  window.location.href = `mailto:${encodeURIComponent(inviteMade.email)}?subject=${encodeURIComponent(inviteSubject())}&body=${encodeURIComponent(personalInviteText(inviteMade))}`;
+};
+$("inviteCopyBtn").onclick = async () => {
+  try { await navigator.clipboard.writeText(personalInviteText(inviteMade)); toast("📋 Copied — paste it into a message or email"); }
+  catch (err) { toast("Couldn't copy on this device.", true); }
 };
 $("copyInviteBtn").onclick = async () => {
   try { await navigator.clipboard.writeText(inviteText()); toast("📋 Invite copied — paste it into a message or email"); }
@@ -1173,7 +1286,8 @@ async function loadHome() {
   await Promise.all([refreshNotifyUi().catch(() => {}), refreshGoogleCalUi().catch(() => {})]);
   startReminders();
   // Several people in the family but this phone hasn't said who it is yet.
-  if (!getMe() && state.members.length > 1 && state.family.name !== "The Smith Family") showWhoPicker();
+  if (pendingInviteSetup()) { /* their personal invite link — the setup quiz takes over */ }
+  else if (!getMe() && state.members.length > 1 && state.family.name !== "The Smith Family") showWhoPicker();
 }
 
 function renderMembers() {
@@ -4243,7 +4357,202 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
 (function prefillJoinCode() {
   const code = (new URLSearchParams(location.search).get("code") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
   if (code) { $("loginJoinCode").value = code; $("tabLogin").click(); }
+  const who = (new URLSearchParams(location.search).get("who") || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+  if (who) { try { sessionStorage.setItem("ftf_invite_who", who); localStorage.setItem("ftf_me", who); } catch (err) {} }
+  if (code || who) { try { history.replaceState(null, "", location.pathname); } catch (err) {} }
 })();
+
+// --- 🎉 First-time setup (from a personal invite link) ---
+// "The app gets to know each child by asking simple questions about their
+// interests, then creates personalised challenges" (Project Bible).
+// Steps: hello → what you love → your 3 habits → your weekly reward → ready.
+const INTERESTS = [
+  ["sport", "⚽", "Sport"], ["swim", "🏊", "Swimming"], ["bike", "🚲", "Bike riding"], ["dance", "💃", "Dancing"],
+  ["cook", "🍳", "Cooking"], ["bake", "🧁", "Baking"], ["garden", "🌱", "Gardening"], ["animals", "🐶", "Animals"],
+  ["art", "🎨", "Art & craft"], ["read", "📚", "Reading"], ["outside", "🌳", "Being outside"], ["build", "🧱", "Lego & building"],
+  ["music", "🎵", "Music"],
+];
+const INTEREST_HABITS = {
+  1: { sport: ["⚽", "Kick the ball for 20 mins"], swim: ["🏊", "Go for a swim"], bike: ["🚲", "Ride my bike"], dance: ["💃", "Dance party — 3 songs"],
+       outside: ["🌳", "Play outside for 30 mins"], animals: ["🐕", "Walk the dog"], _: [["🏃", "Move for 20 mins"], ["🤸", "Make an obstacle course"], ["🌳", "Play outside for 30 mins"]] },
+  2: { cook: ["🍳", "Help make dinner"], bake: ["🧁", "Bake a healthy snack"], garden: ["🌿", "Pick herbs for dinner"], _: [["🥗", "Help make a salad"], ["🍎", "Make my own healthy snack"], ["🥕", "Try a new food"]] },
+  3: { garden: ["🌱", "Water the veggie patch"], animals: ["🐾", "Feed the pets"], art: ["🎨", "Draw instead of screens"], read: ["📚", "Read for 15 mins"],
+       build: ["🧱", "Build something — no screens"], music: ["🎵", "Practise my music"], _: [["🛏️", "Make my bed"], ["📵", "1 hour screen-free"], ["😴", "Bed on time"]] },
+};
+const SLOT_NAMES = { 1: ["🏃", "Move"], 2: ["🍳", "Cook"], 3: ["🏡", "Home"] };
+let setup = null;
+
+function pendingInviteSetup() {
+  let who = null;
+  try { who = sessionStorage.getItem("ftf_invite_who"); } catch (err) {}
+  if (!who) return false;
+  try { sessionStorage.removeItem("ftf_invite_who"); } catch (err) {}
+  const member = state.members.find((m) => m.id === who);
+  if (!member) return false;
+  setMe(member.id);
+  startSetup(member).catch((err) => { console.error(err); hide("setupPopup"); });
+  return true;
+}
+
+async function startSetup(member) {
+  const [habitsData, rewardsData] = await Promise.all([
+    api("/api/habits?day=" + todayStr()).catch(() => ({ members: [] })),
+    api("/api/rewards").catch(() => ({ rewards: [] })),
+  ]);
+  const mine = (habitsData.members || []).find((m) => m.memberId === member.id);
+  let saved = [];
+  try { saved = JSON.parse(member.interests || "[]"); } catch (err) {}
+  setup = {
+    member,
+    kid: member.role !== "parent",
+    step: 0,
+    interests: new Set(saved),
+    hasHabits: !!(mine && mine.habits && mine.habits.length),
+    existingHabits: mine ? mine.habits : [],
+    picks: {},
+    custom: {},
+    rewards: (rewardsData.rewards || []).filter((r) => r.status !== "pending" && (!r.member_id || r.member_id === member.id)),
+    rewardId: null,
+    newReward: "",
+  };
+  drawSetup();
+  show("setupPopup");
+}
+
+function setupSteps() { return setup.kid ? ["hello", "love", "habits", "reward", "ready"] : ["hello", "love", "habits", "ready"]; }
+function habitIdeasFor(slot) {
+  const map = INTEREST_HABITS[slot];
+  const out = [];
+  for (const [key] of INTERESTS) if (setup.interests.has(key) && map[key]) out.push(map[key]);
+  for (const d of map._) if (out.length < 4 && !out.some((o) => o[1] === d[1])) out.push(d);
+  return out.slice(0, 4);
+}
+
+function drawSetup() {
+  const steps = setupSteps();
+  const step = steps[setup.step];
+  const name = escapeHtml(setup.member.display_name);
+  $("setupDots").innerHTML = steps.map((_, i) => `<i class="${i === setup.step ? "on" : ""}"></i>`).join("");
+  let html = "";
+  let next = "Next →";
+  if (step === "hello") {
+    html = `<div class="setup-big">👋🌟</div>
+      <h2 style="text-align:center;">Hi ${name}! Welcome to Fuel the Fun</h2>
+      <p style="text-align:center; margin:0;">Here's how it works:</p>
+      <ul class="setup-list">
+        <li>🌟 Every day you get <b>3 small habits</b> — one to Move, one to Cook, one for Home. Do all 3 to <b>Win the Day</b>!</li>
+        <li>⭐ Earn stars: <b>1</b> per habit, <b>2</b> for family activities, a <b>bonus</b> for trying a new food 🥕</li>
+        <li>🎁 Get <b>12 stars</b> in a week and your reward unlocks on <b>Saturday</b>!</li>
+        <li>📵 Use the app for a minute, then put it down and go do it for real.</li>
+      </ul>`;
+    next = "Let's set you up! →";
+  } else if (step === "love") {
+    html = `<div class="setup-big">💛</div><h2 style="text-align:center;">What do you love doing?</h2>
+      <p class="muted" style="text-align:center; margin:0;">Pick as many as you like — we'll use them to suggest your habits.</p>
+      <div class="interest-grid">${INTERESTS.map(([k, e, l]) => `<button type="button" data-interest="${k}" class="${setup.interests.has(k) ? "on" : ""}">${e} ${l}</button>`).join("")}</div>`;
+  } else if (step === "habits") {
+    if (setup.hasHabits) {
+      html = `<div class="setup-big">✅</div><h2 style="text-align:center;">Your 3 habits are ready</h2>
+        <p class="muted" style="text-align:center; margin:0 0 8px;">A parent already set these up for you:</p>
+        <ul class="setup-list">${setup.existingHabits.map((h) => `<li>${escapeHtml(h.emoji || "⭐")} ${escapeHtml(h.title)}</li>`).join("")}</ul>`;
+    } else {
+      html = `<div class="setup-big">🎯</div><h2 style="text-align:center;">Pick your 3 habits</h2>
+        <p class="muted" style="text-align:center; margin:0 0 10px;">Tap one in each row — or type your own.</p>` +
+        [1, 2, 3].map((slot) => {
+          const ideas = habitIdeasFor(slot);
+          if (!setup.picks[slot] && !setup.custom[slot]) setup.picks[slot] = ideas[0];
+          const sel = setup.picks[slot];
+          return `<div class="setup-slot"><b>${SLOT_NAMES[slot][0]} ${SLOT_NAMES[slot][1]}</b>
+            <div class="choices">${ideas.map(([e, t]) => `<button type="button" class="setup-choice ${sel && sel[1] === t ? "on" : ""}" data-setup-slot="${slot}" data-setup-title="${escapeAttr(t)}" data-setup-emoji="${escapeAttr(e)}">${e} ${escapeHtml(t)}</button>`).join("")}</div>
+            <input data-setup-custom="${slot}" placeholder="…or type your own" maxlength="60" value="${escapeAttr(setup.custom[slot] || "")}" style="margin-top:6px;" /></div>`;
+        }).join("");
+    }
+  } else if (step === "reward") {
+    html = `<div class="setup-big">🎁</div><h2 style="text-align:center;">What reward do you want to work towards?</h2>
+      <p class="muted" style="text-align:center; margin:0 0 10px;">Get 12 ⭐ this week and it unlocks on Saturday.</p>
+      <div style="display:flex; flex-direction:column; gap:8px;">${setup.rewards.map((r) => `<button type="button" class="setup-choice ${setup.rewardId === r.id ? "on" : ""}" data-setup-reward="${r.id}" style="text-align:left;">🎁 ${escapeHtml(r.title)}</button>`).join("") || `<p class="muted" style="margin:0;">No rewards yet — suggest one!</p>`}</div>
+      <label style="margin-top:10px; display:block;">Or suggest your own (a parent OKs it)</label>
+      <input id="setupNewReward" maxlength="60" placeholder="e.g. Pick Friday's dinner 🍕" value="${escapeAttr(setup.newReward)}" />`;
+  } else {
+    html = `<div class="setup-big">🎉🏆</div><h2 style="text-align:center;">You're ready, ${name}!</h2>
+      <ul class="setup-list">
+        <li>✅ Tick your habits each day on <b>🌟 Today</b></li>
+        <li>🥕 Try a new food? Stamp your passport in <b>🍳 Food</b></li>
+        ${setup.kid ? `<li>🎁 12 ⭐ by Saturday = your reward!</li>` : `<li>🔒 Parent tip: set a parent PIN in <b>Family → 🔒 Parents</b> so stars stay fair</li>`}
+      </ul>`;
+    next = "Let's win the day! 🚀";
+  }
+  html += `<p class="error hidden" id="setupError"></p><div class="setup-nav">${setup.step > 0 && step !== "ready" ? `<button type="button" class="secondary" id="setupBackBtn" style="flex:0 0 auto; width:auto;">←</button>` : ""}<button type="button" id="setupNextBtn">${next}</button></div>`;
+  $("setupBody").innerHTML = html;
+  $("setupBody").scrollTop = 0; document.querySelector("#setupPopup .ftf-sheet").scrollTop = 0;
+
+  $("setupBody").querySelectorAll("[data-interest]").forEach((b) => {
+    b.onclick = () => { const k = b.getAttribute("data-interest"); setup.interests.has(k) ? setup.interests.delete(k) : setup.interests.add(k); b.classList.toggle("on"); };
+  });
+  $("setupBody").querySelectorAll("[data-setup-slot]").forEach((b) => {
+    b.onclick = () => {
+      const slot = b.getAttribute("data-setup-slot");
+      setup.picks[slot] = [b.getAttribute("data-setup-emoji"), b.getAttribute("data-setup-title")]; setup.custom[slot] = "";
+      drawSetup();
+    };
+  });
+  $("setupBody").querySelectorAll("[data-setup-custom]").forEach((inp) => {
+    inp.oninput = () => {
+      const slot = inp.getAttribute("data-setup-custom");
+      setup.custom[slot] = inp.value;
+      if (inp.value.trim()) { setup.picks[slot] = null; inp.closest(".setup-slot").querySelectorAll(".setup-choice").forEach((c) => c.classList.remove("on")); }
+    };
+  });
+  $("setupBody").querySelectorAll("[data-setup-reward]").forEach((b) => {
+    b.onclick = () => { setup.rewardId = b.getAttribute("data-setup-reward"); setup.newReward = ""; drawSetup(); };
+  });
+  if ($("setupNewReward")) $("setupNewReward").oninput = (e) => {
+    setup.newReward = e.target.value;
+    if (setup.newReward.trim()) { setup.rewardId = null; $("setupBody").querySelectorAll("[data-setup-reward]").forEach((c) => c.classList.remove("on")); }
+  };
+  if ($("setupBackBtn")) $("setupBackBtn").onclick = () => { setup.step--; drawSetup(); };
+  $("setupNextBtn").onclick = () => withBusyButton($("setupNextBtn"), "Saving...", () => setupNext(step));
+}
+
+async function setupNext(step) {
+  clearError("setupError");
+  const id = setup.member.id;
+  try {
+    if (step === "love") {
+      if (!setup.interests.size) return showError("setupError", "Pick at least one thing you love!");
+      await api(`/api/members/${id}/interests`, { method: "POST", body: JSON.stringify({ interests: [...setup.interests] }) });
+    } else if (step === "habits" && !setup.hasHabits) {
+      const habits = [1, 2, 3].map((slot) => {
+        const own = (setup.custom[slot] || "").trim();
+        if (own) return { slot, title: own, emoji: SLOT_NAMES[slot][0] };
+        const p = setup.picks[slot];
+        return p ? { slot, title: p[1], emoji: p[0] } : null;
+      }).filter(Boolean);
+      if (habits.length < 3) return showError("setupError", "Choose a habit in each row.");
+      await api("/api/habits/set", { method: "POST", body: JSON.stringify({ memberId: id, habits, firstSetup: true }) });
+      setup.hasHabits = true; setup.existingHabits = habits;
+    } else if (step === "reward") {
+      if (setup.newReward.trim()) {
+        const res = await api("/api/rewards", { method: "POST", body: JSON.stringify({ title: setup.newReward.trim(), memberId: id, createdBy: id }) });
+        if (res.reward && res.reward.status !== "pending") {
+          await api("/api/weekly/choose", { method: "POST", body: JSON.stringify({ memberId: id, rewardId: res.reward.id, day: todayStr() }) });
+        } else toast("⏳ Great idea! A parent will OK it — then pick it in Win the Day.");
+      } else if (setup.rewardId) {
+        await api("/api/weekly/choose", { method: "POST", body: JSON.stringify({ memberId: id, rewardId: setup.rewardId, day: todayStr() }) });
+      } else return showError("setupError", "Pick a reward, or suggest your own.");
+    } else if (step === "ready") {
+      hide("setupPopup");
+      habitsActiveMemberId = id;
+      showTab("today");
+      await loadHome();
+      toast(`🌟 Welcome to the team, ${setup.member.display_name}!`);
+      setup = null;
+      return;
+    }
+    setup.step++;
+    drawSetup();
+  } catch (err) { showError("setupError", err.message); }
+}
 
 // --- 🥕 Food Explorer Passport ---
 // Stamp every new food you try (Project Bible: "Try new foods"). Trying is

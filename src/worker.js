@@ -104,6 +104,8 @@ async function handleApi(request, env, url, ctx) {
 
   if (path === "/api/members" && method === "GET") return memberRoutes.listMembers(familyId, env);
   if (path === "/api/members" && method === "POST") return memberRoutes.addMember(request, familyId, env);
+  const interestsMatch = path.match(/^\/api\/members\/([^/]+)\/interests$/);
+  if (interestsMatch && method === "POST") return memberRoutes.setInterests(interestsMatch[1], request, familyId, env);
 
   if (path === "/api/events" && method === "GET") return eventRoutes.listEvents(familyId, env);
   if (path === "/api/events" && method === "POST") return eventRoutes.createEvent(request, familyId, env);

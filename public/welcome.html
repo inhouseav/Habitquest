@@ -187,7 +187,14 @@
   // and is carried into the app so the login box is already filled in.
   (function () {
     const code = (new URLSearchParams(location.search).get("code") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
-    const target = code ? "/?code=" + encodeURIComponent(code) : "/";
+    const params = new URLSearchParams(location.search);
+    const who = (params.get("who") || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+    const name = (params.get("name") || "").slice(0, 40);
+    const target = code ? "/?code=" + encodeURIComponent(code) + (who ? "&who=" + encodeURIComponent(who) : "") : "/";
+    if (name) {
+      const h = document.querySelector("h1");
+      if (h) h.insertAdjacentHTML("beforebegin", '<p class="hi-name" style="font-size:1.3rem;font-weight:800;margin:0 0 6px;">Hi ' + name.replace(/[<>&"]/g, "") + '! 👋 You\'re invited</p>');
+    }
     document.getElementById("startBtn").href = target;
     document.getElementById("joinBtn").href = target;
     document.getElementById("siteUrl").textContent = location.host || "habitquest.ihav.workers.dev";

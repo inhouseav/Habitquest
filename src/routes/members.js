@@ -60,3 +60,13 @@ export async function addMember(request, familyId, env) {
     member: { id: memberId, displayName, role, color, interests },
   });
 }
+
+/** POST /api/members/:id/interests — { interests: [...] } what this person loves (used to suggest habits). */
+export async function setInterests(id, request, familyId, env) {
+  const body = (await readJson(request)) || {};
+  const interests = Array.isArray(body.interests) ? body.interests.map((x) => String(x).slice(0, 30)).slice(0, 15) : [];
+  const db = env.DB;
+  const r = await db.prepare("UPDATE members SET interests = ? WHERE id = ? AND family_id = ?").bind(JSON.stringify(interests), id, familyId).run();
+  if (!r.meta || !r.meta.changes) return errorResponse("Family member not found.", 404);
+  return json({ ok: true, interests });
+}

@@ -191,7 +191,11 @@ export async function setHabits(request, familyId, env) {
     .bind(memberId, familyId)
     .first();
   if (!member) return errorResponse("Family member not found.", 404);
-  if (!(await hasParentSession(db, request, familyId))) {
+  // First-time setup: someone who has no habits yet may choose their own
+  // (the invite onboarding). After that, a parent changes them.
+  const hasAny = await db.prepare("SELECT COUNT(*) AS n FROM weekly_habits WHERE member_id = ?").bind(memberId).first();
+  const firstTime = body.firstSetup === true && (!hasAny || hasAny.n === 0);
+  if (!firstTime && !(await hasParentSession(db, request, familyId))) {
     return errorResponse("🔒 A parent sets the habits — ask them to unlock with the parent PIN.", 403);
   }
 

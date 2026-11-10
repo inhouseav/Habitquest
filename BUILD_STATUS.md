@@ -4,6 +4,13 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Invite someone (opens Gmail) + first-time setup quiz (2026-11-10)
+
+- **✉️ Invite someone** (Family → Settings → Invite family): name + Kid/Parent + email → adds them to the family if new → **Open Gmail and send** (Gmail compose in the browser, so it works without a mail app), plus "Other email app" and "Copy invite". The email has a personal link `/welcome?code=…&who=<member>&name=…`. Emails are only used to open Gmail, never stored. Family PIN is never in the email.
+- **Personal link:** welcome page says "Hi Mia! 👋 You're invited"; Let's go → code filled; after the family PIN the app knows who they are (no who-picker) and opens the **setup quiz**: hello/how it works → what do you love (13 interests, saved on the member) → 3 habits suggested from their interests (or type your own) → weekly reward (or suggest one for a parent to OK) → ready. Parents get 4 steps (no reward step, a parent-PIN tip).
+- **First-time habits:** someone with no habits yet may save their own (`firstSetup: true`) even with a parent PIN; after that only a parent can change them (tested).
+- New route: `POST /api/members/:id/interests`.
+
 ## ✅ Food Explorer Passport + the 7 modules in habit ideas (2026-11-10)
 
 - **🥕 Food Explorer Passport** (top of 🍳 Food; nudge button under Win the Day): 24 kid-friendly foods + "another food". Tap → "How was it?" 😋 Loved it / 🙂 It's OK / 🤔 Not yet — every try stamps (effort counts). Badges at 1/5/10/20 foods.
