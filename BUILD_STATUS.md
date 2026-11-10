@@ -4,6 +4,13 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Family members: one Add popup + Joined / Invited / Family device (2026-11-10)
+
+- **+ Add family member** opens the same popup as Invite someone: name, Kid/Parent, then **✉️ Send them an invite** (email → Gmail) or **📱 Just add them — they'll use a family device** (younger kids). Same name twice is refused.
+- **Status on each person:** ✅ Joined · 📱 Family device · ✉️ Invited — not joined yet (Resend) · ⏳ Not joined yet (✉️ Invite). Stars and kudos only show for people who've joined or use a family device.
+- **Joined** is recorded when someone picks themselves on a phone, opens the app as themselves, or uses their invite link; the family creator is joined at signup; demo families are all joined.
+- **Upgrade:** new `members` columns `invited_at`, `joined_at`, `device_only` are added automatically (`ensureMemberStatus`). Existing people count as joined if they started the family or have earned stars; others show "Not joined yet" until they open the app. Route: `POST /api/members/:id/status`.
+
 ## ✅ Invite someone (opens Gmail) + first-time setup quiz (2026-11-10)
 
 - **✉️ Invite someone** (Family → Settings → Invite family): name + Kid/Parent + email → adds them to the family if new → **Open Gmail and send** (Gmail compose in the browser, so it works without a mail app), plus "Other email app" and "Copy invite". The email has a personal link `/welcome?code=…&who=<member>&name=…`. Emails are only used to open Gmail, never stored. Family PIN is never in the email.

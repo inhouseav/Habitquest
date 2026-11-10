@@ -135,3 +135,29 @@ export async function ensureWeeklyGoals(db) {
   }
   return weeklyReady;
 }
+
+// Family member status: invited (an email invite was sent), joined (they've
+// logged in and picked themselves, or finished setup), device_only (a kid
+// who uses a family device, no invite needed). Existing members are counted
+// as joined if they've been active (ticked a habit / earned a star) or are
+// the first member — so nothing looks broken after the upgrade.
+let memberStatusReady = false;
+export async function ensureMemberStatus(db) {
+  if (memberStatusReady) return true;
+  try {
+    const cols = new Set(((await db.prepare("SELECT name FROM pragma_table_info('members')").all()).results || []).map((r) => r.name));
+    const added = !cols.has("joined_at");
+    for (const [c, def] of [["invited_at", "TEXT"], ["joined_at", "TEXT"], ["device_only", "INTEGER NOT NULL DEFAULT 0"]]) {
+      if (!cols.has(c)) await db.prepare(`ALTER TABLE members ADD COLUMN ${c} ${def}`).run().catch(() => {});
+    }
+    if (added) {
+      await db.prepare(`UPDATE members SET joined_at = datetime('now') WHERE joined_at IS NULL AND (
+        id IN (SELECT member_id FROM star_ledger)
+        OR id IN (SELECT (SELECT m3.id FROM members m3 WHERE m3.family_id = f.id ORDER BY m3.created_at ASC, m3.rowid ASC LIMIT 1) FROM families f)
+      )`).run().catch(() => {});
+    }
+    const after = new Set(((await db.prepare("SELECT name FROM pragma_table_info('members')").all()).results || []).map((r) => r.name));
+    memberStatusReady = after.has("joined_at") && after.has("invited_at") && after.has("device_only");
+  } catch (err) { memberStatusReady = false; }
+  return memberStatusReady;
+}

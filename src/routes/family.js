@@ -1,3 +1,4 @@
+import { ensureMemberStatus } from "../lib/schemaUpgrades.js";
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { hashPin, verifyPin, newId, newJoinCode } from "../lib/crypto.js";
 import { createSession } from "../lib/sessions.js";
@@ -91,6 +92,7 @@ export async function signup(request, env) {
     .prepare("INSERT INTO members (id, family_id, display_name, role, color) VALUES (?, ?, ?, ?, ?)")
     .bind(memberId, familyId, firstMemberName, firstMemberRole, VALID_COLORS[0])
     .run();
+  if (await ensureMemberStatus(db)) await db.prepare("UPDATE members SET joined_at = datetime('now') WHERE id = ?").bind(memberId).run();
 
   const token = await createSession(db, familyId);
 
@@ -177,8 +179,9 @@ export async function me(familyId, env, request) {
     .first();
   if (!family) return errorResponse("Family not found.", 404);
 
+  const status = await ensureMemberStatus(db);
   const members = await db
-    .prepare("SELECT id, display_name, role, color, interests FROM members WHERE family_id = ? ORDER BY created_at ASC")
+    .prepare(`SELECT id, display_name, role, color, interests${status ? ", invited_at, joined_at, device_only" : ""} FROM members WHERE family_id = ? ORDER BY created_at ASC`)
     .bind(familyId)
     .all();
 
@@ -205,6 +208,7 @@ export async function demo(request, env, ctx) {
   const db = env.DB;
   const withPassport = await ensureFoodPassport(db);
   const { familyId, joinCode } = await seedDemoFamily(db, { today, tzOffsetMinutes: offset, withPassport });
+  if (await ensureMemberStatus(db)) await db.prepare("UPDATE members SET joined_at = datetime('now') WHERE family_id = ?").bind(familyId).run();
   const token = await createSession(db, familyId);
   // Recipe pictures: shared ones attach instantly; if one has never been
   // made yet, it's made in the background so the visitor isn't kept waiting.

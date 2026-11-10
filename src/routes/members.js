@@ -1,5 +1,6 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
+import { ensureMemberStatus } from "../lib/schemaUpgrades.js";
 
 const MAX_NAME_LENGTH = 60;
 const VALID_ROLES = ["child", "parent"];
@@ -18,9 +19,10 @@ function validName(name) {
 /** GET /api/members — list members for the logged-in family. */
 export async function listMembers(familyId, env) {
   const db = env.DB;
+  const status = await ensureMemberStatus(db);
   const members = await db
     .prepare(
-      "SELECT id, display_name, role, color, interests, created_at FROM members WHERE family_id = ? ORDER BY created_at ASC"
+      `SELECT id, display_name, role, color, interests, created_at${status ? ", invited_at, joined_at, device_only" : ""} FROM members WHERE family_id = ? ORDER BY created_at ASC`
     )
     .bind(familyId)
     .all();
@@ -54,6 +56,9 @@ export async function addMember(request, familyId, env) {
     .prepare("INSERT INTO members (id, family_id, display_name, role, color, interests) VALUES (?, ?, ?, ?, ?, ?)")
     .bind(memberId, familyId, displayName, role, color, JSON.stringify(interests))
     .run();
+  if (body.deviceOnly && (await ensureMemberStatus(db))) {
+    await db.prepare("UPDATE members SET device_only = 1 WHERE id = ?").bind(memberId).run();
+  }
 
   return json({
     ok: true,
@@ -69,4 +74,14 @@ export async function setInterests(id, request, familyId, env) {
   const r = await db.prepare("UPDATE members SET interests = ? WHERE id = ? AND family_id = ?").bind(JSON.stringify(interests), id, familyId).run();
   if (!r.meta || !r.meta.changes) return errorResponse("Family member not found.", 404);
   return json({ ok: true, interests });
+}
+
+/** POST /api/members/:id/status — { invited: true } after an invite is sent, { joined: true } when they start using the app. */
+export async function setMemberStatus(id, request, familyId, env) {
+  const body = (await readJson(request)) || {};
+  const db = env.DB;
+  if (!(await ensureMemberStatus(db))) return json({ ok: true });
+  if (body.invited) await db.prepare("UPDATE members SET invited_at = datetime('now') WHERE id = ? AND family_id = ?").bind(id, familyId).run();
+  if (body.joined) await db.prepare("UPDATE members SET joined_at = COALESCE(joined_at, datetime('now')) WHERE id = ? AND family_id = ?").bind(id, familyId).run();
+  return json({ ok: true });
 }

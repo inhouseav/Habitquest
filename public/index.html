@@ -64,6 +64,9 @@
   #whoCard { background: #fffdf7; border-radius: 22px; padding: 22px; width: min(380px, 100%); box-shadow: 0 14px 40px rgba(0,0,0,0.25); text-align: center; }
   #whoList { display: flex; flex-direction: column; gap: 8px; }
   #whoList button { margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 1rem; }
+  .member-status { display: inline-block; font-size: 0.72rem; font-weight: 700; border-radius: 999px; padding: 2px 8px; margin-left: 4px; vertical-align: middle; }
+  .member-status.ok { background: #e4ead9; color: #3f5b37; }
+  .member-status.wait { background: #f8e8c7; color: #7a5a1a; }
   .ftf-overlay { position: fixed; inset: 0; z-index: 2950; background: rgba(24, 63, 53, 0.4); display: flex; align-items: center; justify-content: center; padding: 16px; }
   .ftf-overlay.hidden { display: none; }
   .ftf-sheet { background: var(--bg); border-radius: 24px; width: 100%; max-width: 520px; max-height: calc(100vh - 32px); overflow-y: auto; padding: 22px 20px 18px; box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
@@ -741,15 +744,6 @@
       <h3>Family members</h3>
       <div id="membersList"><p class="loading-text">Loading...</p></div>
       <button class="small secondary" id="showAddMemberBtn">+ Add family member</button>
-      <div id="addMemberForm" class="hidden" style="margin-top: 12px;">
-        <label>Name</label>
-        <input id="newMemberName" placeholder="e.g. Jamie" />
-        <label>Role</label>
-        <select id="newMemberRole"><option value="child">Child</option><option value="parent">Parent</option></select>
-        <label>What do they like? (optional, comma separated)</label>
-        <input id="newMemberInterests" placeholder="e.g. dinosaurs, gardening, soccer" />
-        <button id="addMemberBtn">Add</button>
-      </div>
       <div class="error hidden" id="memberError"></div>
     </div>
     <div class="card">
@@ -842,17 +836,19 @@
   <div class="ftf-sheet">
     <div id="inviteStepForm">
       <h2 id="invitePopupTitle">✉️ Invite someone</h2>
-      <p class="muted" style="margin:0 0 10px;">They'll get a personal link that sets them up in a minute.</p>
+      <p class="muted" style="margin:0 0 10px;" id="invitePopupBlurb">They'll get a personal link that sets them up in a minute.</p>
       <label>Their name</label>
       <input id="inviteName" maxlength="40" placeholder="e.g. Mia" autocomplete="off" />
       <div class="role-toggle">
         <button type="button" class="small" data-invite-role="child">🧒 Kid</button>
         <button type="button" class="small secondary" data-invite-role="parent">👩 Parent</button>
       </div>
-      <label>Their email</label>
+      <label>Their email <span class="muted" style="font-weight:400;">(to send them an invite)</span></label>
       <input id="inviteEmail" type="email" placeholder="name@gmail.com" autocomplete="off" />
       <p class="error hidden" id="inviteError"></p>
-      <div class="setup-nav"><button type="button" class="secondary" id="inviteCancelBtn">Cancel</button><button type="button" id="inviteNextBtn">Make the invite →</button></div>
+      <button type="button" id="inviteNextBtn" style="margin-top:12px;">✉️ Send them an invite →</button>
+      <button type="button" class="secondary" id="inviteAddOnlyBtn" style="margin-top:8px;">📱 Just add them — they'll use a family device</button>
+      <button type="button" class="secondary small" id="inviteCancelBtn" style="margin-top:8px;">Cancel</button>
     </div>
     <div id="inviteStepSend" class="hidden">
       <div class="setup-big">💌</div>
@@ -1089,6 +1085,11 @@ function getMe() {
   return v && state.members.some((m) => m.id === v) ? v : null;
 }
 function setMe(id) {
+  const who = state.members.find((m) => m.id === id);
+  if (who && "joined_at" in who && !who.joined_at) {
+    who.joined_at = new Date().toISOString();
+    api(`/api/members/${id}/status`, { method: "POST", body: JSON.stringify({ joined: true }) }).then(() => renderMembers()).catch(() => {});
+  }
   try {
     localStorage.setItem("ftf_me", id);
     if (id === "shared") { localStorage.removeItem("ftf_notify_member"); }
@@ -1192,11 +1193,38 @@ function setInviteRole(role) {
   document.querySelectorAll("[data-invite-role]").forEach((b) => b.classList.toggle("secondary", b.getAttribute("data-invite-role") !== role));
 }
 document.querySelectorAll("[data-invite-role]").forEach((b) => { b.onclick = () => setInviteRole(b.getAttribute("data-invite-role")); });
-$("emailInviteBtn").onclick = () => {
-  $("inviteName").value = ""; $("inviteEmail").value = ""; clearError("inviteError"); setInviteRole("child");
+// One popup for adding a person: send them an email invite, or just add
+// them (a younger kid on a family device). "Resend" opens it pre-filled.
+function openPeoplePopup(mode, member) {
+  $("inviteName").value = member ? member.display_name : ""; $("inviteEmail").value = ""; clearError("inviteError");
+  setInviteRole(member ? member.role : "child");
+  $("invitePopupTitle").textContent = mode === "add" ? "👋 Add family member" : member ? `✉️ Invite ${member.display_name}` : "✉️ Invite someone";
+  $("invitePopupBlurb").textContent = mode === "add"
+    ? "Got an email for them? Send an invite and they'll join on their own phone. Younger kids can just be added and use a family device."
+    : "They'll get a personal link that sets them up in a minute.";
+  $("inviteAddOnlyBtn").classList.toggle("hidden", !!member);
   show("inviteStepForm"); hide("inviteStepSend"); show("invitePopup");
-  setTimeout(() => $("inviteName").focus(), 50);
-};
+  setTimeout(() => $(member ? "inviteEmail" : "inviteName").focus(), 50);
+}
+$("emailInviteBtn").onclick = () => openPeoplePopup("invite");
+$("inviteAddOnlyBtn").onclick = () => withBusyButton($("inviteAddOnlyBtn"), "Adding...", async () => {
+  clearError("inviteError");
+  const name = $("inviteName").value.trim();
+  if (!name) return showError("inviteError", "What's their name?");
+  if (state.members.some((m) => m.display_name.trim().toLowerCase() === name.toLowerCase())) return showError("inviteError", `${name} is already in the family.`);
+  try {
+    await api("/api/members", { method: "POST", body: JSON.stringify({ displayName: name, role: inviteRole, deviceOnly: true }) });
+    hide("invitePopup");
+    await loadHome();
+    toast(`👋 ${name} added! Tap "👤" at the top on the family device and pick ${name} to set up their habits.`);
+  } catch (err) { showError("inviteError", err.message); }
+});
+function markInvited() {
+  if (!inviteMade) return;
+  api(`/api/members/${inviteMade.memberId}/status`, { method: "POST", body: JSON.stringify({ invited: true }) })
+    .then(() => { const m = state.members.find((x) => x.id === inviteMade.memberId); if (m && !m.invited_at) { m.invited_at = new Date().toISOString(); renderMembers(); } })
+    .catch(() => {});
+}
 $("inviteCancelBtn").onclick = () => hide("invitePopup");
 $("inviteDoneBtn").onclick = () => hide("invitePopup");
 $("invitePopup").addEventListener("click", (e) => { if (e.target.id === "invitePopup") hide("invitePopup"); });
@@ -1225,14 +1253,16 @@ function inviteSubject() { return `${inviteMade.name}, you're invited to Fuel th
 $("inviteGmailBtn").onclick = () => {
   const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(inviteMade.email)}&su=${encodeURIComponent(inviteSubject())}&body=${encodeURIComponent(personalInviteText(inviteMade))}`;
   const w = window.open(url, "_blank");
+  markInvited();
   if (!w) location.href = url;
   toast("📧 Gmail opened — press Send there");
 };
 $("inviteMailAppBtn").onclick = () => {
+  markInvited();
   window.location.href = `mailto:${encodeURIComponent(inviteMade.email)}?subject=${encodeURIComponent(inviteSubject())}&body=${encodeURIComponent(personalInviteText(inviteMade))}`;
 };
 $("inviteCopyBtn").onclick = async () => {
-  try { await navigator.clipboard.writeText(personalInviteText(inviteMade)); toast("📋 Copied — paste it into a message or email"); }
+  try { await navigator.clipboard.writeText(personalInviteText(inviteMade)); markInvited(); toast("📋 Copied — paste it into a message or email"); }
   catch (err) { toast("Couldn't copy on this device.", true); }
 };
 $("copyInviteBtn").onclick = async () => {
@@ -1286,6 +1316,13 @@ async function loadHome() {
   await Promise.all([refreshNotifyUi().catch(() => {}), refreshGoogleCalUi().catch(() => {})]);
   startReminders();
   // Several people in the family but this phone hasn't said who it is yet.
+  // Someone already using the app on their own phone counts as joined.
+  const meNow = getMe();
+  const meRow = meNow && meNow !== "shared" ? state.members.find((m) => m.id === meNow) : null;
+  if (meRow && "joined_at" in meRow && !meRow.joined_at) {
+    meRow.joined_at = new Date().toISOString();
+    api(`/api/members/${meRow.id}/status`, { method: "POST", body: JSON.stringify({ joined: true }) }).then(() => renderMembers()).catch(() => {});
+  }
   if (pendingInviteSetup()) { /* their personal invite link — the setup quiz takes over */ }
   else if (!getMe() && state.members.length > 1 && state.family.name !== "The Smith Family") showWhoPicker();
 }
@@ -1298,10 +1335,19 @@ function renderMembers() {
   state.members.forEach((m) => {
     const row = document.createElement("div");
     row.className = "member-row compact";
-    row.innerHTML = `<span><span class="member-dot" style="background:${m.color || '#ccc'}"></span>${escapeHtml(m.display_name)}<span class="pill">${m.role}</span></span>
-      <span><span id="stars-${m.id}" class="muted">⭐ ...</span>${isParentHere() && getMe() !== m.id ? ` <button class="small" data-member="${m.id}">Give Kudos</button>` : ""}</span>`;
+    // Status: joined / uses a family device / invited / not joined yet.
+    const known = "joined_at" in m;
+    const active = !known || !!m.joined_at || !!m.device_only;
+    const status = !known ? "" : m.joined_at ? `<span class="member-status ok">✅ Joined</span>`
+      : m.device_only ? `<span class="member-status ok">📱 Family device</span>`
+      : m.invited_at ? `<span class="member-status wait">✉️ Invited — not joined yet</span>`
+      : `<span class="member-status wait">⏳ Not joined yet</span>`;
+    const inviteBtn = known && !m.joined_at && !m.device_only
+      ? ` <button class="small secondary" data-reinvite="${m.id}" style="width:auto; margin:0;">${m.invited_at ? "Resend" : "✉️ Invite"}</button>` : "";
+    row.innerHTML = `<span><span class="member-dot" style="background:${m.color || '#ccc'}"></span>${escapeHtml(m.display_name)}<span class="pill">${m.role}</span> ${status}</span>
+      <span>${active ? `<span id="stars-${m.id}" class="muted">⭐ ...</span>${isParentHere() && getMe() !== m.id ? ` <button class="small" data-member="${m.id}">Give Kudos</button>` : ""}` : ""}${inviteBtn}</span>`;
     list.appendChild(row);
-    loadStars(m.id);
+    if (active) loadStars(m.id);
     const notifyOpt = document.createElement("option"); notifyOpt.value = m.id; notifyOpt.textContent = m.display_name;
     notifySelect.appendChild(notifyOpt);
     const aiOpt = document.createElement("option"); aiOpt.value = m.id; aiOpt.textContent = m.display_name;
@@ -1319,6 +1365,7 @@ function renderMembers() {
   const aiMe = getMe();
   if (aiMe && aiMe !== "shared") aiSelect.value = aiMe;
   list.querySelectorAll("button[data-member]").forEach((btn) => { btn.onclick = () => giveStar(btn.getAttribute("data-member")); });
+  list.querySelectorAll("button[data-reinvite]").forEach((btn) => { btn.onclick = () => openPeoplePopup("invite", state.members.find((m) => m.id === btn.getAttribute("data-reinvite"))); });
   renderEventMemberChecks();
   renderCalMemberTabs();
   if ($("plannerForMemberSelect")) renderPlannerForMemberOptions();
@@ -1413,17 +1460,7 @@ async function giveStar(memberId) {
   } catch (err) { toast(err.message, true); }
 }
 
-$("showAddMemberBtn").onclick = () => show("addMemberForm");
-$("addMemberBtn").onclick = async () => {
-  clearError("memberError");
-  try {
-    const interests = $("newMemberInterests").value.split(",").map((s) => s.trim()).filter(Boolean);
-    await api("/api/members", { method: "POST", body: JSON.stringify({ displayName: $("newMemberName").value, role: $("newMemberRole").value, interests })});
-    $("newMemberName").value = ""; $("newMemberInterests").value = ""; hide("addMemberForm");
-    const me = await api("/api/me"); state.members = me.members;
-    renderMembers(); await renderHabits();
-  } catch (err) { showError("memberError", err.message); }
-};
+$("showAddMemberBtn").onclick = () => openPeoplePopup("add");
 
 // --- Events: calendar grid (1 week / 2 weeks / full month) ---
 let calendarViewMode = "week"; // "week" | "2week" | "month" — 1 week is simplest for a kid, so it's the default
