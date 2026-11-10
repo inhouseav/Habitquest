@@ -1345,9 +1345,9 @@ function renderMembers() {
     const inviteBtn = known && !m.joined_at && !m.device_only
       ? ` <button class="small secondary" data-reinvite="${m.id}" style="width:auto; margin:0;">${m.invited_at ? "Resend" : "✉️ Invite"}</button>` : "";
     row.innerHTML = `<span><span class="member-dot" style="background:${m.color || '#ccc'}"></span>${escapeHtml(m.display_name)}<span class="pill">${m.role}</span> ${status}</span>
-      <span>${active ? `<span id="stars-${m.id}" class="muted">⭐ ...</span>${isParentHere() && getMe() !== m.id ? ` <button class="small" data-member="${m.id}">Give Kudos</button>` : ""}` : ""}${inviteBtn}</span>`;
+      <span>${active && isParentHere() && getMe() !== m.id ? `<button class="small" data-member="${m.id}">Give Kudos</button>` : ""}${inviteBtn}</span>`;
     list.appendChild(row);
-    if (active) loadStars(m.id);
+    // (No star counts here — stars are personal, never a competition.)
     const notifyOpt = document.createElement("option"); notifyOpt.value = m.id; notifyOpt.textContent = m.display_name;
     notifySelect.appendChild(notifyOpt);
     const aiOpt = document.createElement("option"); aiOpt.value = m.id; aiOpt.textContent = m.display_name;
@@ -2585,7 +2585,11 @@ async function renderWeeklyOverview() {
   try {
     const w = await api("/api/weekly?day=" + todayStr());
     weeklyCache = w;
-    const rows = w.members.map((m) => {
+    // Stars are personal: kids only see their own progress here; parents
+    // see everyone so they know who has a reward to give.
+    const meId = getMe();
+    const visible = isParentHere() ? w.members : w.members.filter((m) => m.memberId === meId);
+    const rows = visible.map((m) => {
       const pct = Math.min(100, Math.round((m.starsThisWeek / w.goal) * 100));
       const what = m.status === "earned" ? `🎉 earned ${escapeHtml(m.rewardTitle || "")}` : m.status === "given" ? `🎁 got ${escapeHtml(m.rewardTitle || "")}` : m.rewardTitle ? `→ ${escapeHtml(m.rewardTitle)}` : `<span class="muted">no reward picked</span>`;
       return `<div class="weekly-row"><b>${escapeHtml(m.name)}</b><span class="weekly-mini-bar"><span style="width:${pct}%"></span></span><span>${m.starsThisWeek}/${w.goal} ⭐</span><span class="weekly-what">${what}</span></div>`;
@@ -2593,7 +2597,9 @@ async function renderWeeklyOverview() {
     const toGive = isParentHere() && w.toGive.length
       ? `<div class="admin-box to-give"><b>🎉 Earned — to give (${w.toGive.length})</b>${w.toGive.map((g) => `<div class="weekly-row"><span><b>${escapeHtml(g.name)}</b> earned <b>${escapeHtml(g.reward_title || "a reward")}</b> <span class="muted">(week of ${escapeHtml(g.week_of)})</span></span><button type="button" class="small" data-weekly-given="${g.id}" style="margin:0; width:auto;">✅ Given</button></div>`).join("")}</div>`
       : "";
-    wrap.innerHTML = toGive + `<div class="admin-box"><b>This week</b> <span class="muted">(goal ${w.goal} ⭐ · unlocks Saturday)</span>${rows}</div>`;
+    const pickFirst = `<div class="admin-box"><b>My week</b> <span class="muted">(goal ${w.goal} ⭐ · unlocks Saturday)</span><p style="margin:6px 0 0;">Tap <button type="button" class="small secondary" data-weekly-who style="width:auto; margin:0 2px;">👤 Who are you?</button> to see your stars this week.</p></div>`;
+    wrap.innerHTML = toGive + (rows ? `<div class="admin-box"><b>${isParentHere() ? "This week" : "My week"}</b> <span class="muted">(goal ${w.goal} ⭐ · unlocks Saturday)</span>${rows}</div>` : pickFirst);
+    const whoBtn = wrap.querySelector("[data-weekly-who]"); if (whoBtn) whoBtn.onclick = () => showWhoPicker();
     wrap.querySelectorAll("[data-weekly-given]").forEach((b) => {
       b.onclick = async () => {
         try {
@@ -4619,7 +4625,7 @@ async function renderPassport() {
   $("passportMemberTabs").innerHTML = members.map((m) => {
     const mm = state.members.find((x) => x.id === m.memberId) || {};
     const on = m.memberId === passportMemberId;
-    return `<button type="button" class="small ${on ? "" : "secondary"}" data-passport-member="${m.memberId}" style="width:auto; margin:0;"><span class="member-dot" style="background:${mm.color || "#ccc"}"></span> ${escapeHtml(m.name)} · ${m.count}</button>`;
+    return `<button type="button" class="small ${on ? "" : "secondary"}" data-passport-member="${m.memberId}" style="width:auto; margin:0;"><span class="member-dot" style="background:${mm.color || "#ccc"}"></span> ${escapeHtml(m.name)}</button>`;
   }).join("");
   $("passportMemberTabs").querySelectorAll("[data-passport-member]").forEach((b) => {
     b.onclick = () => { passportMemberId = b.getAttribute("data-passport-member"); passportAsking = null; drawPassport(); renderPassportTabsOnly(); };

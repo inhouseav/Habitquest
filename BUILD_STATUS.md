@@ -4,6 +4,12 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Stars are personal — no side-by-side comparisons (2026-11-10)
+
+- Family members list no longer shows star counts (Give Kudos stays for parents).
+- Rewards → weekly progress: kids see only **My week**; parents see everyone (to know which rewards to give); nobody picked → a "👤 Who are you?" prompt.
+- Food passport name buttons no longer show each person's count.
+
 ## ✅ Family members: one Add popup + Joined / Invited / Family device (2026-11-10)
 
 - **+ Add family member** opens the same popup as Invite someone: name, Kid/Parent, then **✉️ Send them an invite** (email → Gmail) or **📱 Just add them — they'll use a family device** (younger kids). Same name twice is refused.
