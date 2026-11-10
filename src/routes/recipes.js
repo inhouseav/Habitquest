@@ -1,5 +1,6 @@
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
+import { addRecipePack } from "../lib/recipePack.js";
 
 const MAX_TITLE_LENGTH = 100;
 const VALID_CATEGORIES = ["breakfast", "lunch", "dinner", "snacks", "lunchboxes"];
@@ -99,4 +100,10 @@ export async function toggleFavorite(recipeId, familyId, env) {
   await db.prepare("UPDATE recipes SET favorite = ? WHERE id = ?").bind(nextValue, recipeId).run();
 
   return json({ ok: true, favorite: !!nextValue });
+}
+
+/** POST /api/recipes/pack — adds the family-favourites + Aussie recipe pack (skips ones you have). */
+export async function addPack(familyId, env) {
+  const result = await addRecipePack(env.DB, familyId, newId);
+  return json({ ok: true, ...result });
 }

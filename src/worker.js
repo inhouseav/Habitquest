@@ -170,6 +170,7 @@ async function handleApi(request, env, url) {
 
   if (path === "/api/recipes" && method === "GET") return recipeRoutes.listRecipes(familyId, env);
   if (path === "/api/recipes" && method === "POST") return recipeRoutes.createRecipe(request, familyId, env);
+  if (path === "/api/recipes/pack" && method === "POST") return recipeRoutes.addPack(familyId, env);
   const recipeIdMatch = path.match(/^\/api\/recipes\/([^/]+)$/);
   if (recipeIdMatch && method === "PUT") return recipeRoutes.updateRecipe(recipeIdMatch[1], request, familyId, env);
   const recipeFavMatch = path.match(/^\/api\/recipes\/([^/]+)\/favorite$/);

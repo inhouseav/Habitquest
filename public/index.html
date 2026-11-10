@@ -594,6 +594,7 @@
       <div id="recipeDetailPanel" class="hidden" style="margin-top:12px; padding:12px; background:#fff; border-radius:12px;"></div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
         <button class="small secondary" id="showAddRecipeBtn">+ Add a recipe</button>
+        <button class="small secondary" id="addRecipePackBtn" type="button">🇦🇺 Add family favourites pack</button>
         <button class="small secondary" id="scanRecipeBtn">📷 Scan a recipe photo</button>
         <button class="small secondary" id="showLunchboxBuilderBtn">🎒 Build a lunchbox</button>
       </div>
@@ -2747,6 +2748,23 @@ function resetRecipeForm() {
   $("addRecipeBtn").textContent = "Add recipe";
   hide("cancelEditRecipeBtn");
 }
+// One tap: the family's favourites + popular Aussie family meals and
+// lunchboxes. Skips anything already there, then makes AI pictures for the
+// new ones in the background, one at a time.
+$("addRecipePackBtn").onclick = () => withBusyButton($("addRecipePackBtn"), "Adding recipes...", async () => {
+  try {
+    const res = await api("/api/recipes/pack", { method: "POST", body: "{}" });
+    await renderRecipes();
+    loadPlannerMovementIdeas().catch(() => {});
+    toast(res.added.length ? `🍽️ Added ${res.added.length} recipes (${res.added.filter((r) => r.favorite).length} family favourites ⭐)` : "You already have all of these!");
+    for (let i = 0; i < res.added.length; i++) {
+      try {
+        await api("/api/ai/image", { method: "POST", body: JSON.stringify({ recipeId: res.added[i].id }) });
+        if (i % 3 === 2 || i === res.added.length - 1) await renderRecipes();
+      } catch (err) { if (i === 0) break; } // AI pictures not available — skip the rest quietly
+    }
+  } catch (err) { toast(err.message, true); }
+});
 $("showAddRecipeBtn").onclick = () => { resetRecipeForm(); hide("lunchboxBuilder"); show("addRecipeForm"); };
 $("cancelEditRecipeBtn").onclick = () => { resetRecipeForm(); hide("addRecipeForm"); };
 
