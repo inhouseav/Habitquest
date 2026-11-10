@@ -278,6 +278,19 @@
   .reward-line { font-size: 0.85rem; margin-top: 3px; }
   .reward-earned { margin-top: 6px; padding: 8px 10px; border-radius: 10px; background: #F8E3D1; font-size: 0.9rem; }
   .week-day.wd-reward span { font-size: 0.75rem; }
+  .passport-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin-top: 10px; }
+  .passport-food { position: relative; margin: 0; padding: 10px 4px 8px; border-radius: 16px; background: #fff; border: 2px dashed #eadfca; color: var(--text); box-shadow: none; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 0.78rem; font-weight: 600; line-height: 1.15; min-height: 78px; }
+  .passport-food .pf-emoji { font-size: 1.7rem; filter: grayscale(0.85); opacity: 0.55; }
+  .passport-food.stamped { border: 2px solid var(--terracotta); background: #fff6ef; }
+  .passport-food.stamped .pf-emoji { filter: none; opacity: 1; }
+  .passport-food .pf-verdict { position: absolute; top: 4px; right: 6px; font-size: 0.95rem; }
+  .passport-food .pf-star { position: absolute; top: 4px; left: 6px; font-size: 0.8rem; }
+  .passport-ask { background: #fff6ef; border-radius: 16px; padding: 12px; margin-top: 10px; text-align: center; }
+  .passport-ask .verdict-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+  .passport-ask .verdict-btns button { width: auto; margin: 0; }
+  .passport-badge { display: inline-block; background: var(--sage); border-radius: 999px; padding: 4px 12px; font-weight: 700; font-size: 0.85rem; margin: 2px 4px 2px 0; }
+  .passport-bonus { font-size: 0.85rem; font-weight: 600; margin: 6px 0 0; }
+  .food-nudge { width: 100%; margin: 0; text-align: left; background: #fff6ef; color: var(--text); border: 2px dashed var(--terracotta); box-shadow: none; font-weight: 700; padding: 12px 14px; border-radius: 18px; }
   .meal-add-mini { width: 30px; height: 30px; margin: 0; padding: 0; border-radius: 50%; background: var(--sage); color: var(--text); font-size: 1rem; line-height: 30px; box-shadow: none; }
   .win-day-date { font-size: 0.85rem; background: #fff; border-radius: 10px; padding: 6px 10px; margin: 0 0 10px; }
   .week-strip { display: flex; gap: 5px; margin: 6px 0 8px; }
@@ -432,6 +445,9 @@
       <div id="habitsMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
       <div id="habitsList"><p class="loading-text">Loading...</p></div>
     </div>
+    <div class="full-width" style="margin-top:-4px;">
+      <button type="button" class="food-nudge" id="foodNudgeBtn">🥕 Tried a new food today? <span style="font-weight:600;">Stamp your passport for a bonus ⭐ →</span></button>
+    </div>
     </section>
 
     <section class="tab-page" data-section="plan">
@@ -549,6 +565,12 @@
     </section>
 
     <section class="tab-page" data-section="food">
+    <div class="card full-width" id="passportCard">
+      <h3>🥕 Food Explorer Passport</h3>
+      <p class="muted" style="margin:0;">Tried a food for the first time? Stamp it! Every try counts — even if it's "not yet".</p>
+      <div id="passportMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;"></div>
+      <div id="passportBody"><p class="loading-text">Loading...</p></div>
+    </div>
     <div class="card">
       <h3>This week's meals 🥗</h3>
       <p id="togetherCountLine" class="muted hidden" style="font-weight:600;"></p>
@@ -1141,7 +1163,7 @@ async function loadHome() {
   // home screen still loads instead of the whole page breaking.
   const sections = [
     ["calendar", renderEvents], ["reward shop", renderRewards],
-    ["recipes", renderRecipes], ["this week's meals", renderMealPlan], ["shopping list", renderShopping],
+    ["recipes", renderRecipes], ["food passport", renderPassport], ["this week's meals", renderMealPlan], ["shopping list", renderShopping],
     ["weekly check-in", loadMeeting], ["family memories", renderMemories], ["planner", loadPlannerMovementIdeas],
   ];
   await Promise.all(sections.map(([name, fn]) =>
@@ -2289,6 +2311,31 @@ async function loadGoogleTodayItems(wrap) {
 }
 
 const BONUS_SLOTS = [4, 5];
+// Ideas from the 7 Fuel the Fun modules, offered under the right habit slot.
+const MODULE_IDEAS = {
+  1: [["🏃 Move Your Way", [["🌳", "Play outside for 30 mins"], ["🚲", "Ride to the park"], ["🤸", "Make up an obstacle course"]]],
+      ["📵 Screen Balance", [["⚽", "Outdoor game instead of screens"]]]],
+  2: [["🥕 Food Explorers", [["🥕", "Try a new food"], ["🌈", "Eat a rainbow today"], ["🧑‍🌾", "Find out where my dinner came from"]]],
+      ["🍎 Healthy Snacks", [["🍎", "Make a healthy snack"], ["🥪", "Help pack my lunchbox"]]],
+      ["💧 Fuel Your Body", [["💧", "Drink water with every meal"], ["🥣", "Eat a healthy breakfast"]]]],
+  3: [["🌱 Grow It", [["🌱", "Water the veggie patch"], ["🌿", "Plant a seed"], ["🍅", "Pick something from the garden"]]],
+      ["📵 Screen Balance", [["📵", "1 hour screen-free"], ["📚", "Read instead of screens"]]],
+      ["🏡 Healthy Home", [["🍽️", "Family dinner, no devices"], ["😴", "Bed on time"]]]],
+};
+MODULE_IDEAS[4] = MODULE_IDEAS[5] = [
+  ["🥕 Food Explorers", [["🥕", "Try a new food"], ["🌈", "Eat a rainbow today"]]],
+  ["🌱 Grow It", [["🌱", "Water the veggie patch"], ["🌿", "Plant a seed"]]],
+  ["📵 Screen Balance", [["📵", "1 hour screen-free"], ["📚", "Read for 15 mins"]]],
+  ["💧 Fuel Your Body", [["💧", "Drink 4 glasses of water"]]],
+];
+function moduleIdeasHtml(slot) {
+  const groups = MODULE_IDEAS[slot] || [];
+  if (!groups.length) return "";
+  return `<div class="habit-quick-picks" style="margin-top:4px;">${groups.map(([label, ideas]) =>
+    `<span class="muted" style="font-size:0.68rem; font-weight:700; align-self:center;">${escapeHtml(label)}:</span>` +
+    ideas.map(([emoji, title]) => `<button type="button" class="habit-quick-pick" data-pick-slot="${slot}" data-pick-title="${escapeAttr(title)}" data-pick-emoji="${escapeAttr(emoji)}">${escapeHtml(emoji)} ${escapeHtml(title)}</button>`).join("")
+  ).join("")}</div>`;
+}
 // Tap-to-pick suggestions under each habit slot, only of the right kind:
 // Move -> your Planner movement ideas, Cook -> your recipes (favourites
 // first), Home -> your Planner home ideas. Most-used first.
@@ -2304,11 +2351,12 @@ function habitQuickPickOptions(slot) {
   return [];
 }
 function habitQuickPickHtml(slot) {
-  const options = habitQuickPickOptions(slot).slice(0, 8);
+  const options = habitQuickPickOptions(slot).slice(0, 6);
   const where = slot === 2 ? "Add recipes in the Recipes card to pick them here." : "Add ideas in the Planner to pick them here.";
-  if (!options.length) return `<p class="muted" style="font-size:0.7rem; margin:3px 0 0;">${where}</p>`;
-  return `<div class="habit-quick-picks">${options.map((o) =>
-    `<button type="button" class="habit-quick-pick" data-pick-slot="${slot}" data-pick-title="${escapeAttr(o.title)}" data-pick-emoji="${escapeAttr(o.emoji)}">${escapeHtml(o.emoji)} ${escapeHtml(o.title)}</button>`).join("")}</div>`;
+  const yours = options.length ? `<div class="habit-quick-picks">${options.map((o) =>
+    `<button type="button" class="habit-quick-pick" data-pick-slot="${slot}" data-pick-title="${escapeAttr(o.title)}" data-pick-emoji="${escapeAttr(o.emoji)}">${escapeHtml(o.emoji)} ${escapeHtml(o.title)}</button>`).join("")}</div>`
+    : `<p class="muted" style="font-size:0.7rem; margin:3px 0 0;">${where}</p>`;
+  return yours + moduleIdeasHtml(slot);
 }
 function habitEditFormHtml(m) {
   const bonusInputs = BONUS_SLOTS.map((slot) => {
@@ -2316,7 +2364,7 @@ function habitEditFormHtml(m) {
     return `<div style="display:flex; gap:6px; margin-top:4px;">
       <input name="emoji${slot}" placeholder="✨" maxlength="4" value="${existing ? escapeAttr(existing.emoji) : ''}" style="width:48px; text-align:center;" />
       <input name="title${slot}" placeholder="${slot === 4 ? "e.g. Read for 15 mins" : "e.g. Drink 4 glasses of water"}" value="${existing ? escapeAttr(existing.title) : ''}" style="flex:1;" />
-    </div>`;
+    </div>${moduleIdeasHtml(slot)}`;
   }).join("");
   const bonusSection = `<label style="margin-top:14px; font-size:0.78rem; font-weight:700; opacity:0.7;">✨ Bonus habits (optional)</label>
     <p class="muted" style="font-size:0.72rem; margin:2px 0 0;">Extra challenges just for fun (no stars) — you still only need your 3 to win the day.</p>
@@ -2421,9 +2469,10 @@ function renderRewardAdmin(data) {
         <li>Each habit ticked = <b>${rules.habit}</b> ⭐ (3 a day)</li>
         <li>A family activity (planned for Everyone) = <b>${rules.familyActivity}</b> ⭐ (once a day)</li>
         <li>Kudos from a parent = <b>${rules.kudos}</b> ⭐ (max ${rules.kudosPerDay} a day per child)</li>
+        <li>🥕 Trying a new food = <b>${rules.newFood || 1}</b> bonus ⭐ (1 a day, up to ${rules.newFoodPerWeek || 3} a week)</li>
         <li>Each week, reach <b>${goal}</b> ⭐ and your chosen reward unlocks <b>Saturday morning</b></li>
       </ul>
-      <p class="muted" style="margin:6px 0 0; font-size:0.78rem;">🔒 No cheating: habits can only be ticked for today, bonus habits are just for fun (no stars), only parents give kudos (never to themselves), and stars can't be spent — rewards just unlock.</p>
+      <p class="muted" style="margin:6px 0 0; font-size:0.78rem;">🔒 No cheating: habits can only be ticked for today, bonus habits are just for fun (no stars), each new food stamps once, only parents give kudos (never to themselves), and stars can't be spent — rewards just unlock.</p>
     </div>`;
   const pinSet = !!(state.parent && state.parent.parentPinSet);
   const mm = meMember();
@@ -4195,6 +4244,123 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
   const code = (new URLSearchParams(location.search).get("code") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
   if (code) { $("loginJoinCode").value = code; $("tabLogin").click(); }
 })();
+
+// --- 🥕 Food Explorer Passport ---
+// Stamp every new food you try (Project Bible: "Try new foods"). Trying is
+// what counts, so "not yet" stamps too. Bonus ⭐: 1 a day, a few a week —
+// the server enforces it.
+const PASSPORT_FOODS = [
+  ["🥦", "Broccoli"], ["🥕", "Carrot"], ["🫑", "Capsicum"], ["🥒", "Cucumber"], ["🍅", "Tomato"], ["🌽", "Corn"],
+  ["🥬", "Spinach"], ["🍄", "Mushroom"], ["🫛", "Snow peas"], ["🍠", "Sweet potato"], ["🍆", "Eggplant"], ["🥑", "Avocado"],
+  ["🥝", "Kiwi fruit"], ["🥭", "Mango"], ["🍍", "Pineapple"], ["🫐", "Blueberries"], ["🍓", "Strawberries"], ["🍐", "Pear"],
+  ["🍑", "Peach"], ["🥥", "Coconut"], ["🐟", "Salmon"], ["🥚", "Boiled egg"], ["🫘", "Chickpeas"], ["🧀", "Feta cheese"],
+];
+const PASSPORT_VERDICTS = { love: { emoji: "😋", label: "Loved it" }, ok: { emoji: "🙂", label: "It's OK" }, not_yet: { emoji: "🤔", label: "Not yet" } };
+const PASSPORT_BADGES = [[1, "🎫 First stamp"], [5, "🧭 Explorer"], [10, "🚀 Adventurer"], [20, "🏆 Food Legend"]];
+let passportData = null;
+let passportMemberId = null;
+let passportAsking = null; // { food, emoji }
+
+async function renderPassport() {
+  if (!$("passportBody")) return;
+  passportData = await api("/api/food-passport?day=" + todayStr());
+  const members = passportData.members || [];
+  const me = getMe();
+  if (!passportMemberId || !members.some((m) => m.memberId === passportMemberId)) {
+    passportMemberId = (me && me !== "shared" && members.some((m) => m.memberId === me)) ? me
+      : (habitsActiveMemberId && members.some((m) => m.memberId === habitsActiveMemberId) ? habitsActiveMemberId : (members[0] || {}).memberId);
+  }
+  $("passportMemberTabs").innerHTML = members.map((m) => {
+    const mm = state.members.find((x) => x.id === m.memberId) || {};
+    const on = m.memberId === passportMemberId;
+    return `<button type="button" class="small ${on ? "" : "secondary"}" data-passport-member="${m.memberId}" style="width:auto; margin:0;"><span class="member-dot" style="background:${mm.color || "#ccc"}"></span> ${escapeHtml(m.name)} · ${m.count}</button>`;
+  }).join("");
+  $("passportMemberTabs").querySelectorAll("[data-passport-member]").forEach((b) => {
+    b.onclick = () => { passportMemberId = b.getAttribute("data-passport-member"); passportAsking = null; drawPassport(); renderPassportTabsOnly(); };
+  });
+  drawPassport();
+}
+function renderPassportTabsOnly() {
+  $("passportMemberTabs").querySelectorAll("[data-passport-member]").forEach((b) => {
+    b.classList.toggle("secondary", b.getAttribute("data-passport-member") !== passportMemberId);
+  });
+}
+function drawPassport() {
+  const m = (passportData.members || []).find((x) => x.memberId === passportMemberId);
+  if (!m) { $("passportBody").innerHTML = `<p class="muted">Add a family member first.</p>`; return; }
+  const stamps = new Map(m.stamps.map((s) => [s.food.toLowerCase(), s]));
+  const badges = PASSPORT_BADGES.filter(([n]) => m.count >= n).map(([, b]) => `<span class="passport-badge">${b}</span>`).join("");
+  const next = PASSPORT_BADGES.find(([n]) => m.count < n);
+  const perWeek = passportData.starsPerWeek || 3;
+  const bonus = m.starToday ? "✅ Today's bonus ⭐ earned — great exploring!"
+    : m.foodStarsThisWeek >= perWeek ? `⭐ You've had all ${perWeek} food stars this week — keep stamping for badges!`
+    : "⭐ Try a new food today for a bonus star!";
+  const custom = m.stamps.filter((s) => !PASSPORT_FOODS.some(([, f]) => f.toLowerCase() === s.food.toLowerCase()));
+  const tile = (emoji, food) => {
+    const s = stamps.get(food.toLowerCase());
+    return `<button type="button" class="passport-food ${s ? "stamped" : ""}" data-passport-food="${escapeAttr(food)}" data-passport-emoji="${escapeAttr(emoji)}">
+      ${s ? `<span class="pf-verdict" title="${PASSPORT_VERDICTS[s.verdict].label}">${PASSPORT_VERDICTS[s.verdict].emoji}</span>` : ""}
+      ${s && s.starred ? `<span class="pf-star">⭐</span>` : ""}
+      <span class="pf-emoji">${emoji}</span><span>${escapeHtml(food)}</span></button>`;
+  };
+  const ask = passportAsking ? `<div class="passport-ask" id="passportAsk">
+      <div style="font-size:2rem;">${escapeHtml(passportAsking.emoji)}</div>
+      <b>${escapeHtml(m.name)} tried ${escapeHtml(passportAsking.food)}! How was it?</b>
+      <div class="verdict-btns">${Object.entries(PASSPORT_VERDICTS).map(([k, v]) => `<button type="button" class="small ${k === "love" ? "" : "secondary"}" data-passport-verdict="${k}">${v.emoji} ${v.label}</button>`).join("")}
+        <button type="button" class="small secondary" data-passport-cancel>Cancel</button></div>
+    </div>` : "";
+  $("passportBody").innerHTML = `
+    <p style="margin:10px 0 0; font-weight:700;">${escapeHtml(m.name)} has tried <span style="color:var(--terracotta);">${m.count}</span> new ${m.count === 1 ? "food" : "foods"}!</p>
+    <div style="margin-top:4px;">${badges}${next ? `<span class="muted" style="font-size:0.8rem;">${next[0] - m.count} more for ${next[1]}</span>` : ""}</div>
+    <p class="passport-bonus">${bonus}</p>
+    ${ask}
+    <div class="passport-grid">${PASSPORT_FOODS.map(([e, f]) => tile(e, f)).join("")}${custom.map((s) => tile(s.emoji || "🍽️", s.food)).join("")}</div>
+    <form id="passportOtherForm" style="display:flex; gap:6px; margin-top:10px;">
+      <input id="passportOtherInput" placeholder="Another food… e.g. Dragon fruit" maxlength="40" style="flex:1;" />
+      <button class="small secondary" type="submit" style="width:auto; margin:0;">＋ Stamp</button>
+    </form>`;
+  $("passportBody").querySelectorAll("[data-passport-food]").forEach((b) => {
+    b.onclick = () => {
+      const food = b.getAttribute("data-passport-food");
+      const s = stamps.get(food.toLowerCase());
+      passportAsking = { food, emoji: b.getAttribute("data-passport-emoji"), already: !!s };
+      drawPassport();
+      const askEl = $("passportAsk"); if (askEl) askEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    };
+  });
+  $("passportOtherForm").onsubmit = (e) => {
+    e.preventDefault();
+    const food = $("passportOtherInput").value.trim();
+    if (!food) return;
+    passportAsking = { food, emoji: "🍽️" };
+    drawPassport();
+  };
+  const cancel = $("passportBody").querySelector("[data-passport-cancel]");
+  if (cancel) cancel.onclick = () => { passportAsking = null; drawPassport(); };
+  $("passportBody").querySelectorAll("[data-passport-verdict]").forEach((b) => {
+    b.onclick = async () => {
+      const ask = passportAsking; if (!ask) return;
+      b.disabled = true;
+      try {
+        const res = await api("/api/food-passport/try", { method: "POST", body: JSON.stringify({ memberId: passportMemberId, food: ask.food, emoji: ask.emoji, verdict: b.getAttribute("data-passport-verdict"), day: todayStr() }) });
+        passportAsking = null;
+        if (res.alreadyHad) toast(`Updated — ${ask.food} is already in your passport 📘`);
+        else if (res.star) toast(`🎉 New food stamped! +1 bonus ⭐ for trying ${ask.food}`);
+        else if (res.reason === "week") toast(`📘 Stamped! (You've had this week's food stars — it still counts for badges)`);
+        else toast(`📘 Stamped! (Today's food star is already earned — try another tomorrow)`);
+        await renderPassport();
+        if (res.star) renderHabits().catch(() => {}); // update the week's stars on Today
+      } catch (err) { toast(err.message, true); b.disabled = false; }
+    };
+  });
+}
+$("foodNudgeBtn").onclick = () => {
+  const me = getMe();
+  if (me && me !== "shared") passportMemberId = me;
+  else if (habitsActiveMemberId) passportMemberId = habitsActiveMemberId;
+  showTab("food");
+  if (passportData) { drawPassport(); renderPassportTabsOnly(); }
+};
 
 // --- Sections (bottom tab bar) ---
 // One section at a time so the screen never feels busy. Win the Day

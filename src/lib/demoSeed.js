@@ -38,7 +38,8 @@ function localToIso(day, hhmm, tzOffsetMinutes) {
  * today: the visitor's local date (YYYY-MM-DD).
  * tzOffsetMinutes: the visitor's Date#getTimezoneOffset() (e.g. -660 in Sydney).
  */
-export async function seedDemoFamily(db, { today, tzOffsetMinutes = 0 }) {
+export async function seedDemoFamily(db, opts) {
+  const { today, tzOffsetMinutes = 0 } = opts;
   const M = mondayOf(today); // Monday of this week
   const at = (day, hhmm) => localToIso(day, hhmm, tzOffsetMinutes);
   const s = []; // every statement, run together in one batch (all-or-nothing)
@@ -194,6 +195,17 @@ export async function seedDemoFamily(db, { today, tzOffsetMinutes = 0 }) {
   // --- This week's family check-in notes ---
   add("INSERT INTO family_meetings (id, family_id, week_of, notes) VALUES (?, ?, ?, ?)", newId(), familyId, M,
     "🎉 Wins: Mia won 4 days in a row! Jack fed the dog every day.\n🥦 Try a new food: snow peas in the stir-fry.\n🌱 Next week: plant the veggie patch together.");
+
+  // --- Food Explorer Passport stamps (earlier days, so today's bonus is still up for grabs) ---
+  if (opts.withPassport) {
+    const stamp = (member, emoji, food, verdict, back) =>
+      add("INSERT INTO food_passport (id, family_id, member_id, food_key, food_name, emoji, verdict, day) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        newId(), familyId, member, food.toLowerCase(), food, emoji, verdict, addDays(today, -back));
+    stamp(mia, "🥝", "Kiwi fruit", "love", 9); stamp(mia, "🫛", "Snow peas", "ok", 6); stamp(mia, "🥑", "Avocado", "love", 4);
+    stamp(mia, "🍄", "Mushroom", "not_yet", 2);
+    stamp(jack, "🥭", "Mango", "love", 5); stamp(jack, "🌽", "Corn", "love", 3); stamp(jack, "🥦", "Broccoli", "not_yet", 1);
+    stamp(sam, "🐟", "Salmon", "ok", 7); stamp(sam, "🍆", "Eggplant", "love", 2);
+  }
 
   await db.batch(s);
   return { familyId, joinCode };

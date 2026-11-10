@@ -4,6 +4,13 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Food Explorer Passport + the 7 modules in habit ideas (2026-11-10)
+
+- **🥕 Food Explorer Passport** (top of 🍳 Food; nudge button under Win the Day): 24 kid-friendly foods + "another food". Tap → "How was it?" 😋 Loved it / 🙂 It's OK / 🤔 Not yet — every try stamps (effort counts). Badges at 1/5/10/20 foods.
+- **Bonus ⭐ for trying a new food** — can't be farmed: each food stamps once per person; 1 food star a day; max 3 a week; today only. Counts toward the weekly goal. Parents can remove a stamp. (`src/routes/foodPassport.js`, table auto-created; record in db/migrations/023.)
+- **Habit ideas from all 7 modules** in the habit editor: Move Your Way, Screen Balance, Food Explorers, Healthy Snacks, Fuel Your Body, Grow It, Healthy Home (and for bonus habits).
+- Demo family has passport stamps; welcome page + parent rules list mention the food bonus.
+
 ## ✅ Faster + simpler: sections with a bottom tab bar (2026-11-10)
 
 - **Sections:** the app is now 5 sections with a bottom tab bar: 🌟 Today (Win the Day — always first), 📅 Plan (calendar, Planner, Need an idea), 🍳 Food (meals, shopping, recipes, cookbook), 🎁 Rewards, 👨‍👩‍👧 Family (members, memories, check-in, then Settings: invite, notifications, Google, Parents, log out). One section on screen at a time. Who-are-you chip in the header.

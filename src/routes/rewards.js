@@ -1,3 +1,4 @@
+import { FOOD_STARS_PER_WEEK } from "./foodPassport.js";
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { newId } from "../lib/crypto.js";
 import { ensureRewardColumns } from "../lib/schemaUpgrades.js";
@@ -30,7 +31,7 @@ export async function listRewards(familyId, env) {
   return json({
     ok: true,
     rewards: (rewards.results || []).map((r) => ({ ...r, status: r.status || "approved" })),
-    rules: { ...POINTS, kudosPerDay: KUDOS_PER_DAY, weeklyGoalDefault: WEEKLY_GOAL_DEFAULT },
+    rules: { ...POINTS, kudosPerDay: KUDOS_PER_DAY, weeklyGoalDefault: WEEKLY_GOAL_DEFAULT, newFood: 1, newFoodPerWeek: FOOD_STARS_PER_WEEK },
   });
 }
 

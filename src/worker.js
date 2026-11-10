@@ -23,6 +23,7 @@ import * as aiRecipeIntakeRoutes from "./routes/aiRecipeIntake.js";
 import * as movementIdeasRoutes from "./routes/movementIdeas.js";
 import * as habitDayPlanRoutes from "./routes/habitDayPlan.js";
 import * as weeklyRoutes from "./routes/weekly.js";
+import * as foodPassportRoutes from "./routes/foodPassport.js";
 import * as parentRoutes from "./lib/parent.js";
 
 async function handleHealth(env) {
@@ -152,6 +153,10 @@ async function handleApi(request, env, url, ctx) {
     return habitDayPlanRoutes.deleteHabitDayPlan(habitDayPlanDeleteMatch[1], familyId, env);
   }
 
+  if (path === "/api/food-passport" && method === "GET") return foodPassportRoutes.getFoodPassport(request, familyId, env);
+  if (path === "/api/food-passport/try" && method === "POST") return foodPassportRoutes.tryFood(request, familyId, env);
+  const foodStampMatch = path.match(/^\/api\/food-passport\/([^/]+)$/);
+  if (foodStampMatch && method === "DELETE") return foodPassportRoutes.deleteFoodStamp(foodStampMatch[1], request, familyId, env);
   if (path === "/api/weekly" && method === "GET") return weeklyRoutes.getWeekly(request, familyId, env);
   if (path === "/api/weekly/choose" && method === "POST") return weeklyRoutes.chooseWeeklyReward(request, familyId, env);
   if (path === "/api/weekly/settings" && method === "POST") return weeklyRoutes.saveWeeklySettings(request, familyId, env);

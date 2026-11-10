@@ -3,6 +3,7 @@ import { hashPin, verifyPin, newId, newJoinCode } from "../lib/crypto.js";
 import { createSession } from "../lib/sessions.js";
 import { VALID_COLORS } from "./members.js";
 import { seedDemoFamily, DEMO_PIN } from "../lib/demoSeed.js";
+import { ensureFoodPassport } from "./foodPassport.js";
 import { parentStatus } from "../lib/parent.js";
 import { attachDemoPictures } from "../lib/demoPictures.js";
 
@@ -202,7 +203,8 @@ export async function demo(request, env, ctx) {
   const offset = Number.isFinite(body.tzOffsetMinutes) && Math.abs(body.tzOffsetMinutes) <= 14 * 60 ? body.tzOffsetMinutes : 0;
 
   const db = env.DB;
-  const { familyId, joinCode } = await seedDemoFamily(db, { today, tzOffsetMinutes: offset });
+  const withPassport = await ensureFoodPassport(db);
+  const { familyId, joinCode } = await seedDemoFamily(db, { today, tzOffsetMinutes: offset, withPassport });
   const token = await createSession(db, familyId);
   // Recipe pictures: shared ones attach instantly; if one has never been
   // made yet, it's made in the background so the visitor isn't kept waiting.
