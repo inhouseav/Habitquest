@@ -86,6 +86,20 @@
     .tab-page[data-section="today"] > .welcome-card { grid-column: 1 / -1 !important; grid-row: 1; }
     .tab-page[data-section="today"] .tp-time { min-width: 0; width: 100%; }
   }
+  .planner-ideas { display: none; }
+  .planner-managing .planner-ideas { display: block; }
+  .planner-managing .planner-simple-hint { display: none; }
+  .seg-tabs { display: flex; gap: 6px; background: #efe7d6; border-radius: 999px; padding: 4px; margin-bottom: 10px; }
+  .seg-tabs button { flex: 1; margin: 0; background: transparent; color: var(--text); box-shadow: none; border-radius: 999px; padding: 9px 6px; font-weight: 700; }
+  .seg-tabs button.on { background: #fff; box-shadow: 0 1px 4px rgba(24,63,53,0.12); }
+  .pick-grid.compact { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .pick-grid.compact .pick-tile { flex-direction: row; justify-content: flex-start; min-height: 58px; padding: 8px 12px; text-align: left; gap: 10px; font-size: 0.9rem; }
+  .pick-grid.compact .pick-tile .pt-emoji { font-size: 1.6rem; }
+  .pick-grid.compact .pick-tile.on::after { top: 50%; transform: translateY(-50%); right: 8px; }
+  .qa-summary { width: 100%; margin: 4px 0 0; display: flex; align-items: center; gap: 12px; background: #fff1e8; color: var(--text); border: 2px solid var(--terracotta); box-shadow: none; border-radius: 18px; padding: 12px 14px; font-size: 1.1rem; font-weight: 800; text-align: left; }
+  .qa-summary .qs-emoji { font-size: 1.9rem; }
+  .qa-summary .qs-change { margin-left: auto; font-size: 0.8rem; font-weight: 700; opacity: 0.7; }
+  .qa-more { margin-top: 10px; } .qa-more summary { cursor: pointer; font-weight: 700; opacity: 0.75; }
   .qa-time-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 10px; }
   .qa-time-row label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-size: 0.85rem; margin: 0; }
   .qa-time-row input { width: auto; margin: 0; }
@@ -152,6 +166,10 @@
   .pc-stat span { font-size: 0.78rem; font-weight: 700; }
   .pc-stat.gift { background: #fff1e8; }
   .reward-bar.big { height: 16px; position: relative; }
+  .pc-line { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.95rem; margin-bottom: 6px; }
+  .pc-line b { font-size: 1.15rem; }
+  .pc-gift { margin-top: 6px; font-size: 0.95rem; }
+  .pc-change { width: auto; margin: 0 0 0 4px; padding: 2px 10px; font-size: 0.78rem; background: var(--sage); color: var(--text); box-shadow: none; border-radius: 999px; }
   .reward-mini-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 6px; margin-top: 6px; }
   .reward-mini { flex: 0 0 auto; width: 128px; margin: 0; border-radius: 16px; padding: 10px 8px; border: 2px solid transparent; box-shadow: none; color: var(--text); font-weight: 700; font-size: 0.8rem; line-height: 1.2; display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
   .reward-mini .rm-emoji { font-size: 1.8rem; }
@@ -297,7 +315,7 @@
     .card.cal-expanded .cal-event-chip { font-size: 0.85rem; padding: 6px 9px; }
   }
   .event-row:last-child { border-bottom: none; }
-  .muted { opacity: 0.65; font-size: 0.85rem; }
+  .muted { color: #536a60; font-size: 0.85rem; }
   .hidden { display: none !important; }
   .join-code { font-size: 1.4rem; font-weight: 700; letter-spacing: 2px; background: var(--gold); padding: 10px 16px; border-radius: 12px; text-align: center; }
   .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
@@ -593,7 +611,7 @@
       <button class="small" type="button" id="signupWelcomeDoneBtn" style="width:auto; margin-top:10px;">Got it 👍</button>
     </div>
     <div class="card full-width today-plan-card" id="todayPlanCard">
-      <div style="display:flex; align-items:center; gap:8px;"><h3 style="margin:0;">📅 Today's plan</h3><button type="button" class="small" id="todayPlanAddBtn" style="margin:0 0 0 auto; width:auto;">＋ Add</button></div>
+      <div style="display:flex; align-items:center; gap:8px;"><h3 style="margin:0;">📅 Today's plan</h3><button type="button" class="small secondary" id="addCountdownBtn" style="margin:0 0 0 auto; width:auto;" title="Add a countdown">⏳ Countdown</button><button type="button" class="small" id="todayPlanAddBtn" style="margin:0; width:auto;">＋ Add</button></div>
       <div id="todayPlanNext" class="tp-next"></div>
       <div id="todayPlanList"><p class="loading-text">Loading...</p></div>
     </div>
@@ -651,9 +669,11 @@
     </div>
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-        <h3 style="margin:0;">📋 Planner</h3>
-        <button type="button" class="small secondary" id="plannerManageBtn" style="margin:0; width:auto;">⚙️ Manage</button>
+        <h3 style="margin:0;">📅 Plan my week</h3>
+        <button type="button" class="small secondary" id="plannerManageBtn" style="margin:0; width:auto;">⚙️ Ideas</button>
       </div>
+      <p class="muted planner-simple-hint">Tap a day on the calendar to add something — your saved ideas are there as tiles. <b>⚙️ Ideas</b> lets a parent change the lists.</p>
+      <div class="planner-ideas">
       <p class="muted">Tap an idea to put it on a day.</p>
       <p class="muted hidden" id="plannerManageHint" style="background:#fff6ee; border-radius:8px; padding:6px 10px;">⚙️ Manage: tap ✕ to remove an idea, or add new ones below. Tap Done when finished.</p>
       <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
@@ -696,12 +716,13 @@
           <button class="small secondary" type="button" id="plannerPickDayCancelBtn" style="flex:0; white-space:nowrap;">Cancel</button>
         </div>
       </div>
+      </div>
       <div style="margin-top:14px; padding-top:10px; border-top:1px dashed #eee3cf;">
         <button type="button" class="small secondary" id="plannerWeekToggleBtn" style="margin:0; width:auto;">📅 Plan my week ▾</button>
         <div id="plannerWeekPlanWrap" class="hidden"></div>
       </div>
     </div>
-    <div class="card">
+    <div class="card hidden" id="ideaCard">
       <h3>Need an idea? 🤖</h3>
       <p class="muted">Get a fun activity suggestion — or a healthy snack idea.</p>
       <label>For</label>
@@ -1001,12 +1022,17 @@
   <div class="ftf-sheet wide">
     <div style="display:flex; align-items:center; gap:8px;"><h2 id="qaTitle" style="margin:0;">➕ Add</h2><button type="button" class="small secondary" id="qaCloseBtn" style="margin:0 0 0 auto; width:auto;">✕</button></div>
     <div id="qaPickSection">
-      <div class="pick-head">What's happening? <span class="muted">— tap one</span></div>
-      <div class="pick-grid" id="qaTiles"></div>
-      <div class="pick-head">📝 Jobs &amp; plans <span class="muted">— tap, then add the details</span></div>
-      <div class="pick-grid" id="qaTasks"></div>
+      <div class="pick-head">What's happening?</div>
+      <div class="seg-tabs" id="qaSeg">
+        <button type="button" data-qa-seg="acts">⭐ Activities</button>
+        <button type="button" data-qa-seg="jobs">📝 Jobs &amp; plans</button>
+      </div>
+      <div class="pick-grid compact" id="qaTiles"></div>
+      <div class="pick-grid compact hidden" id="qaTasks"></div>
     </div>
-    <div class="pick-head hidden" id="qaNameHead">What is it?</div>
+    <div id="qaStep2">
+    <button type="button" class="qa-summary hidden" id="qaSummary"></button>
+    <div class="pick-head hidden" id="qaNameHead">What is it? <button type="button" class="small secondary" id="qaBackBtn" style="margin:0 0 0 auto; width:auto;">← Pick a tile</button></div>
     <input id="qaOwnTitle" class="hidden" maxlength="80" placeholder="Type it… e.g. Swimming lesson" style="margin-top:8px;" />
     <div class="pick-head" id="qaWhoHead">Who's it for?</div>
     <div class="chip-row" id="qaWho"></div>
@@ -1024,7 +1050,10 @@
     </div>
     <label class="qa-check"><input type="checkbox" id="qaRepeatCheck" /> 🔁 Every week <span id="qaUntilWrap" class="hidden">until <input type="date" id="qaUntilInput" style="width:auto; margin:0;" /></span></label>
     <label id="qaHabitWrap" class="qa-check hidden"><input type="checkbox" id="qaHabitCheck" checked /> <span id="qaHabitLabel">⭐ Count it as a habit that day</span></label>
-    <label class="qa-check"><input type="checkbox" id="qaCountdownCheck" /> ⏳ Show a countdown on Today ("3 sleeps until…")</label>
+    <details class="qa-more" id="qaMore"><summary>More…</summary>
+      <label class="qa-check"><input type="checkbox" id="qaCountdownCheck" /> ⏳ Show a countdown on Today ("3 sleeps until…")</label>
+    </details>
+    </div>
     <p class="error hidden" id="qaError"></p>
     <div class="sheet-actions">
       <button type="button" id="qaAddBtn">Add ✓</button>
@@ -1955,12 +1984,27 @@ function qaApplyToInputs() {
   $("qaRepeatCheck").checked = qa.repeat; $("qaUntilInput").value = qa.until; $("qaUntilWrap").classList.toggle("hidden", !qa.repeat);
   $("qaDateInput").value = qa.day;
 }
+// Step 1 = "What?" (tiles), step 2 = "Who & when?" — one screen each.
+function qaShowStep(step) {
+  qa.step = step;
+  $("qaPickSection").classList.toggle("hidden", step !== 1);
+  $("qaStep2").classList.toggle("hidden", step !== 2);
+  $("qaAddBtn").classList.toggle("hidden", step !== 2);
+  const o = qa.tile !== null ? qaTileOptions()[qa.tile] : null;
+  const showSummary = step === 2 && !qa.editId && o;
+  $("qaSummary").classList.toggle("hidden", !showSummary);
+  if (showSummary) $("qaSummary").innerHTML = `<span class="qs-emoji">${escapeHtml(o.emoji)}</span><span>${escapeHtml(o.title)}</span><span class="qs-change">✎ change</span>`;
+  $("qaOwnTitle").classList.toggle("hidden", step !== 2 || !(qa.own || qa.editId));
+  $("qaNameHead").classList.toggle("hidden", step !== 2 || !(qa.own || qa.editId));
+  const sheet = document.querySelector("#quickAddPopup .ftf-sheet"); if (sheet) sheet.scrollTop = 0;
+}
 function openAddEventForDay(day) {
   qa = qaReset(day);
+  qa.seg = "acts";
   $("qaTitle").textContent = "➕ " + new Date(day + "T00:00:00").toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
-  $("qaOwnTitle").value = ""; hide("qaOwnTitle"); hide("qaNameHead"); show("qaPickSection"); hide("qaDayRow"); hide("qaDeleteBtn");
-  clearError("qaError"); $("qaCountdownCheck").checked = false;
-  qaApplyToInputs(); drawQuickAdd(); show("quickAddPopup");
+  $("qaOwnTitle").value = ""; hide("qaDayRow"); hide("qaDeleteBtn");
+  clearError("qaError"); $("qaCountdownCheck").checked = false; $("qaMore").open = false;
+  qaApplyToInputs(); drawQuickAdd(); qaShowStep(1); show("quickAddPopup");
 }
 function openEditEvent(e) {
   const day = localDay(e.starts_at);
@@ -1969,15 +2013,19 @@ function openEditEvent(e) {
     time: localHHMM(e.starts_at) || "15:30", end: e.ends_at ? localHHMM(e.ends_at) : "",
     repeat: !!e.recurrence, until: e.recurrence ? e.recurrence.until : addDays(day, 90) };
   $("qaTitle").textContent = "✏️ Change event";
-  hide("qaPickSection"); show("qaNameHead"); show("qaOwnTitle"); show("qaDayRow"); show("qaDeleteBtn");
+  show("qaDayRow"); show("qaDeleteBtn");
   $("qaOwnTitle").value = e.title; $("qaDeleteBtn").textContent = e.recurrence ? "🗑 Delete (every week)" : "🗑 Delete";
-  clearError("qaError"); $("qaCountdownCheck").checked = !!e.countdown;
-  qaApplyToInputs(); drawQuickAdd(); show("quickAddPopup");
+  clearError("qaError"); $("qaCountdownCheck").checked = !!e.countdown; $("qaMore").open = !!e.countdown;
+  qaApplyToInputs(); drawQuickAdd(); qaShowStep(2); show("quickAddPopup");
 }
 function drawQuickAdd() {
   const opts = qaTileOptions();
   $("qaTiles").innerHTML = opts.map((o, i) => `<button type="button" class="pick-tile ${qa.tile === i ? "on" : ""}" data-qa-tile="${i}"><span class="pt-emoji">${escapeHtml(o.emoji)}</span><span class="pt-title">${escapeHtml(o.title)}</span></button>`).join("") +
+    `<button type="button" class="pick-tile" data-qa-surprise><span class="pt-emoji">🎲</span><span class="pt-title">Surprise me!</span></button>` +
     `<button type="button" class="pick-tile own ${qa.own && !qa.task && !qa.editId ? "on" : ""}" data-qa-own><span class="pt-emoji">✏️</span><span class="pt-title">Something new</span></button>`;
+  $("qaSeg").querySelectorAll("[data-qa-seg]").forEach((b) => b.classList.toggle("on", b.getAttribute("data-qa-seg") === (qa.seg || "acts")));
+  $("qaTiles").classList.toggle("hidden", (qa.seg || "acts") !== "acts");
+  $("qaTasks").classList.toggle("hidden", qa.seg !== "jobs");
   $("qaTasks").innerHTML = QA_TASKS.map(([e, t, ph]) => `<button type="button" class="pick-tile task ${qa.task === t ? "on" : ""}" data-qa-task="${escapeAttr(t)}" data-qa-task-emoji="${e}" data-qa-task-ph="${escapeAttr(ph)}"><span class="pt-emoji">${e}</span><span class="pt-title">${escapeHtml(t)}</span></button>`).join("");
   $("qaWhoHead").textContent = qa.task ? "Who's doing it?" : "Who's it for?";
   $("qaWho").innerHTML = `<button type="button" class="small ${qa.who.size ? "secondary" : ""}" data-qa-who="">🌍 Everyone</button>` +
@@ -1996,13 +2044,22 @@ function drawQuickAdd() {
   const dayName = new Date(qa.day + "T00:00:00").toLocaleDateString([], { weekday: "long" });
   $("qaAddBtn").textContent = qa.editId ? "Save changes ✓" : qa.repeat ? `Add every ${dayName} ✓` : `Add to ${dayName} ✓`;
 
-  $("qaTiles").querySelectorAll("[data-qa-tile]").forEach((b) => b.onclick = () => { qa.tile = Number(b.getAttribute("data-qa-tile")); qa.own = false; qa.task = null; hide("qaOwnTitle"); drawQuickAdd(); });
-  $("qaTiles").querySelector("[data-qa-own]").onclick = () => { qa.tile = null; qa.own = true; qa.task = null; drawQuickAdd(); show("qaOwnTitle"); $("qaOwnTitle").value = ""; $("qaOwnTitle").placeholder = "Type it… e.g. Swimming lesson"; $("qaOwnTitle").focus(); };
+  $("qaTiles").querySelectorAll("[data-qa-tile]").forEach((b) => b.onclick = () => { qa.tile = Number(b.getAttribute("data-qa-tile")); qa.own = false; qa.task = null; drawQuickAdd(); qaShowStep(2); });
+  $("qaTiles").querySelector("[data-qa-surprise]").onclick = () => {
+    // "Need an idea?" — a random idea from the family's lists and the 7 modules
+    const pool = [...opts.map((o, i) => ({ i })), ...[1, 3].flatMap((slot) => (MODULE_IDEAS[slot] || []).flatMap(([, ideas]) => ideas.map(([emoji, title]) => ({ emoji, title }))))];
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    if (pick.i !== undefined) { qa.tile = pick.i; qa.own = false; }
+    else { qa.tile = null; qa.own = true; $("qaOwnTitle").value = `${pick.emoji} ${pick.title}`; }
+    qa.task = null; drawQuickAdd(); qaShowStep(2); toast("🎲 How about this?");
+  };
+  $("qaTiles").querySelector("[data-qa-own]").onclick = () => { qa.tile = null; qa.own = true; qa.task = null; drawQuickAdd(); qaShowStep(2); $("qaOwnTitle").value = ""; $("qaOwnTitle").placeholder = "Type it… e.g. Swimming lesson"; $("qaOwnTitle").focus(); };
+  $("qaSeg").querySelectorAll("[data-qa-seg]").forEach((b) => b.onclick = () => { qa.seg = b.getAttribute("data-qa-seg"); drawQuickAdd(); });
   $("qaTasks").querySelectorAll("[data-qa-task]").forEach((b) => b.onclick = () => {
     const t = b.getAttribute("data-qa-task");
     qa.tile = null; qa.own = true; qa.task = t;
     const times = QA_TASK_TIMES[t]; if (times) { qa.time = times[0]; qa.end = times[1]; qaApplyToInputs(); }
-    drawQuickAdd();
+    drawQuickAdd(); qaShowStep(2);
     const input = $("qaOwnTitle"); show("qaOwnTitle");
     input.value = `${b.getAttribute("data-qa-task-emoji")} ${t} · `;
     input.placeholder = b.getAttribute("data-qa-task-ph");
@@ -2028,6 +2085,8 @@ $("qaEndInput").onchange = (e) => { qa.end = e.target.value || ""; drawQuickAdd(
 $("qaDateInput").onchange = (e) => { if (e.target.value) { qa.day = e.target.value; drawQuickAdd(); } };
 $("qaRepeatCheck").onchange = (e) => { qa.repeat = e.target.checked; $("qaUntilWrap").classList.toggle("hidden", !qa.repeat); drawQuickAdd(); };
 $("qaUntilInput").onchange = (e) => { if (e.target.value) qa.until = e.target.value; };
+$("qaSummary").onclick = () => qaShowStep(1);
+$("qaBackBtn").onclick = () => { if (qa.editId) return; qa.own = false; qa.task = null; drawQuickAdd(); qaShowStep(1); };
 $("qaCloseBtn").onclick = () => hide("quickAddPopup");
 $("quickAddPopup").addEventListener("click", (e) => { if (e.target.id === "quickAddPopup") hide("quickAddPopup"); });
 $("qaDeleteBtn").onclick = () => withBusyButton($("qaDeleteBtn"), "Deleting...", async () => {
@@ -2272,7 +2331,8 @@ let plannerShowAll = { movement: false, home: false };
 let plannerManaging = false;
 function setPlannerManaging(on) {
   plannerManaging = on;
-  $("plannerManageBtn").textContent = on ? "✓ Done" : "⚙️ Manage";
+  $("plannerManageBtn").textContent = on ? "✓ Done" : "⚙️ Ideas";
+  const pc = $("plannerManageBtn").closest(".card"); if (pc) pc.classList.toggle("planner-managing", on);
   $("plannerManageHint").classList.toggle("hidden", !on);
   renderPlannerIdeaPalette("movement");
   renderPlannerIdeaPalette("home");
@@ -2476,6 +2536,7 @@ $("plannerPickDayConfirmBtn").onclick = async () => {
 
 // --- Personal weekly habits ---
 let habitEditingMemberId = null;
+let habitsSwitchOpen = false; // a kid peeking at someone else's habits
 // The 3 weekly habit slots are a soft framing (kids still type their own
 // specific habit), tied to what the dietitian research flagged as the
 // biggest-impact areas: daily movement, hands-on involvement with food,
@@ -2520,12 +2581,20 @@ async function renderHabits() {
     habitsActiveMemberId = data.members[0] ? data.members[0].memberId : null;
   }
   const tabsWrap = $("habitsMemberTabs");
-  tabsWrap.innerHTML = data.members.map((m) => {
+  // Kids on their own phone just see their own habits (one "who" picker:
+  // the 👤 chip at the top). Parents and shared devices see everyone's tabs.
+  const meRow = meMember();
+  const kidOwnPhone = meRow && meRow.role === "child" && data.members.some((x) => x.memberId === meRow.id);
+  if (kidOwnPhone && !habitsSwitchOpen) {
+    if (habitsActiveMemberId !== meRow.id) habitsActiveMemberId = meRow.id;
+    tabsWrap.innerHTML = `<button type="button" class="small secondary" data-habits-switch style="margin:0; width:auto; font-size:0.78rem;">👀 See someone else</button>`;
+    tabsWrap.querySelector("[data-habits-switch]").onclick = () => { habitsSwitchOpen = true; renderHabits(); };
+  } else tabsWrap.innerHTML = data.members.map((m) => {
     const active = habitsActiveMemberId === m.memberId;
     return `<button class="small ${active ? "" : "secondary"}" data-habits-tab="${m.memberId}" style="margin:0;"><span class="member-dot" style="background:${m.color || '#ccc'}"></span>${escapeHtml(m.displayName)}</button>`;
   }).join("");
   tabsWrap.querySelectorAll("[data-habits-tab]").forEach((btn) => {
-    btn.onclick = () => { habitsActiveMemberId = btn.getAttribute("data-habits-tab"); renderHabits(); };
+    btn.onclick = () => { habitsActiveMemberId = btn.getAttribute("data-habits-tab"); if (kidOwnPhone && habitsActiveMemberId === meRow.id) habitsSwitchOpen = false; renderHabits(); };
   });
 
   data.members.filter((m) => m.memberId === habitsActiveMemberId).forEach((m) => {
@@ -2782,7 +2851,7 @@ async function renderHabits() {
 
 // "Plan my week" lives in the Planner card, for whoever's tab is showing in
 // Win the Day (normally "me" on this phone).
-let plannerWeekOpen = false;
+let plannerWeekOpen = true; // "Plan my week" is the main thing on this card now
 function renderPlannerWeekPlan(m, weekStart) {
   const wrap = $("plannerWeekPlanWrap");
   $("plannerWeekToggleBtn").textContent = `📅 Plan my week${m ? " — " + m.displayName : ""} ${plannerWeekOpen ? "▴" : "▾"}`;
@@ -2799,6 +2868,7 @@ $("plannerWeekToggleBtn").onclick = () => { plannerWeekOpen = !plannerWeekOpen; 
 // (unlocks Saturday morning if you reach the goal).
 let rewardsListCache = null;
 let weeklyCache = null;
+let rewardPickerOpenFor = null;
 async function loadRewardProgress(el, m) {
   try {
     const [weekly, rewards] = await Promise.all([
@@ -2810,41 +2880,31 @@ async function loadRewardProgress(el, m) {
     const me = weekly.members.find((x) => x.memberId === m.memberId) || { starsThisWeek: 0, status: "none" };
     const goal = weekly.goal;
     const stars = me.starsThisWeek;
-    const wonDays = new Set(m.weekWonDays || []);
-    const monday = mondayOfWeek();
-    const today = todayStr();
-    const strip = `<div class="week-strip">${MEAL_DAY_LABELS.map((lbl, i) => {
-      const d = addDays(monday, i);
-      const cls = [wonDays.has(d) ? "wd-won" : "", d === today ? "wd-today" : "", d > today ? "wd-future" : "", i === 5 ? "wd-reward" : ""].join(" ");
-      return `<div class="week-day ${cls}" title="${d}"><span>${i === 5 ? "🎁" : lbl.slice(0, 1)}</span><i>${wonDays.has(d) ? "✓" : ""}</i></div>`;
-    }).join("")}</div>`;
     const pct = Math.min(100, Math.max(4, Math.round((stars / goal) * 100)));
     const left = Math.max(0, goal - stars);
     const streak = m.currentStreak || 0;
-    const stats = `<div class="pc-stats">
-      <div class="pc-stat"><b>${stars}</b><span>⭐ stars this week</span></div>
-      <div class="pc-stat"><b>${streak}</b><span>🔥 day streak</span></div>
-      <div class="pc-stat gift"><b>${left || "✅"}</b><span>${left ? "🎁 more to your reward" : "🎁 goal reached!"}</span></div>
-    </div>`;
-    const bar = stats + `<div class="reward-line">🎯 <b>${stars}</b> / ${goal} ⭐ — unlocks Saturday</div><div class="reward-bar big"><span style="width:${pct}%"></span></div>`;
-
     const choices = (rewards.rewards || []).filter((r) => r.status !== "pending" && (!r.member_id || r.member_id === m.memberId));
+    const chosen = choices.find((r) => r.id === me.rewardId);
+    const chosenName = chosen ? chosen.title.replace(LEAD_EMOJI_RE, "") : "";
+    const giftTxt = me.status === "earned" ? `🎉 You earned <b>${escapeHtml(me.rewardTitle || "your reward")}</b>!`
+      : me.status === "given" ? `🎁 Enjoy <b>${escapeHtml(me.rewardTitle || "your reward")}</b>!`
+      : !left ? `✅ Goal reached${chosen ? ` — <b>${escapeHtml(chosenName)}</b>` : ""} unlocks Saturday`
+      : chosen ? `🎁 <b>${left}</b> more to <b>${escapeHtml(chosenName)}</b>` : `🎁 <b>${left}</b> more to a reward`;
+    const bar = `<div class="pc-line"><span>⭐ <b>${stars}</b>/${goal} stars this week</span><span>🔥 <b>${streak}</b> day streak</span></div>
+      <div class="reward-bar"><span style="width:${pct}%"></span></div>
+      <div class="pc-gift">${giftTxt}${chosen && me.status !== "earned" && me.status !== "given" && choices.length > 1 ? ` <button type="button" class="pc-change" data-reward-change>change</button>` : ""}</div>`;
     let rewardHtml = "";
-    if (me.status === "earned") {
-      rewardHtml = `<div class="reward-earned">🎉 You earned <b>${escapeHtml(me.rewardTitle || "your reward")}</b>! A parent will give it to you.</div>`;
-    } else if (me.status === "given") {
-      rewardHtml = `<div class="reward-line">🎁 Enjoy your <b>${escapeHtml(me.rewardTitle || "reward")}</b>! Pick a new one next week.</div>`;
+    const pickerOpen = rewardPickerOpenFor === m.memberId;
+    if (me.status === "earned" || me.status === "given") {
+      rewardHtml = me.status === "earned" ? `<div class="reward-line muted">A parent will give it to you 🎁</div>` : "";
     } else if (!choices.length) {
-      rewardHtml = `<div class="reward-line muted">Ask a parent to add rewards in the Reward shop, then pick one to work towards.</div>`;
-    } else {
-      const chosen = choices.find((r) => r.id === me.rewardId);
-      const status = !me.rewardId ? `<b>Pick your reward for this week 👇</b>`
-        : stars >= goal ? (weekly.unlockOpen ? "" : `✅ <b>Goal reached!</b> ${escapeHtml(chosen ? chosen.title : "Your reward")} unlocks <b>Saturday morning</b>.`)
-        : `🎁 <b>${left}</b> more ⭐ to <b>${escapeHtml(chosen ? chosen.title : "your reward")}</b>!`;
-      const minis = choices.map((r) => { const art = rewardArt(r.title); return `<button type="button" class="reward-mini ${r.id === me.rewardId ? "on" : ""}" data-weekly-pick="${r.id}" style="background:${art.bg}"><span class="rm-emoji">${art.emoji}</span>${escapeHtml(r.title.replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, ""))}</button>`; }).join("");
-      rewardHtml = `<div class="reward-line" style="margin-top:8px;">${status}</div><div class="reward-mini-row">${minis}</div>`;
+      rewardHtml = `<div class="reward-line muted">Ask a parent to add rewards in 🎁 Rewards, then pick one to work towards.</div>`;
+    } else if (!me.rewardId || pickerOpen) {
+      const minis = choices.map((r) => { const art = rewardArt(r.title); return `<button type="button" class="reward-mini ${r.id === me.rewardId ? "on" : ""}" data-weekly-pick="${r.id}" style="background:${art.bg}"><span class="rm-emoji">${art.emoji}</span>${escapeHtml(r.title.replace(LEAD_EMOJI_RE, ""))}</button>`; }).join("");
+      rewardHtml = `<div class="reward-line" style="margin-top:8px;"><b>${me.rewardId ? "Change your reward 👇" : "Pick your reward for this week 👇"}</b></div><div class="reward-mini-row">${minis}</div>`;
     }
-    el.innerHTML = bar + rewardHtml + strip;
+    el.innerHTML = bar + rewardHtml;
+    const ch = el.querySelector("[data-reward-change]"); if (ch) ch.onclick = () => { rewardPickerOpenFor = pickerOpen ? null : m.memberId; loadRewardProgress(el, m); };
     el.querySelectorAll("[data-weekly-pick]").forEach((b) => b.onclick = async () => {
       const rewardId = b.getAttribute("data-weekly-pick");
       if (rewardId === me.rewardId) return;
@@ -2852,6 +2912,7 @@ async function loadRewardProgress(el, m) {
       try {
         await api("/api/weekly/choose", { method: "POST", body: JSON.stringify({ memberId: m.memberId, rewardId, day: todayStr() }) });
         toast("🎁 Good choice! Win your days to unlock it on Saturday.");
+        rewardPickerOpenFor = null;
         loadRewardProgress(el, m);
         if (rewardsListCache) renderWeeklyOverview();
       } catch (err) { toast(err.message, true); }
@@ -5224,8 +5285,8 @@ function countdownChipsHtml() {
 }
 function renderCountdowns() {
   const strip = $("countdownStrip"); if (!strip) return;
-  strip.innerHTML = countdownChipsHtml() + `<button type="button" class="countdown-add small" id="addCountdownBtn">＋ Countdown</button>`;
-  $("addCountdownBtn").onclick = openCountdownPopup;
+  strip.innerHTML = countdownChipsHtml();
+  strip.classList.toggle("hidden", !strip.innerHTML);
 }
 function openCountdownPopup() {
   $("cdTitle").value = ""; $("cdDate").value = addDays(todayStr(), 7); $("cdDate").min = todayStr(); clearError("cdError");
@@ -5236,6 +5297,7 @@ function openCountdownPopup() {
   });
   show("countdownPopup");
 }
+$("addCountdownBtn").onclick = openCountdownPopup;
 $("cdCloseBtn").onclick = () => hide("countdownPopup");
 $("countdownPopup").addEventListener("click", (e) => { if (e.target.id === "countdownPopup") hide("countdownPopup"); });
 $("cdTitle").addEventListener("input", () => { $("cdTiles").querySelectorAll(".pick-tile").forEach((x) => x.classList.toggle("on", x.getAttribute("data-cd-idea") === $("cdTitle").value)); });

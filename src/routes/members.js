@@ -5,12 +5,26 @@ import { ensureMemberStatus } from "../lib/schemaUpgrades.js";
 const MAX_NAME_LENGTH = 60;
 const VALID_ROLES = ["child", "parent"];
 export const VALID_COLORS = [
-  "#BE7050", // terracotta
-  "#7C9473", // sage-dark (derived from #E4EAD9)
-  "#6E8FA3", // soft blue-dark (derived from #E2ECEE)
-  "#C9A227", // gold-dark (derived from #F8E8C7)
-  "#A3604A", // peach-dark (derived from #F8E3D1)
+  "#5E9BD6", // blue
+  "#6BAF7A", // green
+  "#9B7FD4", // purple
+  "#E0A932", // gold
+  "#E07FA6", // pink
+  "#4DB3A8", // teal
 ];
+// Person colours used to include the app's own button colour (terracotta),
+// which made one person's events look like warnings. Old → new.
+export const OLD_TO_NEW_COLORS = {
+  "#BE7050": "#5E9BD6", "#7C9473": "#6BAF7A", "#6E8FA3": "#9B7FD4", "#C9A227": "#E0A932", "#A3604A": "#E07FA6",
+};
+/** Moves any member still on an old colour to its new colour (cheap; safe to run often). */
+export async function refreshPersonColors(db, familyId) {
+  const olds = Object.keys(OLD_TO_NEW_COLORS);
+  const cases = olds.map(() => "WHEN ? THEN ?").join(" ");
+  const args = olds.flatMap((o) => [o, OLD_TO_NEW_COLORS[o]]);
+  await db.prepare(`UPDATE members SET color = CASE color ${cases} END WHERE family_id = ? AND color IN (${olds.map(() => "?").join(",")})`)
+    .bind(...args, familyId, ...olds).run().catch(() => {});
+}
 
 function validName(name) {
   return typeof name === "string" && name.trim().length > 0 && name.trim().length <= MAX_NAME_LENGTH;

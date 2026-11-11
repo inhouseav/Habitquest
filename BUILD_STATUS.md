@@ -4,6 +4,14 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Calmer design: 5 tidy-ups (2026-11-11)
+
+1. **Win the Day is compact:** one line "⭐ 9/12 stars this week · 🔥 4 day streak", one bar, "🎁 3 more to Movie night (change)". Reward cards only show until you've picked one (or tap change). Week strip and big number boxes removed. Countdown chips only show when there are countdowns; "⏳ Countdown" button lives in Today's plan.
+2. **Quick add in two steps:** "What's happening?" with ⭐ Activities / 📝 Jobs & plans tabs and compact tiles (plus 🎲 Surprise me! and ✏️ Something new) → "Who & when?" with a summary of what you picked (tap to change). Countdown tick under "More…".
+3. **One who-picker:** a kid on their own phone sees just their own habits on Today ("👀 See someone else" to peek); parents and shared devices still get everyone's name buttons.
+4. **Simpler Plan tab:** calendar + "📅 Plan my week" (open by default). The ideas lists are behind "⚙️ Ideas" (parents) and appear as quick-add tiles; "Need an idea?" became 🎲 Surprise me! in the quick add.
+5. **Colours & contrast:** new person colours (blue, green, purple, gold, pink, teal) that never match the app's button colour — existing families are switched over automatically. Grey helper text is darker and easier to read.
+
 ## ✅ Family day at a glance: Today's plan, edit events, start/finish times, every week (2026-11-11)
 
 - **📅 Today's plan on Today** (whole family): time (start–finish), emoji + name, who (colour per person). "▶ Now / ⏭ Next … (in 2h 15m)" banner, a red "11:39 now" line, finished items folded into "✓ 5 done earlier", the next 6 (4 on phones) with "＋ N more". Tap an item to change it; "＋ Add" opens quick add for today. On a sideways iPad it sits beside Win the Day.

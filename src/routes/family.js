@@ -2,7 +2,7 @@ import { ensureMemberStatus } from "../lib/schemaUpgrades.js";
 import { json, errorResponse, readJson } from "../lib/http.js";
 import { hashPin, verifyPin, newId, newJoinCode } from "../lib/crypto.js";
 import { createSession } from "../lib/sessions.js";
-import { VALID_COLORS } from "./members.js";
+import { VALID_COLORS, refreshPersonColors } from "./members.js";
 import { seedDemoFamily, DEMO_PIN } from "../lib/demoSeed.js";
 import { ensureFoodPassport } from "./foodPassport.js";
 import { parentStatus } from "../lib/parent.js";
@@ -178,6 +178,7 @@ export async function me(familyId, env, request) {
     .bind(familyId)
     .first();
   if (!family) return errorResponse("Family not found.", 404);
+  await refreshPersonColors(db, familyId);
 
   const status = await ensureMemberStatus(db);
   const members = await db
