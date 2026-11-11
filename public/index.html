@@ -64,6 +64,27 @@
   #whoCard { background: #fffdf7; border-radius: 22px; padding: 22px; width: min(380px, 100%); box-shadow: 0 14px 40px rgba(0,0,0,0.25); text-align: center; }
   #whoList { display: flex; flex-direction: column; gap: 8px; }
   #whoList button { margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 1rem; }
+  /* ⏳ Countdowns on Today */
+  .countdown-strip { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 10px; }
+  .countdown-chip { flex: 0 0 auto; background: #fff; border-radius: 16px; padding: 8px 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; border: 2px solid #f1e3cc; }
+  .countdown-chip .cd-emoji { font-size: 1.6rem; }
+  .countdown-chip .cd-n { font-family: Georgia, serif; font-size: 1.4rem; color: var(--terracotta); }
+  .countdown-chip small { display: block; font-weight: 600; opacity: 0.7; font-size: 0.75rem; }
+  .countdown-add { flex: 0 0 auto; width: auto; margin: 0; border-radius: 16px; background: transparent; color: var(--text); border: 2px dashed #e2d3b8; box-shadow: none; font-weight: 700; }
+  /* 🖼️ Family screen (shown when a tablet/laptop is left alone) */
+  #familyScreen { position: fixed; inset: 0; z-index: 4000; background: #faf6ed; display: grid; grid-template-columns: minmax(320px, 1fr) 1.3fr; gap: 28px; padding: 36px; cursor: pointer; }
+  #familyScreen.hidden { display: none; }
+  #familyScreen .fs-clock { font-family: Georgia, serif; font-size: clamp(4rem, 9vw, 7.5rem); line-height: 1; color: var(--text); }
+  #familyScreen .fs-date { font-size: 1.5rem; font-weight: 700; opacity: 0.75; margin: 6px 0 22px; }
+  #familyScreen h3 { margin: 18px 0 8px; font-size: 1.25rem; }
+  #familyScreen .fs-item { background: #fff; border-radius: 16px; padding: 12px 16px; margin-bottom: 8px; font-size: 1.15rem; font-weight: 700; display: flex; gap: 12px; align-items: baseline; }
+  #familyScreen .fs-item .fs-time { color: var(--terracotta); min-width: 78px; }
+  #familyScreen .fs-item .fs-who { margin-left: auto; font-weight: 600; opacity: 0.6; font-size: 0.95rem; }
+  #familyScreen .fs-photo { border-radius: 28px; background: #e9e1d2 center / cover no-repeat; position: relative; overflow: hidden; min-height: 300px; display: flex; align-items: flex-end; }
+  #familyScreen .fs-cap { width: 100%; padding: 40px 22px 18px; background: linear-gradient(transparent, rgba(24,63,53,0.75)); color: #fff; font-weight: 700; font-size: 1.2rem; }
+  #familyScreen .fs-hint { position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; opacity: 0.45; font-size: 0.9rem; font-weight: 600; }
+  @media (orientation: portrait) { #familyScreen { grid-template-columns: 1fr; grid-template-rows: auto 1fr; padding: 28px; } }
+  .pick-tile.task .pt-emoji { font-size: 1.8rem; }
   /* Big tappable picture tiles (habits, quick add, meals, rewards) */
   .pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
   .pick-tile { position: relative; margin: 0; background: #fff; color: var(--text); border: 2px solid #eadfca; border-radius: 18px; padding: 12px 8px; min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; box-shadow: none; font-weight: 700; font-size: 0.92rem; line-height: 1.2; text-align: center; width: 100%; }
@@ -533,7 +554,7 @@
     </div>
     <div class="card full-width win-card">
       <h3>Win the Day 🌟</h3>
-      <div id="winDayDate" class="win-day-date"></div>
+      <div id="countdownStrip" class="countdown-strip"></div><div id="winDayDate" class="win-day-date"></div>
       <div id="habitsMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
       <div id="habitsList"><p class="loading-text">Loading...</p></div>
     </div>
@@ -840,8 +861,12 @@
         <button class="settings-link" data-settings-toggle="notify">🔔 Notifications ›</button>
         <button class="settings-link" data-settings-toggle="google">📅 Google Calendar ›</button>
         <button class="settings-link" id="parentAdminLinkBtn" type="button">🔒 Parents ›</button>
+        <button class="settings-link" id="openFamilyScreenBtn" type="button">🖼️ Family screen</button>
         <button class="settings-link" id="logoutBtn" type="button">🚪 Log out</button>
       </div>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer; font-size:0.88rem;">
+        <input type="checkbox" id="familyScreenToggle" style="width:20px; height:20px; margin:0;" /> 🖼️ Show the family screen when this device is left alone for 2 minutes
+      </label>
     </div>
     <div class="card full-width hidden" id="invitePanel">
       <h3 id="inviteHeading">Invite family</h3>
@@ -904,11 +929,36 @@
     </div>
   </div>
 </div>
+<div id="countdownPopup" class="ftf-overlay hidden" role="dialog" aria-modal="true">
+  <div class="ftf-sheet">
+    <div style="display:flex; align-items:center; gap:8px;"><h2 style="margin:0;">⏳ New countdown</h2><button type="button" class="small secondary" id="cdCloseBtn" style="margin:0 0 0 auto; width:auto;">✕</button></div>
+    <div class="pick-head">What are we counting down to?</div>
+    <div class="pick-grid" id="cdTiles"></div>
+    <input id="cdTitle" maxlength="60" placeholder="…or type it, e.g. Nan's visit" style="margin-top:8px;" />
+    <div class="pick-head">When is it?</div>
+    <input id="cdDate" type="date" />
+    <p class="error hidden" id="cdError"></p>
+    <div class="sheet-actions"><button type="button" id="cdSaveBtn">Start the countdown ⏳</button></div>
+  </div>
+</div>
+<div id="familyScreen" class="hidden" role="dialog" aria-label="Family screen — tap to go back">
+  <div>
+    <div class="fs-clock" id="fsClock"></div>
+    <div class="fs-date" id="fsDate"></div>
+    <div id="fsCountdowns" class="countdown-strip"></div>
+    <h3>📅 Today's plan</h3>
+    <div id="fsPlan"></div>
+  </div>
+  <div class="fs-photo" id="fsPhoto"><div class="fs-cap" id="fsCap"></div></div>
+  <div class="fs-hint">👆 Tap anywhere to open Fuel the Fun</div>
+</div>
 <div id="quickAddPopup" class="ftf-overlay hidden" role="dialog" aria-modal="true">
   <div class="ftf-sheet wide">
     <div style="display:flex; align-items:center; gap:8px;"><h2 id="qaTitle" style="margin:0;">➕ Add</h2><button type="button" class="small secondary" id="qaCloseBtn" style="margin:0 0 0 auto; width:auto;">✕</button></div>
     <div class="pick-head">What's happening? <span class="muted">— tap one</span></div>
     <div class="pick-grid" id="qaTiles"></div>
+    <div class="pick-head">📝 Jobs &amp; plans <span class="muted">— tap, then add the details</span></div>
+    <div class="pick-grid" id="qaTasks"></div>
     <input id="qaOwnTitle" class="hidden" maxlength="80" placeholder="Type it… e.g. Swimming lesson" style="margin-top:8px;" />
     <div class="pick-head">Who's it for?</div>
     <div class="chip-row" id="qaWho"></div>
@@ -916,6 +966,9 @@
     <div class="chip-row" id="qaWhen"></div>
     <label id="qaHabitWrap" class="hidden" style="display:flex; align-items:center; gap:8px; margin-top:12px; cursor:pointer; font-weight:700;">
       <input type="checkbox" id="qaHabitCheck" checked style="width:22px; height:22px; margin:0;" /> <span id="qaHabitLabel">⭐ Count it as a habit that day</span>
+    </label>
+    <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer; font-weight:700;">
+      <input type="checkbox" id="qaCountdownCheck" style="width:22px; height:22px; margin:0;" /> ⏳ Show a countdown on Today ("3 sleeps until…")
     </label>
     <p class="error hidden" id="qaError"></p>
     <div class="sheet-actions">
@@ -1600,6 +1653,7 @@ async function renderEvents() {
     allHabitCompletions = completionsData.completions || [];
   } catch (err) { allHabitCompletions = []; } // markers are a nice-to-have, never block the calendar
   renderCalendarGrid();
+  renderCountdowns();
 }
 
 function renderCalendarGrid() {
@@ -1803,6 +1857,14 @@ function showEventDetail(eventId) {
 // saved activities, who + when chips, one tap to add. The full form
 // (repeat weekly etc.) is still there under "More options".
 let qa = null;
+// Everyday family jobs & plans — tap one, then add the details ("· netball").
+const QA_TASKS = [
+  ["🚗", "Drop off", "e.g. 🚗 Drop off · netball"], ["🚙", "Pick up", "e.g. 🚙 Pick up · Mia from school"], ["🛒", "Shopping", "e.g. 🛒 Shopping · netball shoes"],
+  ["🛏️", "Sleepover", "e.g. 🛏️ Sleepover · at Ruby's"], ["🎂", "Party", "e.g. 🎂 Party · Jack's birthday"], ["🩺", "Appointment", "e.g. 🩺 Appointment · dentist"],
+  ["🏐", "Sport", "e.g. 🏐 Sport · netball game"], ["📚", "Homework due", "e.g. 📚 Homework due · science poster"], ["👵", "Visit", "e.g. 👵 Visit · Nan & Pop"],
+  ["🧺", "Chores", "e.g. 🧺 Chores · wash the car"],
+];
+const QA_TASK_TIMES = { "Drop off": "08:00", "Pick up": "15:00", "Sleepover": "17:00", "Party": "13:00" };
 const QA_TIMES = [["🌅 Morning", "08:00"], ["🏫 After school", "15:30"], ["🍽️ Dinner time", "17:30"], ["🌙 Evening", "19:00"]];
 function qaTileOptions() {
   const seen = new Set(); const out = [];
@@ -1812,13 +1874,13 @@ function qaTileOptions() {
   ((lastHabitsData && lastHabitsData.members) || []).forEach((m) => (m.habits || []).forEach((h) => { if (h.slot !== 2) add(h.usualTitle || h.title, h.emoji || "⭐", h.slot === 1 ? "movement" : "home"); }));
   [...allEvents].sort((a, b) => (b.starts_at || "").localeCompare(a.starts_at || "")).forEach((e) => add(e.title, "📅", null));
   if (out.length < 8) { STARTER_IDEAS.movement.forEach((t) => add(t, "🏃", "movement")); STARTER_IDEAS.home.forEach((t) => add(t, "🏡", "home")); }
-  return out.slice(0, 15);
+  return out.slice(0, 10);
 }
 function openAddEventForDay(day) {
   const me = getMe();
   qa = { day, tile: null, own: false, who: new Set(me && me !== "shared" && state.members.some((m) => m.id === me) ? [me] : []), time: day === todayStr() && new Date().getHours() >= 15 ? "19:00" : "15:30" };
   $("qaTitle").textContent = "➕ " + new Date(day + "T00:00:00").toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
-  $("qaOwnTitle").value = ""; hide("qaOwnTitle"); clearError("qaError");
+  $("qaOwnTitle").value = ""; hide("qaOwnTitle"); clearError("qaError"); $("qaCountdownCheck").checked = false;
   drawQuickAdd(); show("quickAddPopup");
 }
 function drawQuickAdd() {
@@ -1838,8 +1900,19 @@ function drawQuickAdd() {
   }
   const dayName = new Date(qa.day + "T00:00:00").toLocaleDateString([], { weekday: "long" });
   $("qaAddBtn").textContent = `Add to ${dayName} ✓`;
-  $("qaTiles").querySelectorAll("[data-qa-tile]").forEach((b) => b.onclick = () => { qa.tile = Number(b.getAttribute("data-qa-tile")); qa.own = false; hide("qaOwnTitle"); drawQuickAdd(); });
+  $("qaTiles").querySelectorAll("[data-qa-tile]").forEach((b) => b.onclick = () => { qa.tile = Number(b.getAttribute("data-qa-tile")); qa.own = false; qa.task = null; hide("qaOwnTitle"); drawQuickAdd(); });
   $("qaTiles").querySelector("[data-qa-own]").onclick = () => { qa.tile = null; qa.own = true; drawQuickAdd(); show("qaOwnTitle"); $("qaOwnTitle").focus(); };
+  $("qaTasks").innerHTML = QA_TASKS.map(([e, t, ph]) => `<button type="button" class="pick-tile task ${qa.task === t ? "on" : ""}" data-qa-task="${escapeAttr(t)}" data-qa-task-emoji="${e}" data-qa-task-ph="${escapeAttr(ph)}"><span class="pt-emoji">${e}</span><span class="pt-title">${escapeHtml(t)}</span></button>`).join("");
+  $("qaTasks").querySelectorAll("[data-qa-task]").forEach((b) => b.onclick = () => {
+    const t = b.getAttribute("data-qa-task");
+    qa.tile = null; qa.own = true; qa.task = t;
+    const time = QA_TASK_TIMES[t]; if (time) qa.time = time;
+    drawQuickAdd();
+    const input = $("qaOwnTitle"); show("qaOwnTitle");
+    input.value = `${b.getAttribute("data-qa-task-emoji")} ${t} · `;
+    input.placeholder = b.getAttribute("data-qa-task-ph");
+    input.focus(); input.setSelectionRange(input.value.length, input.value.length);
+  });
   $("qaWho").querySelectorAll("[data-qa-who]").forEach((b) => b.onclick = () => {
     const id = b.getAttribute("data-qa-who");
     if (!id) qa.who.clear(); else qa.who.has(id) ? qa.who.delete(id) : qa.who.add(id);
@@ -1859,11 +1932,11 @@ $("qaMoreBtn").onclick = () => {
 $("qaAddBtn").onclick = () => withBusyButton($("qaAddBtn"), "Adding...", async () => {
   clearError("qaError");
   const o = qa.tile !== null ? qaTileOptions()[qa.tile] : null;
-  const title = o ? o.title : $("qaOwnTitle").value.trim();
+  const title = (o ? o.title : $("qaOwnTitle").value.trim()).replace(/\s*·\s*$/, "");
   if (!title) return showError("qaError", "Tap something to add, or type something new.");
   try {
     const memberIds = [...qa.who];
-    await api("/api/events", { method: "POST", body: JSON.stringify({ title, memberIds, pillar: o && o.category === "movement" ? "move" : null, startsAt: new Date(`${qa.day}T${qa.time}`).toISOString(), recurrence: null }) });
+    await api("/api/events", { method: "POST", body: JSON.stringify({ title, memberIds, pillar: o && o.category === "movement" ? "move" : null, startsAt: new Date(`${qa.day}T${qa.time}`).toISOString(), recurrence: null, countdown: $("qaCountdownCheck").checked }) });
     let habitMsg = "";
     if (o && o.category && memberIds.length <= 1 && $("qaHabitCheck").checked) {
       const n = await addPlannerItemAsHabit({ type: "movement", category: o.category, value: title }, qa.day, qa.time, memberIds[0] || null);
@@ -4934,6 +5007,135 @@ async function setupNext(step) {
     drawSetup();
   } catch (err) { showError("setupError", err.message); }
 }
+
+// --- ⏳ Countdowns ("3 sleeps until camp!") ---
+const COUNTDOWN_IDEAS = [["🏕️", "Camp"], ["🎂", "Birthday"], ["✈️", "Holiday"], ["🏖️", "Beach day"], ["🎄", "Christmas"], ["🎉", "Party"], ["🏆", "Big game"], ["🎒", "School holidays"]];
+const COUNTDOWN_ART = [[/camp/i, "🏕️"], [/birthday|bday/i, "🎂"], [/holiday|trip|flight/i, "✈️"], [/beach/i, "🏖️"], [/christmas|xmas/i, "🎄"], [/party/i, "🎉"], [/game|final|carnival/i, "🏆"], [/school/i, "🎒"], [/visit|nan|pop|grandma|grandpa/i, "💛"]];
+const LEAD_EMOJI = /^\p{Extended_Pictographic}️?\s*/u;
+function upcomingCountdowns() {
+  const today = todayStr();
+  const limit = addDays(today, 120);
+  return allEvents.filter((e) => e.countdown)
+    .map((e) => ({ e, day: eventOccurrenceKeys(e, today, limit)[0] }))
+    .filter((x) => x.day)
+    .sort((a, b) => a.day.localeCompare(b.day))
+    .slice(0, 5)
+    .map(({ e, day }) => {
+      const sleeps = Math.round((new Date(day + "T00:00:00") - new Date(today + "T00:00:00")) / 86400000);
+      const lead = (e.title.match(LEAD_EMOJI) || [""])[0].trim();
+      const name = e.title.replace(LEAD_EMOJI, "");
+      const emoji = lead || (COUNTDOWN_ART.find(([re]) => re.test(name)) || [])[1] || "⏳";
+      return { emoji, name, sleeps };
+    });
+}
+function countdownChipsHtml() {
+  return upcomingCountdowns().map((c) => `<div class="countdown-chip"><span class="cd-emoji">${c.emoji}</span>${c.sleeps === 0
+      ? `<span>🎉 Today: ${escapeHtml(c.name)}!</span>`
+      : `<span class="cd-n">${c.sleeps}</span><span>${c.sleeps === 1 ? "sleep" : "sleeps"} until<small>${escapeHtml(c.name)}</small></span>`}</div>`).join("");
+}
+function renderCountdowns() {
+  const strip = $("countdownStrip"); if (!strip) return;
+  strip.innerHTML = countdownChipsHtml() + `<button type="button" class="countdown-add small" id="addCountdownBtn">＋ Countdown</button>`;
+  $("addCountdownBtn").onclick = openCountdownPopup;
+}
+function openCountdownPopup() {
+  $("cdTitle").value = ""; $("cdDate").value = addDays(todayStr(), 7); $("cdDate").min = todayStr(); clearError("cdError");
+  $("cdTiles").innerHTML = COUNTDOWN_IDEAS.map(([e, t]) => `<button type="button" class="pick-tile" data-cd-idea="${escapeAttr(t)}"><span class="pt-emoji">${e}</span><span class="pt-title">${escapeHtml(t)}</span></button>`).join("");
+  $("cdTiles").querySelectorAll("[data-cd-idea]").forEach((b) => b.onclick = () => {
+    $("cdTiles").querySelectorAll(".pick-tile").forEach((x) => x.classList.toggle("on", x === b));
+    $("cdTitle").value = b.getAttribute("data-cd-idea");
+  });
+  show("countdownPopup");
+}
+$("cdCloseBtn").onclick = () => hide("countdownPopup");
+$("countdownPopup").addEventListener("click", (e) => { if (e.target.id === "countdownPopup") hide("countdownPopup"); });
+$("cdTitle").addEventListener("input", () => { $("cdTiles").querySelectorAll(".pick-tile").forEach((x) => x.classList.toggle("on", x.getAttribute("data-cd-idea") === $("cdTitle").value)); });
+$("cdSaveBtn").onclick = () => withBusyButton($("cdSaveBtn"), "Starting...", async () => {
+  clearError("cdError");
+  const name = $("cdTitle").value.trim(); const day = $("cdDate").value;
+  if (!name) return showError("cdError", "What are we counting down to?");
+  if (!day || day < todayStr()) return showError("cdError", "Pick a date from today on.");
+  const picked = COUNTDOWN_IDEAS.find(([, t]) => t === name);
+  const emoji = picked ? picked[0] : ((COUNTDOWN_ART.find(([re]) => re.test(name)) || [])[1] || "⏳");
+  try {
+    await api("/api/events", { method: "POST", body: JSON.stringify({ title: `${emoji} ${name}`, memberIds: [], pillar: null, startsAt: new Date(`${day}T09:00`).toISOString(), recurrence: null, countdown: true }) });
+    hide("countdownPopup");
+    await renderEvents();
+    const c = upcomingCountdowns().find((x) => x.name === name);
+    toast(c ? (c.sleeps === 0 ? `🎉 ${name} is today!` : `⏳ ${c.sleeps} ${c.sleeps === 1 ? "sleep" : "sleeps"} until ${name}!`) : "⏳ Countdown started!");
+  } catch (err) { showError("cdError", err.message); }
+});
+
+// --- 🖼️ Family screen: a tablet/laptop left alone becomes a family hub ---
+// Big clock, today's plan, countdowns and a photo slideshow (Family
+// Memories, or recipe pictures until there are enough memories). Tap to go back.
+const FAMILY_SCREEN_IDLE_MS = 2 * 60 * 1000;
+let fsIdleTimer = null, fsSlideTimer = null, fsClockTimer = null, fsSlides = [], fsIndex = 0;
+function familyScreenEnabled() {
+  let v = null; try { v = localStorage.getItem("ftf_family_screen"); } catch (err) {}
+  return v ? v === "on" : window.innerWidth >= 760; // on by default for tablets & laptops
+}
+function setFamilyScreenEnabled(on) { try { localStorage.setItem("ftf_family_screen", on ? "on" : "off"); } catch (err) {} resetFamilyScreenIdle(); }
+function familyScreenBlocked() {
+  if ($("homeScreen").classList.contains("hidden")) return true;
+  if (document.querySelector(".ftf-overlay:not(.hidden)")) return true;
+  if (!$("whoPopup").classList.contains("hidden")) return true;
+  const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return true;
+  return false;
+}
+function resetFamilyScreenIdle() {
+  clearTimeout(fsIdleTimer);
+  if (!familyScreenEnabled()) return;
+  fsIdleTimer = setTimeout(() => { if (familyScreenBlocked()) resetFamilyScreenIdle(); else openFamilyScreen(); }, FAMILY_SCREEN_IDLE_MS);
+}
+["pointerdown", "keydown", "scroll", "touchstart", "wheel"].forEach((ev) => document.addEventListener(ev, () => { if ($("familyScreen").classList.contains("hidden")) resetFamilyScreenIdle(); }, { passive: true, capture: true }));
+function fsTick() {
+  const now = new Date();
+  $("fsClock").textContent = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).replace(/\s?[ap]m$/i, "");
+  $("fsDate").textContent = now.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" });
+}
+function fsPlanHtml() {
+  const today = todayStr();
+  const items = allEvents.filter((e) => !e.countdown && eventOccurrenceKeys(e, today, today).length)
+    .map((e) => ({ time: e.starts_at ? new Date(e.starts_at).toTimeString().slice(0, 5) : "", title: e.title, who: eventWhoAndColor(e).who || "Everyone" }));
+  habitDayPlanItems.filter((it) => it.day === today && it.title).forEach((it) => {
+    if (!items.some((x) => x.title.toLowerCase() === it.title.toLowerCase())) items.push({ time: it.time || "", title: "⭐ " + it.title, who: memberNameFor(it.memberId) || "" });
+  });
+  items.sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
+  if (!items.length) return `<div class="fs-item">🌈 Nothing planned yet — a great day to win your habits!</div>`;
+  return items.slice(0, 6).map((x) => `<div class="fs-item"><span class="fs-time">${x.time ? escapeHtml(formatClock(x.time)) : "All day"}</span><span>${escapeHtml(x.title)}</span><span class="fs-who">${escapeHtml(x.who)}</span></div>`).join("");
+}
+async function fsLoadSlides() {
+  try {
+    const m = await api("/api/memories");
+    if (m.unlocked && m.slides && m.slides.length) return m.slides.map((s) => ({ id: s.id, cap: `${s.title} · ${s.day}` }));
+  } catch (err) {}
+  return recipesCache.filter((r) => r.cover_photo_id).map((r) => ({ id: r.cover_photo_id, cap: `🍳 ${r.title}` }));
+}
+function fsShowSlide() {
+  if (!fsSlides.length) { $("fsPhoto").style.backgroundImage = ""; $("fsCap").textContent = "📸 Add photos to Family Memories to see them here"; return; }
+  const s = fsSlides[fsIndex % fsSlides.length];
+  fetchPhotoBlobUrl(s.id).then((url) => { if (url) $("fsPhoto").style.backgroundImage = `url("${url}")`; }).catch(() => {});
+  $("fsCap").textContent = s.cap;
+}
+async function openFamilyScreen() {
+  fsTick(); clearInterval(fsClockTimer); fsClockTimer = setInterval(fsTick, 15000);
+  $("fsPlan").innerHTML = fsPlanHtml();
+  $("fsCountdowns").innerHTML = countdownChipsHtml();
+  show("familyScreen");
+  fsSlides = await fsLoadSlides(); fsIndex = 0; fsShowSlide();
+  clearInterval(fsSlideTimer); fsSlideTimer = setInterval(() => { fsIndex++; fsShowSlide(); }, 8000);
+}
+function closeFamilyScreen() {
+  hide("familyScreen"); clearInterval(fsSlideTimer); clearInterval(fsClockTimer);
+  resetFamilyScreenIdle();
+  if (state.family) loadHome().catch(() => {}); // pick up anything that changed while it was showing
+}
+$("familyScreen").addEventListener("click", closeFamilyScreen);
+$("openFamilyScreenBtn").onclick = (e) => { e.stopPropagation(); openFamilyScreen(); };
+$("familyScreenToggle").checked = familyScreenEnabled();
+$("familyScreenToggle").onchange = (e) => { setFamilyScreenEnabled(e.target.checked); toast(e.target.checked ? "🖼️ Family screen on for this device" : "Family screen off for this device"); };
+resetFamilyScreenIdle();
 
 // --- 🥕 Food Explorer Passport ---
 // Stamp every new food you try (Project Bible: "Try new foods"). Trying is

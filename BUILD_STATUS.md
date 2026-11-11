@@ -4,6 +4,12 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Countdowns, Family screen, Jobs & plans quick add (2026-11-11)
+
+- **⏳ Countdowns:** "🏕️ 3 sleeps until Camp" chips on Today (next 5, up to 120 days ahead). Add with "＋ Countdown" (Camp, Birthday, Holiday, Beach day, Christmas, Party, Big game, School holidays, or type one + a date), or tick "⏳ Show a countdown on Today" in the calendar quick add. Stored as events with `countdown = 1` (column added automatically; record in db/migrations/024).
+- **🖼️ Family screen:** when an iPad/laptop is left alone for 2 minutes (on by default for tablets & laptops, off on phones; toggle in Family → Settings, or open it with "🖼️ Family screen"): big clock + date, countdowns, today's plan (events + planned habits with times and who), and a slideshow from Family Memories (or recipe pictures until there are enough memories). Tap anywhere to go back. Never pops up over an open popup or while typing.
+- **📝 Jobs & plans** in the calendar quick add: Drop off, Pick up, Shopping, Sleepover, Party, Appointment, Sport, Homework due, Visit, Chores — tap one, add the details ("🚗 Drop off · netball"); sensible default times.
+
 ## ✅ Picture tiles everywhere + iPad wall-calendar layout (2026-11-11)
 
 From Maddie's iPad testing notes + a review of the Calmo Daily family calendar:

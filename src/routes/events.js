@@ -32,11 +32,26 @@ function parseRecurrence(input, startsAt) {
 }
 
 /** GET /api/events — list this family's shared calendar events. */
+// ⏳ Countdowns: an event can be marked "count down to this" and shows on
+// Today as "3 sleeps until camp!". The column is added automatically.
+let countdownReady = false;
+async function ensureCountdown(db) {
+  if (countdownReady) return true;
+  try {
+    const cols = new Set(((await db.prepare("SELECT name FROM pragma_table_info('events')").all()).results || []).map((r) => r.name));
+    if (!cols.has("countdown")) await db.prepare("ALTER TABLE events ADD COLUMN countdown INTEGER NOT NULL DEFAULT 0").run().catch(() => {});
+    const after = new Set(((await db.prepare("SELECT name FROM pragma_table_info('events')").all()).results || []).map((r) => r.name));
+    countdownReady = after.has("countdown");
+  } catch (err) { countdownReady = false; }
+  return countdownReady;
+}
+
 export async function listEvents(familyId, env) {
   const db = env.DB;
+  const cd = await ensureCountdown(db);
   const events = await db
     .prepare(
-      "SELECT id, member_id, title, pillar, starts_at, ends_at, recurrence, created_at FROM events WHERE family_id = ? ORDER BY starts_at ASC"
+      `SELECT id, member_id, title, pillar, starts_at, ends_at, recurrence, created_at${cd ? ", countdown" : ""} FROM events WHERE family_id = ? ORDER BY starts_at ASC`
     )
     .bind(familyId)
     .all();
@@ -110,6 +125,9 @@ export async function createEvent(request, familyId, env) {
     )
     .bind(eventId, familyId, soloMemberId, title, pillar, startsAt, endsAt, recurrence ? JSON.stringify(recurrence) : null)
     .run();
+  if (body.countdown && (await ensureCountdown(db))) {
+    await db.prepare("UPDATE events SET countdown = 1 WHERE id = ?").bind(eventId).run();
+  }
 
   if (memberIds.length >= 2) {
     for (const mId of memberIds) {
