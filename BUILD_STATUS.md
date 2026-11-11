@@ -4,6 +4,12 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Kid-friendly tweaks (2026-11-11)
+
+- Quick add shows "🕒 3:30 PM" from the time buttons; the start/end boxes are behind "⏰ Exact time" (open automatically when changing an event).
+- A kid's own phone (`body.kid-view`): Family tab hides Settings (invites, Google, notifications, parent PIN, log out) and "+ Add family member".
+- Kid words: "Doctor / dentist" instead of "Appointment"; "Ends" instead of "Finishes (optional)".
+
 ## ✅ Calmer design: 5 tidy-ups (2026-11-11)
 
 1. **Win the Day is compact:** one line "⭐ 9/12 stars this week · 🔥 4 day streak", one bar, "🎁 3 more to Movie night (change)". Reward cards only show until you've picked one (or tap change). Week strip and big number boxes removed. Countdown chips only show when there are countdowns; "⏳ Countdown" button lives in Today's plan.

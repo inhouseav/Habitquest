@@ -100,6 +100,7 @@
   .qa-summary .qs-emoji { font-size: 1.9rem; }
   .qa-summary .qs-change { margin-left: auto; font-size: 0.8rem; font-weight: 700; opacity: 0.7; }
   .qa-more { margin-top: 10px; } .qa-more summary { cursor: pointer; font-weight: 700; opacity: 0.75; }
+  .qa-when-sum { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-weight: 700; flex-wrap: wrap; }
   .qa-time-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 10px; }
   .qa-time-row label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-size: 0.85rem; margin: 0; }
   .qa-time-row input { width: auto; margin: 0; }
@@ -183,6 +184,7 @@
   .reward-card .pill { align-self: flex-start; }
   .reward-idea { opacity: 0.92; border: 2px dashed rgba(24,63,53,0.18); }
   .reward-idea .rc-add { font-size: 0.78rem; font-weight: 700; color: var(--terracotta); }
+  body.kid-view .parent-only { display: none !important; }
   .member-status { display: inline-block; font-size: 0.72rem; font-weight: 700; border-radius: 999px; padding: 2px 8px; margin-left: 4px; vertical-align: middle; }
   .member-status.ok { background: #e4ead9; color: #3f5b37; }
   .member-status.wait { background: #f8e8c7; color: #7a5a1a; }
@@ -901,7 +903,7 @@
     <div class="card">
       <h3>Family members</h3>
       <div id="membersList"><p class="loading-text">Loading...</p></div>
-      <button class="small secondary" id="showAddMemberBtn">+ Add family member</button>
+      <button class="small secondary parent-only" id="showAddMemberBtn">+ Add family member</button>
       <div class="error hidden" id="memberError"></div>
     </div>
     <div class="card">
@@ -920,7 +922,7 @@
         <div class="error hidden" id="meetingError"></div>
       </div>
     </div>
-        <div class="card full-width">
+        <div class="card full-width parent-only" id="settingsCard">
       <h3>Settings ⚙️</h3>
       <div class="settings-row">
         <button class="settings-link" data-settings-toggle="invite">📧 Invite family ›</button>
@@ -1043,9 +1045,10 @@
     </div>
     <div class="pick-head">When?</div>
     <div class="chip-row" id="qaWhen"></div>
-    <div class="qa-time-row">
+    <div class="qa-when-sum"><span id="qaWhenText"></span> <button type="button" class="small secondary" id="qaExactBtn" style="width:auto; margin:0;">⏰ Exact time</button></div>
+    <div class="qa-time-row hidden" id="qaTimeRow">
       <label>Starts <input type="time" id="qaTimeInput" /></label>
-      <label>Finishes <span class="muted">(optional)</span> <input type="time" id="qaEndInput" /></label>
+      <label>Ends <input type="time" id="qaEndInput" /></label>
       <div class="chip-row" id="qaDur"></div>
     </div>
     <label class="qa-check"><input type="checkbox" id="qaRepeatCheck" /> 🔁 Every week <span id="qaUntilWrap" class="hidden">until <input type="date" id="qaUntilInput" style="width:auto; margin:0;" /></span></label>
@@ -1343,6 +1346,8 @@ function setMe(id) {
 function applyMeDefaults() {
   const me = getMe();
   const person = me && me !== "shared" ? state.members.find((m) => m.id === me) : null;
+  // A kid's own phone: hide grown-up settings (invites, Google, PIN…).
+  document.body.classList.toggle("kid-view", !!(person && person.role === "child"));
   $("whoAmIBtn").textContent = person ? `👤 ${person.display_name} ▾` : me === "shared" ? "👥 Everyone ▾" : "👤 Who are you?";
   if (person) {
     habitsActiveMemberId = person.id;
@@ -1951,11 +1956,11 @@ const QA_DURS = [["30 min", 30], ["1 hour", 60], ["1½ hours", 90], ["2 hours", 
 // Everyday family jobs & plans — tap one, then add the details ("· netball").
 const QA_TASKS = [
   ["🚗", "Drop off", "e.g. 🚗 Drop off · netball"], ["🚙", "Pick up", "e.g. 🚙 Pick up · Mia from school"], ["🛒", "Shopping", "e.g. 🛒 Shopping · netball shoes"],
-  ["🛏️", "Sleepover", "e.g. 🛏️ Sleepover · at Ruby's"], ["🎂", "Party", "e.g. 🎂 Party · Jack's birthday"], ["🩺", "Appointment", "e.g. 🩺 Appointment · dentist"],
+  ["🛏️", "Sleepover", "e.g. 🛏️ Sleepover · at Ruby's"], ["🎂", "Party", "e.g. 🎂 Party · Jack's birthday"], ["🩺", "Doctor / dentist", "e.g. 🩺 Doctor / dentist · check-up"],
   ["🏐", "Sport", "e.g. 🏐 Sport · netball game"], ["📚", "Homework due", "e.g. 📚 Homework due · science poster"], ["👵", "Visit", "e.g. 👵 Visit · Nan & Pop"],
   ["🧺", "Chores", "e.g. 🧺 Chores · wash the car"],
 ];
-const QA_TASK_TIMES = { "Drop off": ["08:00", "08:45"], "Pick up": ["14:30", "15:30"], "Sleepover": ["17:00", ""], "Party": ["13:00", "15:00"], "Appointment": ["10:00", "11:00"], "Shopping": ["10:00", "11:00"] };
+const QA_TASK_TIMES = { "Drop off": ["08:00", "08:45"], "Pick up": ["14:30", "15:30"], "Sleepover": ["17:00", ""], "Party": ["13:00", "15:00"], "Doctor / dentist": ["10:00", "11:00"], "Shopping": ["10:00", "11:00"] };
 function hhmmPlus(hhmm, mins) {
   const [h, m] = hhmm.split(":").map(Number); const t = Math.min(23 * 60 + 59, h * 60 + m + mins);
   return String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0");
@@ -2011,7 +2016,7 @@ function openEditEvent(e) {
   qa = { ...qaReset(day), editId: e.id, own: true,
     who: new Set(e.memberIds && e.memberIds.length ? e.memberIds : e.member_id ? [e.member_id] : []),
     time: localHHMM(e.starts_at) || "15:30", end: e.ends_at ? localHHMM(e.ends_at) : "",
-    repeat: !!e.recurrence, until: e.recurrence ? e.recurrence.until : addDays(day, 90) };
+    repeat: !!e.recurrence, until: e.recurrence ? e.recurrence.until : addDays(day, 90), exact: true };
   $("qaTitle").textContent = "✏️ Change event";
   show("qaDayRow"); show("qaDeleteBtn");
   $("qaOwnTitle").value = e.title; $("qaDeleteBtn").textContent = e.recurrence ? "🗑 Delete (every week)" : "🗑 Delete";
@@ -2041,6 +2046,9 @@ function drawQuickAdd() {
     const who = qa.who.size ? memberNameFor([...qa.who][0]) + "'s" : "everyone's";
     $("qaHabitLabel").textContent = `⭐ Make it ${who} ${o.category === "movement" ? "Move" : "Home"} habit that day`;
   }
+  $("qaWhenText").textContent = `🕒 ${formatClock(qa.time)}${qa.end ? " – " + formatClock(qa.end) : ""}`;
+  $("qaTimeRow").classList.toggle("hidden", !qa.exact);
+  $("qaExactBtn").textContent = qa.exact ? "Done ✓" : "⏰ Exact time";
   const dayName = new Date(qa.day + "T00:00:00").toLocaleDateString([], { weekday: "long" });
   $("qaAddBtn").textContent = qa.editId ? "Save changes ✓" : qa.repeat ? `Add every ${dayName} ✓` : `Add to ${dayName} ✓`;
 
@@ -2086,6 +2094,7 @@ $("qaDateInput").onchange = (e) => { if (e.target.value) { qa.day = e.target.val
 $("qaRepeatCheck").onchange = (e) => { qa.repeat = e.target.checked; $("qaUntilWrap").classList.toggle("hidden", !qa.repeat); drawQuickAdd(); };
 $("qaUntilInput").onchange = (e) => { if (e.target.value) qa.until = e.target.value; };
 $("qaSummary").onclick = () => qaShowStep(1);
+$("qaExactBtn").onclick = () => { qa.exact = !qa.exact; drawQuickAdd(); };
 $("qaBackBtn").onclick = () => { if (qa.editId) return; qa.own = false; qa.task = null; drawQuickAdd(); qaShowStep(1); };
 $("qaCloseBtn").onclick = () => hide("quickAddPopup");
 $("quickAddPopup").addEventListener("click", (e) => { if (e.target.id === "quickAddPopup") hide("quickAddPopup"); });
