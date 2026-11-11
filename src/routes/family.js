@@ -182,7 +182,7 @@ export async function me(familyId, env, request) {
 
   const status = await ensureMemberStatus(db);
   const members = await db
-    .prepare(`SELECT id, display_name, role, color, interests${status ? ", invited_at, joined_at, device_only" : ""} FROM members WHERE family_id = ? ORDER BY created_at ASC`)
+    .prepare(`SELECT id, display_name, role, color, interests${status ? ", invited_at, joined_at, device_only, avatar" : ""} FROM members WHERE family_id = ? ORDER BY created_at ASC`)
     .bind(familyId)
     .all();
 

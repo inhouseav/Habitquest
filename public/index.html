@@ -236,6 +236,36 @@
   .toast.error { background: var(--danger); }
   .error { color: var(--danger); font-size: 0.9rem; margin-top: 8px; }
   .member-row, .list-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 14px; background: #fff; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+  .ava { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; font-size: 1rem; line-height: 1; margin-right: 8px; background: color-mix(in srgb, var(--c, #ccc) 22%, #fff); box-shadow: 0 0 0 2px var(--c, #ccc); vertical-align: middle; flex-shrink: 0; }
+  .ava.big { width: 44px; height: 44px; font-size: 1.6rem; }
+  .ava-btn { background: none; border: 0; padding: 0; margin: 0 4px 0 0; width: auto; box-shadow: none; cursor: pointer; }
+  #avaPopup, #partyPopup, #tourPopup { position: fixed; inset: 0; z-index: 2960; background: rgba(24, 63, 53, 0.4); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  #avaPopup.hidden, #partyPopup.hidden, #tourPopup.hidden { display: none; }
+  .pop-card { z-index: 2; background: #fffdf7; border-radius: 24px; padding: 22px; width: min(420px, 100%); box-shadow: 0 14px 40px rgba(0,0,0,0.25); text-align: center; position: relative; }
+  #avaGrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 12px 0; }
+  #avaGrid button { margin: 0; padding: 8px 0; font-size: 1.7rem; background: #eef6f1; border-radius: 14px; box-shadow: none; }
+  #avaGrid button.on { background: #ffd9a8; outline: 3px solid var(--terracotta); }
+  /* ⭐ Star jar — fills up to the weekly goal */
+  .star-jar-wrap { display: flex; gap: 14px; align-items: center; }
+  .star-jar { position: relative; width: 112px; flex-shrink: 0; padding: 14px 8px 8px; border: 3px solid #9cc7b8; border-top-width: 0; border-radius: 10px 10px 30px 30px; background: linear-gradient(#fff0, #eef7f3); display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; justify-items: center; }
+  .star-jar::before { content: ""; position: absolute; top: -8px; left: -6px; right: -6px; height: 10px; border-radius: 6px; background: #c8a46b; }
+  .star-jar span { font-size: 1.15rem; line-height: 1.3; }
+  .star-jar span.empty { opacity: 0.18; filter: grayscale(1); }
+  .star-jar span.new { animation: jarPop 0.6s ease; }
+  @keyframes jarPop { 0% { transform: scale(0) translateY(-30px); } 70% { transform: scale(1.35); } 100% { transform: scale(1); } }
+  .jar-text { font-size: 0.95rem; line-height: 1.4; }
+  .jar-text .big { font-size: 1.6rem; font-weight: 800; color: var(--terracotta); }
+  /* 🎉 party */
+  #partyPopup { overflow: hidden; }
+  .confetti { z-index: 1; position: absolute; top: -40px; font-size: 1.6rem; animation: fall linear forwards; pointer-events: none; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(540deg); } }
+  .party-emoji { font-size: 4.2rem; animation: jarPop 0.7s ease; }
+  /* 🧭 tour */
+  .tour-glow { outline: 4px solid #ffb703 !important; outline-offset: 2px; border-radius: 16px; animation: glow 1s ease-in-out infinite alternate; position: relative; z-index: 2970; background: #fffdf7 !important; }
+  @keyframes glow { from { box-shadow: 0 0 0 0 rgba(255,183,3,0.6); } to { box-shadow: 0 0 0 10px rgba(255,183,3,0); } }
+  .tour-dots { display: flex; justify-content: center; gap: 6px; margin: 10px 0; }
+  .tour-dots span { width: 9px; height: 9px; border-radius: 50%; background: #d6e4dd; }
+  .tour-dots span.on { background: var(--terracotta); }
   .member-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; box-shadow: 0 0 0 2px #fff; }
   .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--gold); font-size: 0.75rem; margin-left: 6px; }
   .pill.fuel { background: var(--peach); }
@@ -896,7 +926,7 @@
     <div class="card full-width" id="rewardCard">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <h3 style="margin:0;">Reward shop 🎁</h3>
-        <button type="button" class="small secondary" id="rewardAdminBtn" style="margin:0; width:auto;">🔒 Parent admin</button>
+        <button type="button" class="small secondary parent-only" id="rewardAdminBtn" style="margin:0; width:auto;">🔒 Parent admin</button>
       </div>
       <p class="muted" style="margin-top:6px;">🎯 Reach the weekly star goal and your chosen reward unlocks on <b>Saturday morning</b>.</p>
       <div id="weeklyOverview"></div>
@@ -995,6 +1025,34 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="avaPopup" class="hidden" role="dialog" aria-label="Pick your avatar">
+  <div class="pop-card">
+    <h3 style="margin:0;">Pick your face 😎</h3>
+    <p class="muted" id="avaFor" style="margin:4px 0 0; font-size:0.88rem;"></p>
+    <div id="avaGrid"></div>
+    <button type="button" class="secondary" id="avaCloseBtn" style="margin:0;">Close</button>
+  </div>
+</div>
+<div id="partyPopup" class="hidden" role="dialog" aria-label="Celebration">
+  <div class="pop-card">
+    <div class="party-emoji" id="partyEmoji">🎉</div>
+    <h2 id="partyTitle" style="margin:6px 0 4px;">You won the day!</h2>
+    <p id="partyText" style="margin:0 0 14px; font-size:1.05rem;"></p>
+    <button type="button" id="partyOkBtn" style="margin:0;">Yay! 🙌</button>
+  </div>
+</div>
+<div id="tourPopup" class="hidden" role="dialog" aria-label="Show me around">
+  <div class="pop-card">
+    <div style="font-size:3.2rem;" id="tourEmoji">👋</div>
+    <h2 id="tourTitle" style="margin:4px 0;">Hi!</h2>
+    <p id="tourText" style="margin:0; font-size:1.05rem;"></p>
+    <div class="tour-dots" id="tourDots"></div>
+    <div style="display:flex; gap:8px;">
+      <button type="button" class="secondary" id="tourSkipBtn" style="margin:0;">Skip</button>
+      <button type="button" id="tourNextBtn" style="margin:0;">Next ➜</button>
+    </div>
+  </div>
+</div>
 <div id="pinPopup" class="hidden" role="dialog" aria-label="Grown-up PIN">
   <div id="pinCard">
     <div style="font-size:2rem;">🔒</div>
@@ -1394,9 +1452,93 @@ function applyMeDefaults() {
     calendarMemberFilter = "all";
   }
 }
+// --- 😎 Avatars: everyone picks an emoji face, shown instead of a plain dot ---
+const AVATARS = ["🦊","🐼","🐨","🦄","🐯","🐸","🐶","🐱","🐵","🦁","🐰","🐢","🐙","🦖","🐝","🦋","🐬","🦉","⚽","🏀","🎸","🌈","🚀","🌻","🍓","🥑","🌮","👑","🦸","🧙"];
+function whoMark(memberOrId, colorFallback, big) {
+  const m = typeof memberOrId === "string" ? state.members.find((mm) => mm.id === memberOrId) : memberOrId;
+  const color = (m && m.color) || colorFallback || "#ccc";
+  if (m && m.avatar) return `<span class="ava${big ? " big" : ""}" style="--c:${color}">${m.avatar}</span>`;
+  return `<span class="member-dot" style="background:${color}"></span>`;
+}
+let avaPickFor = null;
+function openAvatarPicker(memberId, after) {
+  const m = state.members.find((mm) => mm.id === memberId); if (!m) return;
+  avaPickFor = memberId;
+  $("avaFor").textContent = `for ${m.display_name}`;
+  $("avaGrid").innerHTML = AVATARS.map((a) => `<button type="button" data-ava="${a}" class="${m.avatar === a ? "on" : ""}">${a}</button>`).join("");
+  $("avaGrid").querySelectorAll("[data-ava]").forEach((b) => {
+    b.onclick = async () => {
+      const a = b.getAttribute("data-ava");
+      try {
+        await api(`/api/members/${memberId}/avatar`, { method: "POST", body: JSON.stringify({ avatar: a }) });
+        m.avatar = a; hide("avaPopup"); toast(`${a} Looking good, ${m.display_name}!`);
+        applyMeDefaults(); renderMembers(); renderCalMemberTabs(); renderHabits().catch(() => {});
+        if (after) after();
+      } catch (err) { toast(err.message, true); }
+    };
+  });
+  show("avaPopup");
+}
+$("avaCloseBtn").onclick = () => hide("avaPopup");
+
+// --- 🎉 Party: a big celebration for winning the day / a new food stamp ---
+function showParty({ emoji = "🎉", title = "You won the day!", text = "" } = {}) {
+  $("partyEmoji").textContent = emoji; $("partyTitle").textContent = title; $("partyText").innerHTML = text;
+  const pop = $("partyPopup");
+  pop.querySelectorAll(".confetti").forEach((c) => c.remove());
+  const bits = ["⭐", "🎉", "✨", "🌟", "🎊", "💚"];
+  for (let i = 0; i < 28; i++) {
+    const c = document.createElement("span"); c.className = "confetti";
+    c.textContent = bits[i % bits.length];
+    c.style.left = Math.random() * 100 + "vw"; c.style.animationDuration = 1.8 + Math.random() * 1.8 + "s"; c.style.animationDelay = Math.random() * 0.6 + "s";
+    pop.appendChild(c);
+  }
+  show("partyPopup");
+  clearTimeout(showParty.t); showParty.t = setTimeout(() => hide("partyPopup"), 6000);
+}
+$("partyOkBtn").onclick = () => hide("partyPopup");
+
+// --- 🧭 "Show me around" — a short tour the first time a kid uses the app ---
+const TOUR_STEPS = [
+  { tab: "today", emoji: "🌟", title: "Today", text: "Tick your <b>3 habits</b>. Do all 3 and you <b>win the day</b>! 🎉" },
+  { tab: "plan", emoji: "📅", title: "Plan", text: "See your week. <b>Tap a day</b> to add something. <b>👨‍👩‍👧 Together</b> shows family stuff." },
+  { tab: "food", emoji: "🍳", title: "Food", text: "Pick dinners, cook together and <b>try new foods</b> for passport stamps." },
+  { tab: "rewards", emoji: "🎁", title: "Rewards", text: "Fill your <b>star jar</b> ⭐ — reach the goal and your reward unlocks on <b>Saturday</b>!" },
+  { tab: null, emoji: "😎", title: "Last thing…", text: "Pick a face so everyone knows it's you!" },
+];
+let tourStep = 0;
+function tourSeen(id) { try { return localStorage.getItem("ftf_tour_" + id) === "1"; } catch (err) { return true; } }
+function markTourSeen(id) { try { localStorage.setItem("ftf_tour_" + id, "1"); } catch (err) {} }
+function startTour(force) {
+  const me = meMember(); if (!me) return;
+  if (!force && (me.role !== "child" || tourSeen(me.id))) return;
+  tourStep = 0; drawTour(); show("tourPopup");
+}
+function endTour() {
+  const me = meMember(); if (me) markTourSeen(me.id);
+  document.querySelectorAll(".tour-glow").forEach((x) => x.classList.remove("tour-glow"));
+  hide("tourPopup"); showTab("today");
+}
+function drawTour() {
+  const st = TOUR_STEPS[tourStep]; const me = meMember();
+  document.querySelectorAll(".tour-glow").forEach((x) => x.classList.remove("tour-glow"));
+  if (st.tab) { showTab(st.tab); const t = document.querySelector(`#tabBar [data-tab="${st.tab}"]`); if (t) t.classList.add("tour-glow"); }
+  $("tourEmoji").textContent = st.emoji;
+  $("tourTitle").textContent = tourStep === 0 && me ? `Hi ${me.display_name}! This is ${st.title}` : st.title;
+  $("tourText").innerHTML = st.text;
+  $("tourDots").innerHTML = TOUR_STEPS.map((_, i) => `<span class="${i === tourStep ? "on" : ""}"></span>`).join("");
+  const last = tourStep === TOUR_STEPS.length - 1;
+  $("tourNextBtn").textContent = last ? "😎 Pick my face" : "Next ➜";
+}
+$("tourNextBtn").onclick = () => {
+  if (tourStep < TOUR_STEPS.length - 1) { tourStep++; drawTour(); return; }
+  const me = meMember(); endTour(); if (me) openAvatarPicker(me.id);
+};
+$("tourSkipBtn").onclick = endTour;
+
 function showWhoPicker() {
   $("whoList").innerHTML = state.members.map((m) =>
-    `<button type="button" data-who="${m.id}"><span class="member-dot" style="background:${m.color || "#ccc"}; margin:0;"></span>${escapeHtml(m.display_name)}</button>`).join("");
+    `<button type="button" data-who="${m.id}">${whoMark(m)}${escapeHtml(m.display_name)}</button>`).join("");
   hide("whoPinStep"); show("whoList"); show("whoSharedBtn");
   $("whoList").querySelectorAll("[data-who]").forEach((b) => {
     b.onclick = async () => {
@@ -1412,7 +1554,7 @@ function showWhoPicker() {
         return;
       }
       if (!m || m.role !== "parent") await lockParentMode();
-      setMe(id); hide("whoPopup"); await refreshForMe(); toast(`👋 Hi ${memberNameFor(id)}!`);
+      setMe(id); hide("whoPopup"); await refreshForMe(); toast(`👋 Hi ${memberNameFor(id)}!`); startTour();
     };
   });
   show("whoPopup");
@@ -1631,6 +1773,7 @@ async function loadHome() {
   const firstShow = $("homeScreen").classList.contains("hidden");
   hide("authScreen"); show("homeScreen");
   if (firstShow) showTab("today");
+  if (firstShow) setTimeout(() => { if ($("setupPopup").classList.contains("hidden")) startTour(); }, 900);
   $("welcomeJoinCode").textContent = me.family.joinCode;
   $("familyNameHeading").textContent = me.family.name + " 🌱";
   $("joinCodeDisplay").textContent = me.family.joinCode;
@@ -1682,9 +1825,11 @@ function renderMembers() {
       : `<span class="member-status wait">⏳ Not joined yet</span>`;
     const inviteBtn = known && !m.joined_at && !m.device_only
       ? ` <button class="small secondary" data-reinvite="${m.id}" style="width:auto; margin:0;">${m.invited_at ? "Resend" : "✉️ Invite"}</button>` : "";
-    row.innerHTML = `<span><span class="member-dot" style="background:${m.color || '#ccc'}"></span>${escapeHtml(m.display_name)}<span class="pill">${m.role}</span> ${status}</span>
+    row.innerHTML = `<span><button type="button" class="ava-btn" data-ava-for="${m.id}" title="Pick a face">${m.avatar ? whoMark(m) : `<span class="ava" style="--c:${m.color || "#ccc"}">＋</span>`}</button>${escapeHtml(m.display_name)}<span class="pill">${m.role}</span> ${status}</span>
       <span>${active && isParentHere() && getMe() !== m.id ? `<button class="small" data-member="${m.id}">Give Kudos</button>` : ""}${inviteBtn}</span>`;
     list.appendChild(row);
+    const avaBtn = row.querySelector("[data-ava-for]");
+    if (avaBtn) avaBtn.onclick = () => { if (getMe() === m.id || isParentHere()) openAvatarPicker(m.id); else toast(`Only ${m.display_name} (or a parent) can pick ${m.display_name}'s face`); };
     // (No star counts here — stars are personal, never a competition.)
     const notifyOpt = document.createElement("option"); notifyOpt.value = m.id; notifyOpt.textContent = m.display_name;
     notifySelect.appendChild(notifyOpt);
@@ -1732,7 +1877,7 @@ function renderCalMemberTabs() {
   const tabs = [{ id: "all", label: "All" }, { id: "together", label: "👨‍👩‍👧 Together", color: FAMILY_PINK }, ...state.members.map((m) => ({ id: m.id, label: escapeHtml(m.display_name), color: m.color }))];
   wrap.innerHTML = tabs.map((t) => {
     const active = calendarMemberFilter === t.id;
-    return `<button class="small ${active ? "" : "secondary"}" data-cal-member-tab="${t.id}" style="margin:0;">${t.color && t.id !== "together" ? `<span class="member-dot" style="background:${t.color};"></span>` : ""}${t.label}</button>`;
+    return `<button class="small ${active ? "" : "secondary"}" data-cal-member-tab="${t.id}" style="margin:0;">${t.color && t.id !== "together" ? whoMark(t.id, t.color) : ""}${t.label}</button>`;
   }).join("");
   wrap.querySelectorAll("[data-cal-member-tab]").forEach((btn) => {
     btn.onclick = () => { calendarMemberFilter = btn.getAttribute("data-cal-member-tab"); renderCalMemberTabs(); renderCalendarGrid(); };
@@ -2148,7 +2293,7 @@ function drawQuickAdd() {
   $("qaTasks").innerHTML = QA_TASKS.map(([e, t, ph]) => `<button type="button" class="pick-tile task ${qa.task === t ? "on" : ""}" data-qa-task="${escapeAttr(t)}" data-qa-task-emoji="${e}" data-qa-task-ph="${escapeAttr(ph)}"><span class="pt-emoji">${e}</span><span class="pt-title">${escapeHtml(t)}</span></button>`).join("");
   $("qaWhoHead").textContent = qa.task ? "Who's doing it?" : "Who's it for?";
   $("qaWho").innerHTML = `<button type="button" class="small ${qa.who.size ? "secondary" : ""}" data-qa-who="">🌍 Everyone</button>` +
-    state.members.map((m) => `<button type="button" class="small ${qa.who.has(m.id) ? "" : "secondary"}" data-qa-who="${m.id}"><span class="member-dot" style="background:${m.color || "#ccc"}"></span> ${escapeHtml(m.display_name)}</button>`).join("");
+    state.members.map((m) => `<button type="button" class="small ${qa.who.has(m.id) ? "" : "secondary"}" data-qa-who="${m.id}">${whoMark(m)}${escapeHtml(m.display_name)}</button>`).join("");
   $("qaWhen").innerHTML = QA_TIMES.map(([l, t]) => `<button type="button" class="small ${qa.time === t ? "" : "secondary"}" data-qa-time="${t}">${l}</button>`).join("");
   $("qaDur").innerHTML = QA_DURS.map(([l, mins]) => `<button type="button" class="small ${qa.end && qa.end === hhmmPlus(qa.time, mins) ? "" : "secondary"}" data-qa-dur="${mins}">${l}</button>`).join("");
   const today = todayStr();
@@ -2295,7 +2440,7 @@ function renderTodayPlan() {
   const nowItems = items.filter((x) => x.start && x.start <= now && now < endOf(x));
   const next = items.find((x) => x.start && x.start > now);
   const whoHtml = (ids) => ids.length
-    ? ids.map((id) => { const m = state.members.find((mm) => mm.id === id); return m ? `<span class="tp-who"><span class="member-dot" style="background:${m.color || "#ccc"}"></span>${escapeHtml(m.display_name)}</span>` : ""; }).join("")
+    ? ids.map((id) => { const m = state.members.find((mm) => mm.id === id); return m ? `<span class="tp-who">${whoMark(m)}${escapeHtml(m.display_name)}</span>` : ""; }).join("")
     : `<span class="tp-who">🌍 Everyone</span>`;
   const colorOf = (ids) => { if (!ids.length) return FAMILY_PINK; const m = state.members.find((mm) => mm.id === ids[0]); return m ? m.color || "#ccc" : FAMILY_PINK; };
   let lineDone = false;
@@ -2719,7 +2864,7 @@ async function renderHabits() {
     tabsWrap.querySelector("[data-habits-switch]").onclick = () => { habitsSwitchOpen = true; renderHabits(); };
   } else tabsWrap.innerHTML = data.members.map((m) => {
     const active = habitsActiveMemberId === m.memberId;
-    return `<button class="small ${active ? "" : "secondary"}" data-habits-tab="${m.memberId}" style="margin:0;"><span class="member-dot" style="background:${m.color || '#ccc'}"></span>${escapeHtml(m.displayName)}</button>`;
+    return `<button class="small ${active ? "" : "secondary"}" data-habits-tab="${m.memberId}" style="margin:0;">${whoMark(m.memberId, m.color)}${escapeHtml(m.displayName)}</button>`;
   }).join("");
   tabsWrap.querySelectorAll("[data-habits-tab]").forEach((btn) => {
     btn.onclick = () => { habitsActiveMemberId = btn.getAttribute("data-habits-tab"); if (kidOwnPhone && habitsActiveMemberId === meRow.id) habitsSwitchOpen = false; renderHabits(); };
@@ -2734,7 +2879,7 @@ async function renderHabits() {
     const streakBadge = m.currentStreak > 0 ? `<span class="muted" title="Current streak">🔥 ${m.currentStreak} day${m.currentStreak === 1 ? "" : "s"}</span>` : "";
     const wonBadge = m.dayWon ? `<span class="day-won-badge">🎉 Day won!</span>` : "";
     const headerHtml = `<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;">
-      <div><span class="member-dot" style="background:${m.color || '#ccc'}"></span><strong>${m.displayName}</strong> ${streakBadge} ${wonBadge}</div>
+      <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;">${whoMark(m.memberId, m.color, true)}<strong>${escapeHtml(m.displayName)}</strong> ${streakBadge} ${wonBadge}</div>
       ${canProgram() ? `<button class="small secondary" data-edit-member="${m.memberId}">${m.totalHabits ? 'Edit' : 'Choose'} habits ✏️</button>` : `<span class="muted" style="font-size:0.75rem;">🔒 Habits are set by a parent</span>`}
     </div>`;
 
@@ -2831,7 +2976,11 @@ async function renderHabits() {
       const check = btn.querySelector(".habit-check"); if (check) check.textContent = "✓";
       try {
         const res = await api(`/api/habits/${btn.getAttribute("data-habit")}/complete`, { method: "POST", body: JSON.stringify({ day: todayStr() }) });
-        toast(habitTickMessage(res));
+        if (res.dayWon && res.justWonStreak !== false && res.completedCount === res.totalHabits) {
+          const who = (lastHabitsData && lastHabitsData.members || []).find((x) => x.habits && x.habits.some((h) => h.id === btn.getAttribute("data-habit")));
+          const name = who ? who.displayName : "";
+          showParty({ emoji: "🏆", title: `You won the day${name ? ", " + name : ""}!`, text: `All 3 habits done ✅<br>⭐ <b>${res.starsThisWeek}</b> stars in your jar this week${res.currentStreak > 1 ? `<br>🔥 ${res.currentStreak} days in a row!` : ""}` });
+        } else toast(habitTickMessage(res));
         await renderHabits();
       } catch (err) { toast(err.message, true); renderHabits().catch(() => {}); }
     };
@@ -3014,6 +3163,7 @@ $("plannerWeekToggleBtn").onclick = () => { plannerWeekOpen = !plannerWeekOpen; 
 let rewardsListCache = null;
 let weeklyCache = null;
 let rewardPickerOpenFor = null;
+const jarLastStars = {};
 async function loadRewardProgress(el, m) {
   try {
     const [weekly, rewards] = await Promise.all([
@@ -3035,9 +3185,13 @@ async function loadRewardProgress(el, m) {
       : me.status === "given" ? `🎁 Enjoy <b>${escapeHtml(me.rewardTitle || "your reward")}</b>!`
       : !left ? `✅ Goal reached${chosen ? ` — <b>${escapeHtml(chosenName)}</b>` : ""} unlocks Saturday`
       : chosen ? `🎁 <b>${left}</b> more to <b>${escapeHtml(chosenName)}</b>` : `🎁 <b>${left}</b> more to a reward`;
-    const bar = `<div class="pc-line"><span>⭐ <b>${stars}</b>/${goal} stars this week</span><span>🔥 <b>${streak}</b> day streak</span></div>
-      <div class="reward-bar"><span style="width:${pct}%"></span></div>
-      <div class="pc-gift">${giftTxt}${chosen && me.status !== "earned" && me.status !== "given" && choices.length > 1 ? ` <button type="button" class="pc-change" data-reward-change>change</button>` : ""}</div>`;
+    const prevStars = jarLastStars[m.memberId];
+    jarLastStars[m.memberId] = stars;
+    const slots = Math.max(goal, Math.min(stars, 40));
+    const jar = Array.from({ length: slots }, (_, i) => `<span class="${i < stars ? (prevStars !== undefined && i >= prevStars ? "new" : "") : "empty"}">⭐</span>`).join("");
+    const bar = `<div class="star-jar-wrap"><div class="star-jar" aria-label="${stars} of ${goal} stars">${jar}</div>
+      <div class="jar-text"><div><span class="big">${stars}</span> <span class="muted">of ${goal} ⭐</span></div><div>🔥 <b>${streak}</b> day${streak === 1 ? "" : "s"} in a row</div>
+      <div class="pc-gift">${giftTxt}${chosen && me.status !== "earned" && me.status !== "given" && choices.length > 1 ? ` <button type="button" class="pc-change" data-reward-change>change</button>` : ""}</div></div></div>`;
     let rewardHtml = "";
     const pickerOpen = rewardPickerOpenFor === m.memberId;
     if (me.status === "earned" || me.status === "given") {
@@ -3308,7 +3462,7 @@ async function renderRewards() {
   const cards = visibleRewards.map((r) => {
     const art = rewardArt(r.title);
     const pending = r.status === "pending";
-    return `<div class="reward-card" style="background:${art.bg}" data-reward-card="${r.id}"><button type="button" class="rc-del" data-reward-del="${r.id}" aria-label="Remove ${escapeAttr(r.title)}" title="Remove (parent PIN)">🗑</button><span class="rc-emoji">${art.emoji}</span><span class="rc-title">${escapeHtml(r.title.replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, ""))}</span>
+    return `<div class="reward-card" style="background:${art.bg}" data-reward-card="${r.id}"><button type="button" class="rc-del parent-only" data-reward-del="${r.id}" aria-label="Remove ${escapeAttr(r.title)}" title="Remove (parent PIN)">🗑</button><span class="rc-emoji">${art.emoji}</span><span class="rc-title">${escapeHtml(r.title.replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, ""))}</span>
       ${pending ? `<span class="pill pending-pill">⏳ waiting for a parent</span><div class="rc-actions"><button type="button" data-reward-ok="${r.id}">✅ Parent OK</button></div>` : r.member_id ? `<span class="pill">for ${escapeHtml(forName(r.member_id))}</span>` : `<span class="pill">anyone</span>`}</div>`;
   }).join("") + `<button type="button" class="reward-card reward-own" data-reward-own><span class="rc-emoji">✏️</span><span class="rc-title">My own reward idea</span><span class="rc-add">＋ Add it</span></button>`;
   const have = new Set(data.rewards.map((r) => r.title.toLowerCase().replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, "")));
@@ -5413,7 +5567,7 @@ async function setupNext(step) {
         await api("/api/weekly/choose", { method: "POST", body: JSON.stringify({ memberId: id, rewardId: setup.rewardId, day: todayStr() }) });
       } else return showError("setupError", "Pick a reward, or suggest your own.");
     } else if (step === "ready") {
-      hide("setupPopup");
+      hide("setupPopup"); setTimeout(() => startTour(), 600);
       habitsActiveMemberId = id;
       showTab("today");
       await loadHome();
@@ -5584,7 +5738,7 @@ async function renderPassport() {
   $("passportMemberTabs").innerHTML = members.map((m) => {
     const mm = state.members.find((x) => x.id === m.memberId) || {};
     const on = m.memberId === passportMemberId;
-    return `<button type="button" class="small ${on ? "" : "secondary"}" data-passport-member="${m.memberId}" style="width:auto; margin:0;"><span class="member-dot" style="background:${mm.color || "#ccc"}"></span> ${escapeHtml(m.name)}</button>`;
+    return `<button type="button" class="small ${on ? "" : "secondary"}" data-passport-member="${m.memberId}" style="width:auto; margin:0;">${whoMark(m.memberId, mm.color)}${escapeHtml(m.name)}</button>`;
   }).join("");
   $("passportMemberTabs").querySelectorAll("[data-passport-member]").forEach((b) => {
     b.onclick = () => { passportMemberId = b.getAttribute("data-passport-member"); passportAsking = null; drawPassport(); renderPassportTabsOnly(); };
@@ -5656,7 +5810,7 @@ function drawPassport() {
         const res = await api("/api/food-passport/try", { method: "POST", body: JSON.stringify({ memberId: passportMemberId, food: ask.food, emoji: ask.emoji, verdict: b.getAttribute("data-passport-verdict"), day: todayStr() }) });
         passportAsking = null;
         if (res.alreadyHad) toast(`Updated — ${ask.food} is already in your passport 📘`);
-        else if (res.star) toast(`🎉 New food stamped! +1 bonus ⭐ for trying ${ask.food}`);
+        else if (res.star) showParty({ emoji: ask.emoji || "🛂", title: "New passport stamp!", text: `You tried <b>${escapeHtml(ask.food)}</b> 👏<br>+1 bonus ⭐ for being brave` });
         else if (res.reason === "week") toast(`📘 Stamped! (You've had this week's food stars — it still counts for badges)`);
         else toast(`📘 Stamped! (Today's food star is already earned — try another tomorrow)`);
         await renderPassport();

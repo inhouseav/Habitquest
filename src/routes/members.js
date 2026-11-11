@@ -90,6 +90,18 @@ export async function setInterests(id, request, familyId, env) {
   return json({ ok: true, interests });
 }
 
+/** POST /api/members/:id/avatar — { avatar: "🦊" } pick your own emoji face. */
+export async function setAvatar(id, request, familyId, env) {
+  const body = (await readJson(request)) || {};
+  const db = env.DB;
+  if (!(await ensureMemberStatus(db))) return errorResponse("Avatars aren't available right now.", 500);
+  const avatar = String(body.avatar || "").trim().slice(0, 16) || null;
+  if (avatar && !/^\p{Extended_Pictographic}/u.test(avatar)) return errorResponse("Pick an emoji.");
+  const r = await db.prepare("UPDATE members SET avatar = ? WHERE id = ? AND family_id = ?").bind(avatar, id, familyId).run();
+  if (!r.meta || !r.meta.changes) return errorResponse("Family member not found.", 404);
+  return json({ ok: true, avatar });
+}
+
 /** POST /api/members/:id/status — { invited: true } after an invite is sent, { joined: true } when they start using the app. */
 export async function setMemberStatus(id, request, familyId, env) {
   const body = (await readJson(request)) || {};

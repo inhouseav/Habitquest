@@ -4,6 +4,13 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-12 — Kid-friendly screens
+- 😎 Avatars: everyone picks an emoji face (Family list → tap the face, or at the end of the tour). It shows instead of the coloured dot on habits, the calendar, quick add, Today's plan and the passport. Stored in `members.avatar` (added automatically).
+- ⭐ Star jar on Today replaces the progress bar; new stars pop in.
+- 🎉 Party popup when you win the day, and when a new food earns a passport star.
+- 🧭 "Show me around": a 5-step tour the first time a kid picks themselves (once per kid per device), ending with picking a face.
+- Kids no longer see 🗑 on rewards or the 🔒 Parent admin button (✅ Parent OK still shows so a grown-up can approve on the kid's device).
+
 ## 2026-11-12 — Reward shop PIN, invite fix, Together calendar
 - Every family now starts with parent PIN **1234** (unless the family PIN is 1234). Admin shows a reminder to change it.
 - Reward shop: waiting rewards show ✅ Parent OK on the card; 🗑 on every card. Both pop up a big grown-up PIN pad, then lock again on a kid's phone.
