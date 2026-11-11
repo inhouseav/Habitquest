@@ -107,6 +107,8 @@ async function handleApi(request, env, url, ctx) {
   if (path === "/api/members" && method === "POST") return memberRoutes.addMember(request, familyId, env);
   const interestsMatch = path.match(/^\/api\/members\/([^/]+)\/interests$/);
   if (interestsMatch && method === "POST") return memberRoutes.setInterests(interestsMatch[1], request, familyId, env);
+  const favMatch = path.match(/^\/api\/members\/([^/]+)\/favorites$/);
+  if (favMatch && method === "POST") return memberRoutes.setFavorites(favMatch[1], request, familyId, env);
   const avatarMatch = path.match(/^\/api\/members\/([^/]+)\/avatar$/);
   if (avatarMatch && method === "POST") return memberRoutes.setAvatar(avatarMatch[1], request, familyId, env);
   const memberStatusMatch = path.match(/^\/api\/members\/([^/]+)\/status$/);

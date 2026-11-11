@@ -90,6 +90,21 @@ export async function setInterests(id, request, familyId, env) {
   return json({ ok: true, interests });
 }
 
+/**
+ * POST /api/members/:id/favorites — { move:[], cook:[], home:[], recipes:[ids], lunchbox:[] }
+ * A person's favourites, used first when planning (habits, dinners, lunchboxes).
+ */
+export async function setFavorites(id, request, familyId, env) {
+  const body = (await readJson(request)) || {};
+  const db = env.DB;
+  if (!(await ensureMemberStatus(db))) return errorResponse("Favourites aren't available right now.", 500);
+  const list = (v, n = 30) => (Array.isArray(v) ? v.map((x) => String(x).trim().slice(0, 80)).filter(Boolean).slice(0, n) : []);
+  const favorites = { move: list(body.move), cook: list(body.cook), home: list(body.home), recipes: list(body.recipes, 60), lunchbox: list(body.lunchbox) };
+  const r = await db.prepare("UPDATE members SET favorites = ? WHERE id = ? AND family_id = ?").bind(JSON.stringify(favorites), id, familyId).run();
+  if (!r.meta || !r.meta.changes) return errorResponse("Family member not found.", 404);
+  return json({ ok: true, favorites });
+}
+
 /** POST /api/members/:id/avatar — { avatar: "🦊" } pick your own emoji face. */
 export async function setAvatar(id, request, familyId, env) {
   const body = (await readJson(request)) || {};

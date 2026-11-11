@@ -4,6 +4,13 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-12 — Person profiles (favourites)
+- Family page: tap a name to open their profile. Tabs: 😎 Me (avatar + what they love), 🏃 Move, 🍳 Cook, 🏡 Home, 🍽️ Meals, 🎒 Lunchbox. Tap tiles to ❤️ favourites; ✨ marks ideas based on what they love; "＋ Add your own". Only that person or a parent can change it. Stored in `members.favorites` (JSON, added automatically).
+- Used first when planning:
+  - habit editor: their ❤️ faves first
+  - dinner tray: meals loved by 2+ people (👨‍👩‍👧 family favourites) first, so the family lines up on the same meals, then your own ❤️, then most cooked
+  - 🎒 lunchbox builder: your ❤️ items first
+
 ## 2026-11-12 — Food page = the week's meal planning area
 - New 🍽️ Dinners card at the top (1 week / 2 weeks). Drag a recipe picture onto a night: mouse drag, or on iPad/phone hold for a moment then drag. Or tap a recipe and pick a day in its popup.
 - Kids pick, parent locks (`src/routes/dinners.js`):

@@ -316,6 +316,28 @@
     .dn-night.past { display: none; }
     .dn-tray { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
+  /* ❤️ Profiles */
+  #profilePopup { position: fixed; inset: 0; z-index: 2950; background: rgba(24, 63, 53, 0.4); display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow-y: auto; }
+  #profilePopup.hidden { display: none; }
+  #profileCard { width: min(720px, 100%); text-align: left; }
+  .pf-top { display: flex; align-items: center; gap: 10px; }
+  .pf-tabs { display: flex; gap: 6px; overflow-x: auto; margin: 14px -4px 10px; padding: 2px 4px; }
+  .pf-tabs button { margin: 0; width: auto; flex-shrink: 0; padding: 8px 12px; border-radius: 999px; background: #eef3ee; color: var(--text); box-shadow: none; font-size: 0.88rem; }
+  .pf-tabs button.on { background: var(--terracotta); color: #fff; }
+  .pf-q { margin: 4px 0 8px; font-weight: 700; }
+  .pf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 8px; }
+  .pf-tile { position: relative; margin: 0; padding: 12px 6px 10px; border-radius: 16px; background: #fff; color: var(--text); box-shadow: inset 0 0 0 2px #eadfca; display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 700; font-size: 0.82rem; line-height: 1.2; }
+  .pf-tile.on { background: #fff0f3; box-shadow: inset 0 0 0 3px #ff5c8a; }
+  .pf-emoji { font-size: 1.8rem; }
+  .pf-heart { position: absolute; top: 4px; right: 6px; }
+  .pf-idea { position: absolute; top: 4px; left: 6px; font-size: 0.8rem; }
+  .pf-also { position: absolute; top: 4px; left: 6px; font-size: 0.75rem; }
+  .pf-own { display: flex; gap: 6px; margin-top: 10px; }
+  .pf-own input { margin: 0; flex: 1; }
+  .pf-summary { display: flex; gap: 8px; flex-wrap: wrap; font-size: 0.85rem; }
+  .pf-summary span { background: #f6f1e7; border-radius: 999px; padding: 4px 10px; }
+  .profile-link { background: none; border: 0; box-shadow: none; margin: 0; padding: 0; width: auto; color: var(--text); font-weight: 800; font-size: inherit; cursor: pointer; }
+  .dn-love { background: #fff; border-radius: 999px; padding: 1px 6px; font-size: 0.7rem; font-weight: 800; }
   /* 📖 Recipe popup */
   #recipeDetailPanel { position: fixed; inset: 0; z-index: 2945; background: rgba(24, 63, 53, 0.4); display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow-y: auto; margin: 0 !important; border-radius: 0 !important; }
   #recipeDetailPanel.hidden { display: none; }
@@ -1144,6 +1166,7 @@
 
 <div class="toast" id="toast"></div>
 <div id="cookPopup" class="hidden" role="dialog" aria-label="Cook mode"><div id="cookCard"></div></div>
+<div id="profilePopup" class="hidden" role="dialog" aria-label="Favourites"><div class="pop-card" id="profileCard"></div></div>
 <div id="avaPopup" class="hidden" role="dialog" aria-label="Pick your avatar">
   <div class="pop-card">
     <h3 style="margin:0;">Pick your face 😎</h3>
@@ -1655,6 +1678,105 @@ $("tourNextBtn").onclick = () => {
 };
 $("tourSkipBtn").onclick = endTour;
 
+// --- ❤️ Person profiles: favourites per sector, recipes and lunchbox items.
+// Used first when planning: the habit editor, the dinner tray (family
+// favourites = loved by 2+ people come first, so we cook the same meals
+// rather than 10 different ones) and the lunchbox builder.
+const SLOT_FAV_KEY = { 1: "move", 2: "cook", 3: "home" };
+function memberFavs(id) {
+  const m = state.members.find((mm) => mm.id === id);
+  let f = {}; try { f = JSON.parse((m && m.favorites) || "{}") || {}; } catch (err) { f = {}; }
+  return { move: f.move || [], cook: f.cook || [], home: f.home || [], recipes: f.recipes || [], lunchbox: f.lunchbox || [] };
+}
+function recipeLovers(recipeId) { return state.members.filter((m) => memberFavs(m.id).recipes.includes(recipeId)); }
+function sortRecipesByLove(list) {
+  const me = meMember();
+  return [...list].sort((a, b) => recipeLovers(b.id).length - recipeLovers(a.id).length
+    || (me && memberFavs(me.id).recipes.includes(b.id) ? 1 : 0) - (me && memberFavs(me.id).recipes.includes(a.id) ? 1 : 0)
+    || (recipeUsage[b.id] || 0) - (recipeUsage[a.id] || 0) || (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || a.title.localeCompare(b.title));
+}
+function interestIdeas(member, slot) {
+  let loves = []; try { loves = JSON.parse(member.interests || "[]"); } catch (err) {}
+  const map = INTEREST_HABITS[slot] || {}; const out = [];
+  loves.forEach((k) => { if (map[k]) out.push(map[k][1]); });
+  return out;
+}
+let profileFor = null, profileTab = "me";
+const PROFILE_TABS = [["me", "😎 Me"], ["move", "🏃 Move"], ["cook", "🍳 Cook"], ["home", "🏡 Home"], ["recipes", "🍽️ Meals"], ["lunchbox", "🎒 Lunchbox"]];
+function openProfile(id) { profileFor = id; profileTab = "me"; drawProfile(); show("profilePopup"); }
+function canEditProfile(id) { return getMe() === id || isParentHere(); }
+async function saveFavs(id, favs) {
+  const m = state.members.find((mm) => mm.id === id);
+  await api(`/api/members/${id}/favorites`, { method: "POST", body: JSON.stringify(favs) });
+  if (m) m.favorites = JSON.stringify(favs);
+}
+function drawProfile() {
+  const m = state.members.find((mm) => mm.id === profileFor); if (!m) return;
+  const favs = memberFavs(m.id); const edit = canEditProfile(m.id);
+  let loves = []; try { loves = JSON.parse(m.interests || "[]"); } catch (err) {}
+  const tile = (key, val, emoji, label, on, extra = "") => `<button type="button" class="pf-tile ${on ? "on" : ""}" data-pf-key="${key}" data-pf-val="${escapeAttr(val)}">${on ? `<span class="pf-heart">❤️</span>` : ""}${extra}<span class="pf-emoji">${emoji}</span><span>${escapeHtml(label)}</span></button>`;
+  let body = "";
+  if (profileTab === "me") {
+    body = `<p class="pf-q">What do you love doing? <span class="muted">(we use this for ideas)</span></p>
+      <div class="interest-grid">${INTERESTS.map(([k, e, l]) => `<button type="button" data-pf-interest="${k}" class="${loves.includes(k) ? "on" : ""}">${e} ${l}</button>`).join("")}</div>
+      <div class="pf-summary">${["move", "cook", "home", "recipes", "lunchbox"].map((k) => `<span>${PROFILE_TABS.find((t) => t[0] === k)[1]} <b>${favs[k].length}</b> ❤️</span>`).join("")}</div>`;
+  } else if (["move", "cook", "home"].includes(profileTab)) {
+    const slot = { move: 1, cook: 2, home: 3 }[profileTab];
+    const ideas = interestIdeas(m, slot);
+    const opts = []; const seen = new Set();
+    const push = (t, tag) => { const k = t.toLowerCase(); if (!seen.has(k)) { seen.add(k); opts.push([t, tag]); } };
+    favs[profileTab].forEach((t) => push(t, "")); ideas.forEach((t) => push(t, "idea"));
+    habitTileOptions(slot).forEach((o) => push(o.title, ""));
+    body = `<p class="pf-q">Tap your favourite ${profileTab === "move" ? "ways to move" : profileTab === "cook" ? "things to cook" : "home jobs & habits"} ❤️ — they'll come first when picking habits.</p>
+      ${ideas.length ? `<p class="muted" style="margin:0 0 6px; font-size:0.82rem;">✨ = ideas because ${escapeHtml(m.display_name)} loves ${loves.map((k) => (INTERESTS.find((i) => i[0] === k) || [])[2]).filter(Boolean).slice(0, 3).join(", ")}</p>` : ""}
+      <div class="pf-grid">${opts.slice(0, 24).map(([t, tag]) => tile(profileTab, t, habitEmojiFor(t, slot), t, favs[profileTab].includes(t), tag ? `<span class="pf-idea">✨</span>` : "")).join("")}</div>
+      ${edit ? `<form class="pf-own" data-pf-own="${profileTab}"><input placeholder="＋ Add your own…" maxlength="60" /><button type="submit" class="small" style="width:auto; margin:0;">Add ❤️</button></form>` : ""}`;
+  } else if (profileTab === "recipes") {
+    const list = sortRecipesByLove(recipesCache);
+    body = `<p class="pf-q">Which meals do you love? ❤️ Meals loved by 2+ people are <b>👨‍👩‍👧 family favourites</b> and come first when planning dinners.</p>
+      <div class="pf-grid">${list.map((r) => { const lovers = recipeLovers(r.id).filter((x) => x.id !== m.id); return tile("recipes", r.id, recipeEmoji(r), r.title, favs.recipes.includes(r.id), lovers.length ? `<span class="pf-also">${lovers.map((x) => x.avatar || "❤️").join("")}</span>` : ""); }).join("") || '<p class="muted">No recipes yet.</p>'}</div>`;
+  } else {
+    const items = [...favs.lunchbox.filter((f) => !LUNCHBOX_PALETTE_ITEMS.includes(f)), ...LUNCHBOX_PALETTE_ITEMS];
+    body = `<p class="pf-q">What do you like in your lunchbox? ❤️ They come first in 🎒 Build a lunchbox.</p>
+      <div class="pf-grid">${items.map((it) => { const e = it.split(" ")[0]; return tile("lunchbox", it, e, it.slice(e.length + 1) || it, favs.lunchbox.includes(it)); }).join("")}</div>
+      ${edit ? `<form class="pf-own" data-pf-own="lunchbox"><input placeholder="＋ Add your own… e.g. 🍙 Rice ball" maxlength="60" /><button type="submit" class="small" style="width:auto; margin:0;">Add ❤️</button></form>` : ""}`;
+  }
+  $("profileCard").innerHTML = `<div class="pf-top"><button type="button" class="ava-btn" data-pf-ava>${m.avatar ? whoMark(m, null, true) : `<span class="ava big" style="--c:${m.color || "#ccc"}">＋</span>`}</button>
+      <div><h3 style="margin:0;">${escapeHtml(m.display_name)}</h3><span class="muted" style="font-size:0.82rem;">${edit ? "Tap to ❤️ your favourites" : "👀 Looking — only " + escapeHtml(m.display_name) + " or a parent can change these"}</span></div>
+      <button type="button" class="small secondary" data-pf-close style="margin:0 0 0 auto; width:auto;">✓ Done</button></div>
+    <div class="pf-tabs">${PROFILE_TABS.map(([k, l]) => `<button type="button" data-pf-tab="${k}" class="${profileTab === k ? "on" : ""}">${l}</button>`).join("")}</div>
+    <div class="pf-body">${body}</div>`;
+  const card = $("profileCard");
+  card.querySelector("[data-pf-close]").onclick = () => { hide("profilePopup"); renderDinners().catch(() => {}); renderLunchboxPalette(); };
+  card.querySelector("[data-pf-ava]").onclick = () => { if (edit) openAvatarPicker(m.id, () => drawProfile()); };
+  card.querySelectorAll("[data-pf-tab]").forEach((b) => { b.onclick = () => { profileTab = b.getAttribute("data-pf-tab"); drawProfile(); }; });
+  const guard = () => { if (!edit) { toast(`Only ${m.display_name} (or a parent) can change these`); return false; } return true; };
+  card.querySelectorAll("[data-pf-interest]").forEach((b) => {
+    b.onclick = async () => {
+      if (!guard()) return;
+      const k = b.getAttribute("data-pf-interest"); const set = new Set(loves); set.has(k) ? set.delete(k) : set.add(k);
+      try { await api(`/api/members/${m.id}/interests`, { method: "POST", body: JSON.stringify({ interests: [...set] }) }); m.interests = JSON.stringify([...set]); drawProfile(); } catch (err) { toast(err.message, true); }
+    };
+  });
+  card.querySelectorAll("[data-pf-key]").forEach((b) => {
+    b.onclick = async () => {
+      if (!guard()) return;
+      const key = b.getAttribute("data-pf-key"); const val = b.getAttribute("data-pf-val");
+      const f = memberFavs(m.id); f[key] = f[key].includes(val) ? f[key].filter((x) => x !== val) : [...f[key], val];
+      try { await saveFavs(m.id, f); drawProfile(); } catch (err) { toast(err.message, true); }
+    };
+  });
+  card.querySelectorAll("[data-pf-own]").forEach((form) => {
+    form.onsubmit = async (e) => {
+      e.preventDefault(); if (!guard()) return;
+      const key = form.getAttribute("data-pf-own"); let v = form.querySelector("input").value.trim(); if (!v) return;
+      if (key === "lunchbox" && !LEAD_EMOJI_RE.test(v)) v = `🍱 ${v}`;
+      const f = memberFavs(m.id); if (!f[key].includes(v)) f[key] = [v, ...f[key]];
+      try { await saveFavs(m.id, f); drawProfile(); toast(`❤️ Saved ${v}`); } catch (err) { toast(err.message, true); }
+    };
+  });
+}
+
 function showWhoPicker() {
   $("whoList").innerHTML = state.members.map((m) =>
     `<button type="button" data-who="${m.id}">${whoMark(m)}${escapeHtml(m.display_name)}</button>`).join("");
@@ -1944,9 +2066,10 @@ function renderMembers() {
       : `<span class="member-status wait">⏳ Not joined yet</span>`;
     const inviteBtn = known && !m.joined_at && !m.device_only
       ? ` <button class="small secondary" data-reinvite="${m.id}" style="width:auto; margin:0;">${m.invited_at ? "Resend" : "✉️ Invite"}</button>` : "";
-    row.innerHTML = `<span><button type="button" class="ava-btn" data-ava-for="${m.id}" title="Pick a face">${m.avatar ? whoMark(m) : `<span class="ava" style="--c:${m.color || "#ccc"}">＋</span>`}</button>${escapeHtml(m.display_name)}<span class="pill">${m.role}</span> ${status}</span>
+    row.innerHTML = `<span><button type="button" class="ava-btn" data-ava-for="${m.id}" title="Pick a face">${m.avatar ? whoMark(m) : `<span class="ava" style="--c:${m.color || "#ccc"}">＋</span>`}</button><button type="button" class="profile-link" data-profile="${m.id}">${escapeHtml(m.display_name)} <span class="muted">❤️ ›</span></button><span class="pill">${m.role}</span> ${status}</span>
       <span>${active && isParentHere() && getMe() !== m.id ? `<button class="small" data-member="${m.id}">Give Kudos</button>` : ""}${inviteBtn}</span>`;
     list.appendChild(row);
+    row.querySelector("[data-profile]").onclick = () => openProfile(m.id);
     const avaBtn = row.querySelector("[data-ava-for]");
     if (avaBtn) avaBtn.onclick = () => { if (getMe() === m.id || isParentHere()) openAvatarPicker(m.id); else toast(`Only ${m.display_name} (or a parent) can pick ${m.display_name}'s face`); };
     // (No star counts here — stars are personal, never a competition.)
@@ -3507,6 +3630,8 @@ function topHabitsForSlot(slot, n = 5) {
 }
 // An emoji that suits a habit someone typed ("Walk the dog" → 🐕).
 const HABIT_EMOJI = [
+  [/netball/i, "🏐"], [/soccer|footy|football/i, "⚽"], [/bike|ride|cycl/i, "🚲"], [/scooter/i, "🛴"], [/dance/i, "💃"], [/swim/i, "🏊"],
+  [/outside|outdoor|park|nature/i, "🌳"],
   [/dog/i, "🐕"], [/cat\b|pet|fish|rabbit|guinea/i, "🐾"], [/bed\b/i, "🛏️"], [/teeth|brush/i, "🪥"], [/water\b|drink/i, "💧"],
   [/fruit|apple|banana/i, "🍎"], [/veg|broccoli|carrot/i, "🥦"], [/salad/i, "🥗"], [/bake|muffin|cake|cookie/i, "🧁"], [/smoothie/i, "🥤"],
   [/lunch ?box|lunch/i, "🥪"], [/breakfast/i, "🥣"], [/dinner|cook|recipe|meal/i, "🍳"], [/snack/i, "🍏"], [/garden|plant|seed|herb|water the/i, "🌱"],
@@ -3521,10 +3646,12 @@ function habitEmojiFor(title, slot) {
   if (hit) return hit[1];
   return eventEmoji(title, (HABIT_SLOT_META[slot] || {}).emoji || "⭐");
 }
-function habitTileOptions(slot) {
+function habitTileOptions(slot, memberId) {
   const seen = new Set();
   const out = [];
   const add = (o) => { const k = o.title.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(o); } };
+  // ❤️ This person's favourites (Family → tap their name) come first.
+  if (memberId) (memberFavs(memberId)[SLOT_FAV_KEY[slot]] || []).forEach((t) => add({ title: t, emoji: habitEmojiFor(t, slot), love: true }));
   // 🏆 What we actually do most, first.
   topHabitsForSlot(slot).forEach((t) => add({ title: t.title, emoji: t.emoji, top: t.count }));
   if (slot === 2) {
@@ -3537,12 +3664,12 @@ function habitTileOptions(slot) {
   (MODULE_IDEAS[slot] || []).forEach(([, ideas]) => ideas.forEach(([emoji, title]) => add({ emoji, title })));
   return out.slice(0, 16);
 }
-function habitTilesHtml(slot, existing) {
+function habitTilesHtml(slot, existing, memberId) {
   const current = existing ? (existing.usualTitle || existing.title) : "";
-  const opts = habitTileOptions(slot);
+  const opts = habitTileOptions(slot, memberId);
   const matched = opts.some((o) => o.title.toLowerCase() === current.toLowerCase());
   const tiles = opts.map((o) => `<button type="button" class="pick-tile ${o.cover ? "photo" : ""} ${o.title.toLowerCase() === current.toLowerCase() ? "on" : ""}" data-pick-slot="${slot}" data-pick-title="${escapeAttr(o.title)}" data-pick-emoji="${escapeAttr(o.emoji)}" ${o.cover ? `data-tile-cover="${o.cover}"` : ""}>
-      ${o.top ? `<span class="pt-badge pt-top">🏆 ×${o.top}</span>` : o.fav ? `<span class="pt-badge">⭐</span>` : ""}<span class="pt-emoji">${escapeHtml(o.emoji)}</span><span class="pt-title">${escapeHtml(o.title)}</span></button>`).join("");
+      ${o.love ? `<span class="pt-badge pt-top">❤️ fave</span>` : o.top ? `<span class="pt-badge pt-top">🏆 ×${o.top}</span>` : o.fav ? `<span class="pt-badge">⭐</span>` : ""}<span class="pt-emoji">${escapeHtml(o.emoji)}</span><span class="pt-title">${escapeHtml(o.title)}</span></button>`).join("");
   const own = `<button type="button" class="pick-tile own ${current && !matched ? "on" : ""}" data-pick-own="${slot}"><span class="pt-emoji">✏️</span><span class="pt-title">${current && !matched ? escapeHtml(current) : "My own idea"}</span></button>`;
   return { html: `<div class="pick-grid">${tiles}${own}</div>`, showOwn: !!(current && !matched) };
 }
@@ -3560,7 +3687,7 @@ function habitEditFormHtml(m) {
   const slots = [1, 2, 3].map((slot) => {
     const existing = m.habits.find((h) => h.slot === slot);
     const meta = HABIT_SLOT_META[slot];
-    const tiles = habitTilesHtml(slot, existing);
+    const tiles = habitTilesHtml(slot, existing, m.memberId);
     const hasTop = topHabitsForSlot(slot).length > 0;
     return `<div class="pick-head">${meta.emoji} ${meta.label} <span class="muted">— tap one${hasTop ? " · 🏆 = what you do most" : ""}</span></div>
     ${tiles.html}
@@ -4180,8 +4307,10 @@ let lunchboxItems = [];
 
 function renderLunchboxPalette() {
   const wrap = $("lunchboxPalette");
-  wrap.innerHTML = LUNCHBOX_PALETTE_ITEMS.map((item) =>
-    `<button type="button" class="lunchbox-chip" draggable="true" data-lunchbox-chip="${escapeHtml(item)}">${item}</button>`
+  const me = meMember(); const favs = me ? memberFavs(me.id).lunchbox || [] : [];
+  const items = [...favs.filter((f) => !LUNCHBOX_PALETTE_ITEMS.includes(f)), ...LUNCHBOX_PALETTE_ITEMS].sort((a, b) => (favs.includes(b) ? 1 : 0) - (favs.includes(a) ? 1 : 0));
+  wrap.innerHTML = items.map((item) =>
+    `<button type="button" class="lunchbox-chip" draggable="true" data-lunchbox-chip="${escapeHtml(item)}">${favs.includes(item) ? "❤️ " : ""}${escapeHtml(item)}</button>`
   ).join("");
   wrap.querySelectorAll("[data-lunchbox-chip]").forEach((chip) => {
     const item = chip.getAttribute("data-lunchbox-chip");
@@ -4532,13 +4661,13 @@ function drawDinnerTray() {
   const cats = [["dinner", "🍽️ Dinners"], ["all", "📖 All"]];
   $("dinnerTrayCat").innerHTML = cats.map(([k, l]) => `<button type="button" data-dn-cat="${k}" class="${dinnerTrayCat === k ? "on" : ""}">${l}</button>`).join("");
   $("dinnerTrayCat").querySelectorAll("[data-dn-cat]").forEach((b) => { b.onclick = () => { dinnerTrayCat = b.getAttribute("data-dn-cat"); drawDinnerTray(); }; });
-  let list = sortRecipesByUse(recipesCache.filter((r) => dinnerTrayCat === "all" || r.category === "dinner"));
-  if (!list.length) list = sortRecipesByUse(recipesCache);
+  let list = sortRecipesByLove(recipesCache.filter((r) => dinnerTrayCat === "all" || r.category === "dinner"));
+  if (!list.length) list = sortRecipesByLove(recipesCache);
   const tray = $("dinnerTray");
   tray.innerHTML = list.length ? list.map((r) => {
     const n = recipeUsage[r.id] || 0; const cover = recipeCoverPhotos[r.id];
     return `<div class="dn-recipe ${dinnerSelected === r.id ? "sel" : ""}" data-dn-recipe="${r.id}" ${cover ? `data-tile-cover="${cover}"` : ""} role="button" tabindex="0" aria-label="${escapeAttr(r.title)}">
-      ${n ? `<span class="dn-used">🔁 ${n}</span>` : ""}${r.favorite ? `<span class="dn-fav">⭐</span>` : ""}
+      ${n ? `<span class="dn-used">🔁 ${n}</span>` : ""}${recipeLovers(r.id).length ? `<span class="dn-fav dn-love" title="${escapeAttr(recipeLovers(r.id).map((m) => m.display_name).join(", "))} love this">${recipeLovers(r.id).length > 1 ? "👨‍👩‍👧" : "❤️"} ${recipeLovers(r.id).length}</span>` : r.favorite ? `<span class="dn-fav">⭐</span>` : ""}
       <span class="dn-emoji">${recipeEmoji(r)}</span><span class="dn-title">${escapeHtml(r.title)}</span></div>`;
   }).join("") : `<p class="muted">No recipes yet — add some in Recipes below (or the 🇦🇺 family favourites pack).</p>`;
   fillTileCovers(tray);

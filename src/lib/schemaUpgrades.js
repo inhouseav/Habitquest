@@ -147,7 +147,7 @@ export async function ensureMemberStatus(db) {
   try {
     const cols = new Set(((await db.prepare("SELECT name FROM pragma_table_info('members')").all()).results || []).map((r) => r.name));
     const added = !cols.has("joined_at");
-    for (const [c, def] of [["invited_at", "TEXT"], ["joined_at", "TEXT"], ["device_only", "INTEGER NOT NULL DEFAULT 0"], ["avatar", "TEXT"]]) {
+    for (const [c, def] of [["invited_at", "TEXT"], ["joined_at", "TEXT"], ["device_only", "INTEGER NOT NULL DEFAULT 0"], ["avatar", "TEXT"], ["favorites", "TEXT"]]) {
       if (!cols.has(c)) await db.prepare(`ALTER TABLE members ADD COLUMN ${c} ${def}`).run().catch(() => {});
     }
     if (added) {
@@ -157,7 +157,7 @@ export async function ensureMemberStatus(db) {
       )`).run().catch(() => {});
     }
     const after = new Set(((await db.prepare("SELECT name FROM pragma_table_info('members')").all()).results || []).map((r) => r.name));
-    memberStatusReady = after.has("joined_at") && after.has("invited_at") && after.has("device_only") && after.has("avatar");
+    memberStatusReady = after.has("joined_at") && after.has("invited_at") && after.has("device_only") && after.has("avatar") && after.has("favorites");
   } catch (err) { memberStatusReady = false; }
   return memberStatusReady;
 }
