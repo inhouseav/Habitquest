@@ -197,6 +197,8 @@ async function handleApi(request, env, url, ctx) {
   }
 
   if (path === "/api/recipes" && method === "GET") return recipeRoutes.listRecipes(familyId, env);
+  const recipeWhyMatch = path.match(/^\/api\/recipes\/([^/]+)\/why$/);
+  if (recipeWhyMatch && method === "POST") return recipeRoutes.setRecipeWhy(recipeWhyMatch[1], request, familyId, env);
   if (path === "/api/recipes" && method === "POST") return recipeRoutes.createRecipe(request, familyId, env);
   if (path === "/api/recipes/pack" && method === "POST") return recipeRoutes.addPack(familyId, env);
   const recipeIdMatch = path.match(/^\/api\/recipes\/([^/]+)$/);

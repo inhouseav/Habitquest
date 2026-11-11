@@ -442,10 +442,82 @@
   .memories-dots button { width: 9px; height: 9px; border-radius: 50%; border: none; padding: 0; background: #e4dbc8; }
   .memories-dots button.active { background: var(--terracotta); width: 12px; height: 12px; }
   @media print {
-    body * { visibility: hidden; }
-    #cookbookView, #cookbookView * { visibility: visible; }
-    #cookbookView { position: absolute; top: 0; left: 0; width: 100%; }
+    body:not(.printing-book) * { visibility: hidden; }
+    body:not(.printing-book) #cookbookView, body:not(.printing-book) #cookbookView * { visibility: visible; }
+    body:not(.printing-book) #cookbookView { position: absolute; top: 0; left: 0; width: 100%; }
+    html, body.printing-book { margin: 0 !important; padding: 0 !important; background: #fff !important; min-height: 0 !important; }
+    body.printing-book > *:not(#printBook) { display: none !important; }
+    body.printing-book #printBook { position: static !important; overflow: visible !important; background: none !important; padding: 0 !important; display: block !important; }
+    body.printing-book .bk-bar { display: none !important; }
+    body.printing-book .bk-pages { gap: 0 !important; padding: 0 !important; }
+    body.printing-book .bk-page { box-shadow: none !important; border-radius: 0 !important; margin: 0 !important; width: 210mm !important; height: 296mm !important; min-height: 0 !important; page-break-after: always; break-after: page; overflow: hidden; }
+    body.printing-book .bk-page:last-child { page-break-after: auto; break-after: auto; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    @page { size: A4; margin: 0; }
   }
+  /* 📖 Cookbook */
+  #bookChooserPopup { position: fixed; inset: 0; z-index: 2950; background: rgba(24, 63, 53, 0.4); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  #bookChooserPopup.hidden { display: none; }
+  #bookChooser { text-align: left; width: min(480px, 100%); }
+  .bk-choose { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .bk-choose button { margin: 0; text-align: left; background: #fff; color: var(--text); box-shadow: inset 0 0 0 2px #eadfca; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
+  .bk-choose button span { font-size: 0.8rem; color: #6b7d75; font-weight: 600; }
+  .bk-choose button.on { box-shadow: inset 0 0 0 3px var(--terracotta); background: #fff4ec; }
+  .bk-choose button:disabled { opacity: 0.4; }
+  #printBook { position: fixed; inset: 0; z-index: 2990; background: #e9e4da; overflow-y: auto; }
+  #printBook.hidden { display: none; }
+  .bk-bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: #fffdf7; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+  .bk-pages { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px 12px 60px; }
+  .bk-page { width: min(210mm, 100%); min-height: min(297mm, 140vw); background: #fffdf8; box-shadow: 0 6px 24px rgba(0,0,0,0.18); border-radius: 6px; padding: 14mm 13mm; box-sizing: border-box; position: relative; overflow: hidden; color: #24352f; font-family: "Trebuchet MS", "Avenir Next", system-ui, sans-serif; }
+  .bk-cover { background: radial-gradient(circle at 30% 20%, #fff2c9, #ffd6c2 45%, #ffc4d6 100%); display: flex; align-items: center; justify-content: center; text-align: center; }
+  .bk-stickers span { position: absolute; font-size: 3.4rem; left: calc(50% + 38% * cos(var(--a))); top: calc(50% + 40% * sin(var(--a))); transform: translate(-50%, -50%) rotate(var(--a)); }
+  .bk-cover-in { position: relative; background: #fffdf8; border-radius: 40px; padding: 28px 30px; box-shadow: 0 10px 0 #e0604a, 0 18px 40px rgba(0,0,0,0.15); max-width: 70%; transform: rotate(-2deg); }
+  .bk-kicker { font-weight: 800; color: #e0604a; letter-spacing: 0.04em; }
+  .bk-cover h1 { font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.05; margin: 10px 0; color: #24352f; }
+  .bk-cover h1 span { color: #e0604a; font-size: 1.25em; }
+  .bk-sub { font-size: 1.05rem; font-weight: 700; }
+  .bk-chefs { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; font-weight: 700; }
+  .bk-chef { background: #fff1d6; border-radius: 999px; padding: 4px 10px; }
+  .bk-year { margin-top: 14px; color: #8a6d4a; font-weight: 700; }
+  .bk-contents h2 { font-size: 2rem; margin: 0 0 16px; }
+  .bk-toc { list-style: none; padding: 0; margin: 0; font-size: 1.1rem; }
+  .bk-toc li { display: flex; align-items: baseline; gap: 6px; padding: 7px 0; }
+  .bk-toc li i { flex: 1; border-bottom: 3px dotted #e6cfa8; }
+  .bk-toc li b { color: #e0604a; }
+  .bk-rules { margin-top: 26px; background: #e9f5ee; border-radius: 20px; padding: 14px 18px; }
+  .bk-rules h3 { margin: 0 0 6px; }
+  .bk-rules ul { margin: 0; padding-left: 4px; list-style: none; line-height: 1.7; font-weight: 700; }
+  .bk-tried { line-height: 1.6; font-size: 1.02rem; }
+  .bk-recipe { background: linear-gradient(var(--bg) 0 70px, #fffdf8 70px); }
+  .bk-band { display: flex; justify-content: space-between; align-items: center; margin: -6mm 0 10px; }
+  .bk-cat { background: var(--ink); color: #fff; border-radius: 999px; padding: 4px 14px; font-weight: 800; }
+  .bk-num { background: #fff; color: var(--ink); width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; }
+  .bk-top { display: grid; grid-template-columns: 44% 1fr; gap: 18px; align-items: start; }
+  .bk-photo { position: relative; background: #fff; padding: 8px 8px 28px; box-shadow: 0 6px 16px rgba(0,0,0,0.18); transform: rotate(-3deg); }
+  .bk-photo img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+  .bk-emoji-photo { width: 100%; aspect-ratio: 1; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 6rem; }
+  .bk-tape { position: absolute; top: -10px; left: 50%; width: 90px; height: 24px; background: rgba(255, 230, 150, 0.85); transform: translateX(-50%) rotate(4deg); }
+  .bk-head h2 { font-size: clamp(1.6rem, 4vw, 2.3rem); line-height: 1.1; margin: 4px 0 10px; color: var(--ink); }
+  .bk-why { background: #fff; border: 3px solid var(--ink); border-radius: 20px 20px 20px 4px; padding: 8px 12px; }
+  .bk-why p { margin: 4px 0 0; font-size: 1.02rem; font-style: italic; }
+  .bk-lines { display: block; border-bottom: 2px dashed #d9c9ae; height: 22px; }
+  .bk-lovers { margin-top: 8px; font-weight: 700; }
+  .bk-facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .bk-facts span { background: var(--bg); border-radius: 999px; padding: 3px 10px; font-weight: 700; font-size: 0.85rem; }
+  .bk-cols { display: grid; grid-template-columns: 40% 1fr; gap: 20px; margin-top: 22px; font-size: 1.12rem; }
+  .bk-cols h3 { margin: 0 0 6px; color: var(--ink); }
+  .bk-need ul { list-style: none; padding: 0; margin: 0; line-height: 1.5; }
+  .bk-need li { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; }
+  .bk-box { flex-shrink: 0; width: 15px; height: 15px; border: 2px solid var(--ink); border-radius: 4px; margin-top: 3px; }
+  .bk-steps ol { list-style: none; counter-reset: s; padding: 0; margin: 0; }
+  .bk-steps li { counter-increment: s; position: relative; padding: 2px 0 16px 42px; line-height: 1.5; }
+  .bk-steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: #fff; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+  .bk-foot { position: absolute; left: 13mm; right: 13mm; bottom: 10mm; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: end; font-weight: 700; }
+  .bk-stars { color: #f4a62a; letter-spacing: 2px; font-size: 1.2rem; }
+  @media (max-width: 600px) { .bk-top, .bk-cols { grid-template-columns: 1fr; } .bk-foot { position: static; margin-top: 16px; grid-template-columns: 1fr; } .bk-page { padding: 18px; } .bk-cover-in { max-width: 86%; } }
+  .rp-why { margin: 12px 18px 0; background: #fff; border: 2px solid #f0dfc4; border-radius: 16px; padding: 10px 12px; }
+  .rp-why p { margin: 4px 0 6px; font-style: italic; }
+  .rp-why textarea { width: 100%; margin: 6px 0 0; }
   .event-row { padding: 10px 0; border-bottom: 1px solid #eee3cf; }
   .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .cal-header h3 { margin: 0; }
@@ -1045,9 +1117,10 @@
       <div class="error hidden" id="mealError"></div>
     </div>
     <div class="card full-width">
-      <h3>Family Cookbook 📸</h3>
-      <p class="muted" style="margin-bottom:8px;">Favourite recipes + photos of you making them.</p>
-      <button class="summary-row" id="cookbookToggleBtn" type="button"><span>View cookbook</span><span class="chevron">›</span></button>
+      <h3>Family Cookbook 📖</h3>
+      <p class="muted" style="margin-bottom:8px;">Turn your favourite recipes into a real cookbook — with photos, why you love them and steps to follow.</p>
+      <button type="button" id="makeBookBtn" style="margin:0 0 10px;">📖 Make our family cookbook (print / PDF)</button>
+      <button class="summary-row" id="cookbookToggleBtn" type="button"><span>📸 Cooking photos by date</span><span class="chevron">›</span></button>
       <div id="cookbookPanel" class="hidden" style="margin-top:10px;">
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <label style="width:auto; margin:0;">From</label>
@@ -1166,6 +1239,8 @@
 
 <div class="toast" id="toast"></div>
 <div id="cookPopup" class="hidden" role="dialog" aria-label="Cook mode"><div id="cookCard"></div></div>
+<div id="bookChooserPopup" class="hidden" role="dialog" aria-label="Make our cookbook"><div class="pop-card" id="bookChooser"></div></div>
+<div id="printBook" class="hidden"></div>
 <div id="profilePopup" class="hidden" role="dialog" aria-label="Favourites"><div class="pop-card" id="profileCard"></div></div>
 <div id="avaPopup" class="hidden" role="dialog" aria-label="Pick your avatar">
   <div class="pop-card">
@@ -4180,7 +4255,11 @@ function showRecipeDetail(recipeId) {
     <button type="button" class="rp-close" id="closeRecipeDetailBtn" aria-label="Close">✕</button>
     <div class="rp-hero" ${cover ? `data-tile-cover="${cover}"` : ""}><span>${recipeEmoji(r)}</span></div>
     <h2 class="rp-title">${escapeHtml(r.title)}</h2>
-    <div class="rp-meta">👨‍👩‍👧 For your family of ${familySize()}${used ? ` · 🔁 planned ${used}×` : ""}${r.favorite ? " · ⭐ favourite" : ""}</div>
+    <div class="rp-meta">👨‍👩‍👧 For your family of ${familySize()}${used ? ` · 🔁 planned ${used}×` : ""}${r.favorite ? " · ⭐ favourite" : ""}${recipeLovers(r.id).length ? ` · ❤️ ${recipeLovers(r.id).map((m) => m.avatar || m.display_name).join(" ")}` : ""}</div>
+    <div class="rp-why"><b>💬 Why we love it</b>
+      <div id="rpWhyView">${r.why ? `<p>${escapeHtml(r.why)}</p>` : `<p class="muted">Tell us why — it goes in your family cookbook!</p>`}<button type="button" class="small secondary" id="rpWhyEdit" style="width:auto; margin:0;">✏️ ${r.why ? "Change" : "Write it"}</button></div>
+      <form id="rpWhyForm" class="hidden"><textarea maxlength="280" rows="2" placeholder="e.g. We make it every Taco Tuesday and everyone builds their own!">${escapeHtml(r.why || "")}</textarea><button type="submit" class="small" style="width:auto; margin:6px 0 0;">💾 Save</button></form>
+    </div>
     <div class="rp-go">
       <button type="button" id="rpCookBtn">👩‍🍳 Cook it now</button>
       <button type="button" class="secondary" id="rpSpeakBtn">🔊 Read it to me</button>
@@ -4209,6 +4288,11 @@ function showRecipeDetail(recipeId) {
   $("closeRecipeDetailBtn").onclick = close;
   panel.onclick = (e) => { if (e.target === panel) close(); };
   $("rpCookBtn").onclick = () => openCookMode(r.id);
+  $("rpWhyEdit").onclick = () => { hide("rpWhyView"); show("rpWhyForm"); $("rpWhyForm").querySelector("textarea").focus(); };
+  $("rpWhyForm").onsubmit = async (e) => {
+    e.preventDefault();
+    try { const res = await api(`/api/recipes/${r.id}/why`, { method: "POST", body: JSON.stringify({ why: $("rpWhyForm").querySelector("textarea").value }) }); r.why = res.why; toast("💬 Saved — it'll be in the cookbook!"); showRecipeDetail(r.id); } catch (err) { toast(err.message, true); }
+  };
   $("rpSpeakBtn").onclick = () => speak(`${r.title}. You need: ${ings.join(", ")}. ${r.steps.map((s, i) => `Step ${i + 1}. ${s}`).join(" ")}`);
   panel.querySelectorAll("[data-rp-type]").forEach((b) => { b.onclick = () => { recipePlaceType = b.getAttribute("data-rp-type"); showRecipeDetail(r.id); }; });
   panel.querySelectorAll("[data-rp-day]").forEach((b) => {
@@ -5203,6 +5287,103 @@ function loadCookbookCovers(view) {
   });
 }
 $("printCookbookBtn").onclick = () => window.print();
+// =====================================================================
+// 📖 Our Family Cookbook — a fun, printable book (Save as PDF from the
+// print screen). Cover → contents → a page per recipe like a real kids'
+// cookbook (photo, 💬 why we love it, ❤️ who loves it, ingredients to
+// tick, numbered steps, rate-it stars, notes) → foods we've tried.
+// =====================================================================
+const BOOK_COLORS = { breakfast: ["#ffe9b8", "#f4a62a"], lunch: ["#d9f2e3", "#3c9d6b"], dinner: ["#ffd9d2", "#e0604a"], snacks: ["#e6defc", "#7d5bd6"], lunchboxes: ["#d6ecfa", "#3b8fd0"] };
+let bookPick = "loved";
+function bookRecipes(mode) {
+  const all = sortRecipesByLove(recipesCache);
+  if (mode === "loved") return all.filter((r) => recipeLovers(r.id).length || r.favorite);
+  if (mode === "starred") return all.filter((r) => r.favorite);
+  return all;
+}
+function openBookMaker() {
+  const counts = { loved: bookRecipes("loved").length, starred: bookRecipes("starred").length, all: bookRecipes("all").length };
+  if (!counts.loved) bookPick = "all";
+  $("bookChooser").innerHTML = `<h3 style="margin:0;">📖 Make our family cookbook</h3>
+    <p class="muted" style="margin:4px 0 10px;">Pick which recipes go in — then print it or save it as a PDF.</p>
+    <div class="bk-choose">
+      ${[["loved", "❤️ Family favourites", "Meals someone ❤️ in their profile (or ⭐)"], ["starred", "⭐ Starred recipes", "The ones with a star"], ["all", "📚 Every recipe", "The whole collection"]].map(([k, l, d]) => `<button type="button" data-bk-pick="${k}" class="${bookPick === k ? "on" : ""}" ${counts[k] ? "" : "disabled"}><b>${l}</b><span>${d} · ${counts[k]}</span></button>`).join("")}
+    </div>
+    <p class="muted" style="font-size:0.82rem;">💡 Tip: add "💬 Why we love it" to a recipe (tap it) — it goes in the book!</p>
+    <div style="display:flex; gap:8px;"><button type="button" id="bookMakeBtn" style="margin:0;">✨ Make the book</button><button type="button" class="secondary" id="bookCancelBtn" style="margin:0;">Cancel</button></div>`;
+  $("bookChooser").querySelectorAll("[data-bk-pick]").forEach((b) => { b.onclick = () => { bookPick = b.getAttribute("data-bk-pick"); openBookMaker(); }; });
+  $("bookCancelBtn").onclick = () => hide("bookChooserPopup");
+  $("bookMakeBtn").onclick = () => withBusyButton($("bookMakeBtn"), "Making...", async () => { await buildBook(bookRecipes(bookPick)); hide("bookChooserPopup"); });
+  show("bookChooserPopup");
+}
+function kidJobs(r) {
+  const jobs = [];
+  (r.steps || []).forEach((s) => { const m = s.match(/\b(mix|stir|whisk|sprinkle|spread|build|wash|tear|mash|pour|layer|roll|assemble|top|scatter|arrange|squeeze|crack)\b/i); if (m && jobs.length < 3 && !jobs.includes(m[1].toLowerCase())) jobs.push(m[1].toLowerCase()); });
+  return jobs;
+}
+async function buildBook(recipes) {
+  const fam = (state.family && state.family.name) || "Our Family";
+  const famName = /family/i.test(fam) ? fam : `The ${fam} Family`;
+  const year = new Date().getFullYear();
+  const photo = {};
+  await Promise.all(recipes.map(async (r) => { const id = recipeCoverPhotos[r.id]; if (id) { try { photo[r.id] = await fetchPhotoBlobUrl(id); } catch (err) {} } }));
+  const people = state.members.map((m) => `<span class="bk-chef">${m.avatar || "🧑‍🍳"} ${escapeHtml(m.display_name)}</span>`).join("");
+  const stickers = ["🍳", "🥕", "🍓", "🌮", "🥦", "🧁", "🍋", "🥑", "🍕", "🫐", "🌽", "🍎"];
+  const cover = `<section class="bk-page bk-cover">
+      <div class="bk-stickers">${stickers.map((e, i) => `<span style="--a:${i * 30}deg">${e}</span>`).join("")}</div>
+      <div class="bk-cover-in">
+        <div class="bk-kicker">✨ Fuel the Fun presents ✨</div>
+        <h1>${escapeHtml(famName)}'s<br><span>Cookbook</span></h1>
+        <p class="bk-sub">${recipes.length} recipes we love to cook together</p>
+        <div class="bk-chefs">Our chefs: ${people}</div>
+        <p class="bk-year">${year} edition</p>
+      </div>
+    </section>`;
+  const contents = `<section class="bk-page bk-contents">
+      <h2>📋 What's inside</h2>
+      <ol class="bk-toc">${recipes.map((r, i) => `<li><span>${recipeEmoji(r)} ${escapeHtml(r.title)}</span><i></i><b>${i + 3}</b></li>`).join("")}</ol>
+      <div class="bk-rules"><h3>🧑‍🍳 Kitchen rules</h3><ul><li>🧼 Wash your hands first</li><li>🔪 Grown-ups do the sharp and hot bits</li><li>🥄 Taste as you go</li><li>🧽 Everybody helps clean up!</li></ul></div>
+    </section>`;
+  const pages = recipes.map((r, i) => {
+    const [bg, ink] = BOOK_COLORS[r.category] || ["#fde8c8", "#c1714f"];
+    const lovers = recipeLovers(r.id);
+    const jobs = kidJobs(r);
+    const cat = RECIPE_CATEGORY_META[r.category] || {};
+    return `<section class="bk-page bk-recipe" style="--bg:${bg}; --ink:${ink};">
+      <div class="bk-band"><span class="bk-cat">${cat.emoji || "🍽️"} ${escapeHtml(cat.label || "Recipe")}</span><span class="bk-num">${i + 3}</span></div>
+      <div class="bk-top">
+        <div class="bk-photo">${photo[r.id] ? `<img src="${photo[r.id]}" alt="">` : `<div class="bk-emoji-photo">${recipeEmoji(r)}</div>`}<span class="bk-tape"></span></div>
+        <div class="bk-head">
+          <h2>${escapeHtml(r.title)}</h2>
+          <div class="bk-why"><b>💬 Why we love it</b><p>${r.why ? escapeHtml(r.why) : `<span class="bk-lines"></span><span class="bk-lines"></span>`}</p></div>
+          ${lovers.length ? `<div class="bk-lovers">❤️ Loved by ${lovers.map((m) => `${m.avatar || ""} ${escapeHtml(m.display_name)}`).join(", ")}</div>` : ""}
+          <div class="bk-facts"><span>🥕 ${r.ingredients.length} things</span><span>👣 ${r.steps.length} steps</span>${jobs.length ? `<span>🙌 Kids can ${jobs.join(", ")}</span>` : ""}</div>
+        </div>
+      </div>
+      <div class="bk-cols">
+        <div class="bk-need"><h3>🛒 You need</h3><ul>${r.ingredients.map((x) => `<li><span class="bk-box"></span>${escapeHtml(x)}</li>`).join("")}</ul></div>
+        <div class="bk-steps"><h3>👩‍🍳 Let's cook!</h3><ol>${r.steps.map((x) => `<li>${escapeHtml(x)}</li>`).join("")}</ol></div>
+      </div>
+      <div class="bk-foot"><div>⭐ Our rating: <span class="bk-stars">☆ ☆ ☆ ☆ ☆</span></div><div class="bk-notes">📝 Notes: <span class="bk-lines"></span></div></div>
+    </section>`;
+  }).join("");
+  let tried = "";
+  try {
+    const pp = passportData && passportData.members ? passportData : await api("/api/food-passport?day=" + todayStr());
+    const rows = (pp.members || []).filter((m) => m.count).map((m) => `<li><b>${escapeHtml(m.name)}</b> tried ${m.count} new food${m.count === 1 ? "" : "s"}: ${m.stamps.slice(0, 14).map((s) => `${s.emoji || "🍽️"} ${escapeHtml(s.food)}`).join(", ")}</li>`).join("");
+    if (rows) tried = `<section class="bk-page bk-contents"><h2>🥕 Foods we've been brave and tried</h2><ul class="bk-tried">${rows}</ul><p class="bk-sub" style="margin-top:30px;">Every try counts — even "not yet"! 💚</p></section>`;
+  } catch (err) {}
+  $("printBook").innerHTML = `<div class="bk-bar"><b>📖 ${escapeHtml(famName)}'s Cookbook</b><span class="muted">${recipes.length + 2 + (tried ? 1 : 0)} pages</span>
+      <button type="button" id="bookPrintBtn" style="margin:0 0 0 auto; width:auto;">🖨️ Print / Save PDF</button>
+      <button type="button" class="secondary" id="bookCloseBtn" style="margin:0; width:auto;">✕ Close</button></div>
+    <div class="bk-pages">${cover}${contents}${pages}${tried}</div>`;
+  $("bookCloseBtn").onclick = () => { hide("printBook"); document.body.classList.remove("printing-book"); };
+  $("bookPrintBtn").onclick = () => { document.body.classList.add("printing-book"); setTimeout(() => window.print(), 50); };
+  window.addEventListener("afterprint", () => document.body.classList.remove("printing-book"), { once: true });
+  show("printBook");
+}
+
+$("makeBookBtn").onclick = () => openBookMaker();
 
 // --- Family Memories ---
 let memoriesSlides = [];

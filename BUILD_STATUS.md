@@ -4,6 +4,15 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-12 — Fun family cookbook (print / PDF)
+- Food → Family Cookbook → 📖 Make our family cookbook. Pick ❤️ Family favourites / ⭐ Starred / 📚 Every recipe, then preview the book and tap 🖨️ Print / Save PDF.
+- Book layout (A4):
+  - cover with food stickers and the family's chefs (avatars)
+  - "What's inside" contents + kitchen rules
+  - one page per recipe like a real kids' cookbook: taped polaroid photo (or a big emoji), 💬 Why we love it, ❤️ Loved by, fact chips (🙌 "Kids can stir…"), tick-box ingredients, numbered step bubbles, ⭐ rating and notes lines
+  - last page "Foods we've been brave and tried" from the passport
+- 💬 Why we love it: write it in the recipe popup. Stored per family in `recipe_notes`, so shared recipes keep each family's own words.
+
 ## 2026-11-12 — Person profiles (favourites)
 - Family page: tap a name to open their profile. Tabs: 😎 Me (avatar + what they love), 🏃 Move, 🍳 Cook, 🏡 Home, 🍽️ Meals, 🎒 Lunchbox. Tap tiles to ❤️ favourites; ✨ marks ideas based on what they love; "＋ Add your own". Only that person or a parent can change it. Stored in `members.favorites` (JSON, added automatically).
 - Used first when planning:
