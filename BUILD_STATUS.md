@@ -4,6 +4,13 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-12 — Reward shop PIN, invite fix, Together calendar
+- Every family now starts with parent PIN **1234** (unless the family PIN is 1234). Admin shows a reminder to change it.
+- Reward shop: waiting rewards show ✅ Parent OK on the card; 🗑 on every card. Both pop up a big grown-up PIN pad, then lock again on a kid's phone.
+- ✏️ "My own reward idea" tile. Adding the same reward twice doesn't make a copy, and old copies merge on load (weekly picks move to the one kept).
+- Invite links: if the phone is still logged in to another family (e.g. the Smith demo), it logs that out and shows the invite family's login with the code filled in.
+- Calendar: new 👨‍👩‍👧 Together tab (whole-family and 2+ people events). A person's tab now shows only their own things.
+
 ## ✅ Notes batch 1: untick, calendar people + colours, every day (2026-11-12)
 
 - **Untick a habit:** tap a ticked habit (or bonus) again → unticked; takes back its star, the family-activity extra if it came from it, and today's win from the streak. Routes `POST /api/habits/:id/uncomplete`, `/api/habits/bonus/:id/uncomplete`.

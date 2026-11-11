@@ -14,6 +14,10 @@ import { hashPin, verifyPin } from "./crypto.js";
 import { getBearerToken } from "./sessions.js";
 
 const MAX_WRONG = 5;
+// Every family starts with parent PIN 1234 (Maddie's choice, so approving is
+// easy on demo night). Parents can change it in 🔒 Parent admin. If the
+// family's own login PIN is 1234 we don't use it — the kids know that one.
+export const DEFAULT_PARENT_PIN = "1234";
 const LOCK_MINUTES = 10;
 let ready = false;
 
@@ -26,7 +30,7 @@ export async function ensureParentColumns(db) {
   if (ready) return true;
   try {
     const fam = await columnNames(db, "families");
-    for (const [col, def] of [["parent_pin_hash", "TEXT"], ["parent_pin_failed", "INTEGER NOT NULL DEFAULT 0"], ["parent_pin_locked_until", "TEXT"]]) {
+    for (const [col, def] of [["parent_pin_hash", "TEXT"], ["parent_pin_failed", "INTEGER NOT NULL DEFAULT 0"], ["parent_pin_locked_until", "TEXT"], ["parent_pin_default", "INTEGER NOT NULL DEFAULT 0"]]) {
       if (!fam.has(col)) await db.prepare(`ALTER TABLE families ADD COLUMN ${col} ${def}`).run().catch(() => {});
     }
     if (!(await columnNames(db, "sessions")).has("parent_member_id")) {
@@ -52,10 +56,25 @@ async function sessionParentId(db, request) {
   return row ? row.parent_member_id : null;
 }
 
+/** Give a family with no parent PIN the default one (1234), unless their family PIN is 1234. */
+export async function ensureDefaultParentPin(db, familyId) {
+  const row = await db.prepare("SELECT pin_hash, parent_pin_hash FROM families WHERE id = ?").bind(familyId).first();
+  if (!row || row.parent_pin_hash) return;
+  if (row.pin_hash && (await verifyPin(DEFAULT_PARENT_PIN, row.pin_hash))) return;
+  await db.prepare("UPDATE families SET parent_pin_hash = ?, parent_pin_default = 1 WHERE id = ? AND parent_pin_hash IS NULL")
+    .bind(await hashPin(DEFAULT_PARENT_PIN), familyId).run();
+}
+
 /** For /api/me: has a parent PIN been set, and which parent (if any) has unlocked this phone. */
 export async function parentStatus(db, request, familyId) {
   if (!(await ensureParentColumns(db))) return { parentPinSet: false, unlockedParentId: null };
-  return { parentPinSet: !!(await familyPinHash(db, familyId)), unlockedParentId: await sessionParentId(db, request) };
+  await ensureDefaultParentPin(db, familyId).catch(() => {});
+  const fam = await db.prepare("SELECT parent_pin_hash, parent_pin_default FROM families WHERE id = ?").bind(familyId).first();
+  return {
+    parentPinSet: !!(fam && fam.parent_pin_hash),
+    defaultPin: !!(fam && fam.parent_pin_hash && fam.parent_pin_default),
+    unlockedParentId: await sessionParentId(db, request),
+  };
 }
 
 /**
@@ -97,7 +116,7 @@ export async function setParentPin(request, familyId, env) {
   if (existing && !(await verifyPin(String(body.currentPin || ""), existing))) {
     return errorResponse("The current parent PIN isn't right.", 401);
   }
-  await db.prepare("UPDATE families SET parent_pin_hash = ?, parent_pin_failed = 0, parent_pin_locked_until = NULL WHERE id = ?")
+  await db.prepare("UPDATE families SET parent_pin_hash = ?, parent_pin_default = 0, parent_pin_failed = 0, parent_pin_locked_until = NULL WHERE id = ?")
     .bind(await hashPin(body.pin), familyId).run();
   const token = getBearerToken(request);
   if (token) await db.prepare("UPDATE sessions SET parent_member_id = ? WHERE id = ?").bind(member.id, token).run();

@@ -61,6 +61,15 @@
   .loading-text { opacity: 0.5; font-size: 0.85rem; font-style: italic; }
   #whoPopup { position: fixed; inset: 0; z-index: 2900; background: rgba(24, 63, 53, 0.35); display: flex; align-items: center; justify-content: center; padding: 16px; }
   #whoPopup.hidden { display: none; }
+  #pinPopup { position: fixed; inset: 0; z-index: 2950; background: rgba(24, 63, 53, 0.35); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  #pinPopup.hidden { display: none; }
+  #pinCard { background: #fffdf7; border-radius: 22px; padding: 22px; width: min(340px, 100%); box-shadow: 0 14px 40px rgba(0,0,0,0.25); text-align: center; }
+  #pinDots { display: flex; justify-content: center; gap: 12px; margin: 10px 0 14px; }
+  #pinDots span { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #2f7d68; }
+  #pinDots span.on { background: #2f7d68; }
+  #pinPad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  #pinPad button { margin: 0; font-size: 1.4rem; font-weight: 800; padding: 14px 0; border-radius: 16px; background: #eef6f1; color: #183f35; }
+  #pinPad button:active { background: #d6ebe0; }
   #whoCard { background: #fffdf7; border-radius: 22px; padding: 22px; width: min(380px, 100%); box-shadow: 0 14px 40px rgba(0,0,0,0.25); text-align: center; }
   #whoList { display: flex; flex-direction: column; gap: 8px; }
   #whoList button { margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 1rem; }
@@ -182,6 +191,12 @@
   .reward-card .rc-emoji { font-size: 2.6rem; line-height: 1; }
   .reward-card .rc-title { font-weight: 800; font-size: 0.98rem; line-height: 1.2; }
   .reward-card .pill { align-self: flex-start; }
+  .reward-card { position: relative; }
+  .reward-card .rc-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .reward-card .rc-actions button { margin: 0; width: auto; padding: 6px 10px; font-size: 0.82rem; border-radius: 12px; }
+  .reward-card .rc-del { position: absolute; top: 8px; right: 8px; margin: 0; width: 34px; height: 34px; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.75); color: #a33; font-size: 0.95rem; box-shadow: none; }
+  .reward-card.reward-own { border: 2px dashed #8fbfae; background: #f7fbf8; align-items: flex-start; text-align: left; width: 100%; margin: 0; box-shadow: none; color: var(--text); }
+  .shop-pin-note { font-size: 0.78rem; margin: 4px 0 10px; }
   .reward-idea { opacity: 0.92; border: 2px dashed rgba(24,63,53,0.18); }
   .reward-idea .rc-add { font-size: 0.78rem; font-weight: 700; color: var(--terracotta); }
   body.kid-view .parent-only { display: none !important; }
@@ -887,7 +902,7 @@
       <div id="weeklyOverview"></div>
       <div id="rewardAdminPanel" class="hidden"></div>
       <div id="rewardsList"><p class="loading-text">Loading...</p></div>
-      <button class="small secondary" id="showAddRewardBtn">+ Add a reward</button>
+      <button class="small secondary hidden" id="showAddRewardBtn">+ Add a reward</button>
       <div id="addRewardForm" class="hidden" style="margin-top: 12px;">
         <label>Reward</label>
         <input id="newRewardTitle" placeholder="e.g. Pick the movie night film" />
@@ -980,6 +995,22 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="pinPopup" class="hidden" role="dialog" aria-label="Grown-up PIN">
+  <div id="pinCard">
+    <div style="font-size:2rem;">🔒</div>
+    <h3 style="margin:4px 0 2px;">Grown-up PIN</h3>
+    <p class="muted" id="pinWhat" style="margin:0; font-size:0.88rem;">A parent types the PIN to say OK.</p>
+    <div id="pinDots"><span></span><span></span><span></span><span></span></div>
+    <div id="pinPad">
+      <button type="button" data-pin-key="1">1</button><button type="button" data-pin-key="2">2</button><button type="button" data-pin-key="3">3</button>
+      <button type="button" data-pin-key="4">4</button><button type="button" data-pin-key="5">5</button><button type="button" data-pin-key="6">6</button>
+      <button type="button" data-pin-key="7">7</button><button type="button" data-pin-key="8">8</button><button type="button" data-pin-key="9">9</button>
+      <button type="button" data-pin-key="cancel" style="font-size:0.9rem;">Cancel</button><button type="button" data-pin-key="0">0</button><button type="button" data-pin-key="back" aria-label="Delete">⌫</button>
+    </div>
+    <button type="button" id="pinOkBtn" class="hidden" style="margin:12px 0 0;">OK ✓</button>
+    <div class="error hidden" id="pinError" style="margin-top:10px;"></div>
+  </div>
+</div>
 <div id="whoPopup" class="hidden" role="dialog" aria-label="Who's using this phone?">
   <div id="whoCard">
     <div style="font-size:2.2rem;">👤</div>
@@ -1416,6 +1447,58 @@ $("whoPinOkBtn").onclick = async () => {
 };
 $("whoPinInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("whoPinOkBtn").click(); });
 $("whoPinCancelBtn").onclick = () => { hide("whoPinStep"); show("whoList"); show("whoSharedBtn"); };
+// 🔒 Grown-up PIN pad: lets a parent OK something right where it is (the reward
+// shop) without switching who's using the phone. Unlocks as a parent just for
+// this one action, then locks again if a kid is using the phone.
+function askPinPad(what) {
+  return new Promise((resolve) => {
+    let pin = "";
+    $("pinWhat").textContent = what ? `A parent types the PIN to ${what}.` : "A parent types the PIN to say OK.";
+    clearError("pinError");
+    const dots = () => { $("pinDots").innerHTML = Array.from({ length: Math.max(4, pin.length) }, (_, i) => `<span class="${i < pin.length ? "on" : ""}"></span>`).join(""); };
+    dots();
+    const finish = (val) => { hide("pinPopup"); document.removeEventListener("keydown", onKey); resolve(val); };
+    const press = (k) => {
+      if (k === "cancel") return finish(null);
+      if (k === "back") { pin = pin.slice(0, -1); return dots(); }
+      if (pin.length >= 8) return;
+      pin += k; dots(); clearError("pinError");
+      // The starting PIN (1234) is 4 digits, so go straight away; a PIN
+      // the parents changed can be 4–8 digits, so they tap OK.
+      if (autoGo && pin.length === 4) setTimeout(() => finish(pin), 120);
+    };
+    const autoGo = !!(state.parent && state.parent.defaultPin);
+    $("pinOkBtn").classList.toggle("hidden", autoGo);
+    $("pinOkBtn").onclick = () => { if (pin.length >= 4) finish(pin); };
+    const onKey = (e) => {
+      if (/^[0-9]$/.test(e.key)) press(e.key);
+      else if (e.key === "Backspace") press("back");
+      else if (e.key === "Escape") press("cancel");
+      else if (e.key === "Enter" && pin.length >= 4) finish(pin);
+    };
+    $("pinPad").querySelectorAll("[data-pin-key]").forEach((b) => { b.onclick = () => press(b.getAttribute("data-pin-key")); });
+    document.addEventListener("keydown", onKey);
+    show("pinPopup");
+  });
+}
+async function withParentPin(what, action) {
+  const mm = meMember();
+  if (isParentHere()) return action(mm ? mm.id : null);
+  const parent = mm && mm.role === "parent" ? mm : state.members.find((m) => m.role === "parent");
+  if (!parent) { toast("Add a parent to the family first.", true); throw new Error(""); }
+  for (;;) {
+    const pin = await askPinPad(what);
+    if (pin === null) throw new Error("");
+    try { await unlockParentMode(parent.id, pin); break; }
+    catch (err) { toast(err.message, true); if (/Too many/.test(err.message)) throw new Error(""); }
+  }
+  try { return await action(parent.id); }
+  finally {
+    // Kid's phone (or nobody picked): lock again straight away.
+    if (!mm || mm.id !== parent.id) await lockParentMode();
+    else await refreshForMe().catch(() => {});
+  }
+}
 // Kids (and locked parents) can't program habits once a parent PIN exists.
 function canProgram() {
   return !(state.parent && state.parent.parentPinSet) || isParentHere();
@@ -1646,10 +1729,10 @@ function renderEventMemberChecks() {
 let calendarMemberFilter = "all";
 function renderCalMemberTabs() {
   const wrap = $("calMemberTabs");
-  const tabs = [{ id: "all", label: "All" }, ...state.members.map((m) => ({ id: m.id, label: m.display_name, color: m.color }))];
+  const tabs = [{ id: "all", label: "All" }, { id: "together", label: "👨‍👩‍👧 Together", color: FAMILY_PINK }, ...state.members.map((m) => ({ id: m.id, label: escapeHtml(m.display_name), color: m.color }))];
   wrap.innerHTML = tabs.map((t) => {
     const active = calendarMemberFilter === t.id;
-    return `<button class="small ${active ? "" : "secondary"}" data-cal-member-tab="${t.id}" style="margin:0;">${t.color ? `<span class="member-dot" style="background:${t.color};"></span>` : ""}${t.label}</button>`;
+    return `<button class="small ${active ? "" : "secondary"}" data-cal-member-tab="${t.id}" style="margin:0;">${t.color && t.id !== "together" ? `<span class="member-dot" style="background:${t.color};"></span>` : ""}${t.label}</button>`;
   }).join("");
   wrap.querySelectorAll("[data-cal-member-tab]").forEach((btn) => {
     btn.onclick = () => { calendarMemberFilter = btn.getAttribute("data-cal-member-tab"); renderCalMemberTabs(); renderCalendarGrid(); };
@@ -1683,11 +1766,19 @@ function eventOccurrenceKeys(e, rangeStartKey, rangeEndKeyInclusive) {
   return keys;
 }
 
+function isTogetherEvent(e) {
+  if (e.memberIds && e.memberIds.length) return e.memberIds.length >= 2;
+  return !e.member_id; // whole family
+}
+// Calendar filter: "all" = everything; "together" = things we do as a family
+// (whole family or 2+ people); a person = just the things they're named in
+// (whole-family events live under Together so a person's view stays theirs).
 function eventInvolvesMember(e, memberId) {
   if (memberId === "all") return true;
+  if (memberId === "together") return isTogetherEvent(e);
   if (e.memberIds && e.memberIds.length) return e.memberIds.includes(memberId);
   if (e.member_id) return e.member_id === memberId;
-  return true; // whole-family event involves everyone
+  return false;
 }
 
 // Display name + color for an event chip, covering all three shapes: one
@@ -1829,7 +1920,7 @@ function renderCalendarGrid() {
   const planChipsByDay = {};
   const planMembers = (lastHabitsData && lastHabitsData.members) || [];
   habitDayPlanItems.forEach((it) => {
-    if (calendarMemberFilter !== "all" && it.memberId !== calendarMemberFilter) return;
+    if (calendarMemberFilter === "together" ? !it.isFamily : calendarMemberFilter !== "all" && it.memberId !== calendarMemberFilter) return;
     const m = planMembers.find((mm) => mm.memberId === it.memberId);
     const h = m && m.habits.find((hh) => hh.slot === it.slot);
     const title = it.title || (h && (h.usualTitle || h.title));
@@ -1840,7 +1931,7 @@ function renderCalendarGrid() {
   });
   const habitsByDay = {};
   allHabitCompletions
-    .filter((c) => calendarMemberFilter === "all" || c.memberId === calendarMemberFilter)
+    .filter((c) => calendarMemberFilter === "all" || (calendarMemberFilter !== "together" && c.memberId === calendarMemberFilter))
     .forEach((c) => {
       if (!habitsByDay[c.day]) habitsByDay[c.day] = [];
       habitsByDay[c.day].push(c);
@@ -3212,12 +3303,14 @@ async function renderRewards() {
   if ($("rewardProgress")) renderHabits().catch(() => {});
   const list = $("rewardsList"); list.innerHTML = "";
   const forName = (id) => (id ? memberNameFor(id) : "");
-  const visibleRewards = data.rewards.filter((r) => r.status !== "pending" || isParentHere() || r.created_by === getMe());
+  // Waiting rewards show for everyone, so a parent can OK them right here.
+  const visibleRewards = data.rewards.slice().sort((a, b) => (a.status === "pending" ? 0 : 1) - (b.status === "pending" ? 0 : 1));
   const cards = visibleRewards.map((r) => {
     const art = rewardArt(r.title);
-    return `<div class="reward-card" style="background:${art.bg}"><span class="rc-emoji">${art.emoji}</span><span class="rc-title">${escapeHtml(r.title.replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, ""))}</span>
-      ${r.status === "pending" ? `<span class="pill pending-pill">⏳ waiting for a parent</span>` : r.member_id ? `<span class="pill">for ${escapeHtml(forName(r.member_id))}</span>` : `<span class="pill">anyone</span>`}</div>`;
-  }).join("");
+    const pending = r.status === "pending";
+    return `<div class="reward-card" style="background:${art.bg}" data-reward-card="${r.id}"><button type="button" class="rc-del" data-reward-del="${r.id}" aria-label="Remove ${escapeAttr(r.title)}" title="Remove (parent PIN)">🗑</button><span class="rc-emoji">${art.emoji}</span><span class="rc-title">${escapeHtml(r.title.replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, ""))}</span>
+      ${pending ? `<span class="pill pending-pill">⏳ waiting for a parent</span><div class="rc-actions"><button type="button" data-reward-ok="${r.id}">✅ Parent OK</button></div>` : r.member_id ? `<span class="pill">for ${escapeHtml(forName(r.member_id))}</span>` : `<span class="pill">anyone</span>`}</div>`;
+  }).join("") + `<button type="button" class="reward-card reward-own" data-reward-own><span class="rc-emoji">✏️</span><span class="rc-title">My own reward idea</span><span class="rc-add">＋ Add it</span></button>`;
   const have = new Set(data.rewards.map((r) => r.title.toLowerCase().replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, "")));
   const ideas = REWARD_IDEAS.filter((t) => !have.has(t.toLowerCase().replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, ""))).slice(0, 8);
   const ideaCards = ideas.map((t) => {
@@ -3225,15 +3318,36 @@ async function renderRewards() {
     return `<button type="button" class="reward-card reward-idea" data-reward-idea="${escapeAttr(t)}" style="background:${art.bg}; margin:0; box-shadow:none; text-align:left; width:100%;"><span class="rc-emoji">${emoji}</span><span class="rc-title">${escapeHtml(title)}</span><span class="rc-add">＋ Add this</span></button>`;
   }).join("");
   list.innerHTML = `<p class="reward-list-head">🎁 Rewards you can work towards</p>` +
-    (cards ? `<div class="reward-cards">${cards}</div>` : '<p class="muted">No rewards yet — tap an idea below to add one!</p>') +
+    (state.parent && state.parent.defaultPin && !document.body.classList.contains("kid-view") ? `<p class="muted shop-pin-note">🔒 Parents OK or remove rewards with the parent PIN (it starts as <b>1234</b> — change it in 🔒 Parent admin).</p>` : "") +
+    `<div class="reward-cards">${cards}</div>` +
     (ideaCards ? `<p class="reward-list-head" style="margin-top:14px;">💡 Reward ideas kids love <span class="muted" style="font-weight:600; font-size:0.78rem;">— fun things to do, never food</span></p><div class="reward-cards">${ideaCards}</div>` : "");
+  list.querySelectorAll("[data-reward-ok]").forEach((b) => {
+    b.onclick = () => withParentPin("OK this reward", async (parentId) => {
+      await api(`/api/rewards/${b.getAttribute("data-reward-ok")}/update`, { method: "POST", body: JSON.stringify({ actorId: parentId, status: "approved" }) });
+      toast("✅ Reward OK'd — it can be picked now!");
+    }).then(() => renderRewards()).catch(() => {});
+  });
+  list.querySelectorAll("[data-reward-del]").forEach((b) => {
+    b.onclick = (e) => {
+      e.stopPropagation();
+      const r = data.rewards.find((x) => x.id === b.getAttribute("data-reward-del"));
+      const mine = r && r.status === "pending" && r.created_by && r.created_by === getMe();
+      const del = async (actorId) => {
+        await api(`/api/rewards/${r.id}?actorId=${encodeURIComponent(actorId || "")}`, { method: "DELETE" });
+        toast("🗑 Reward removed");
+      };
+      (mine ? del(getMe()) : withParentPin(`remove “${r.title}”`, del)).then(() => renderRewards()).catch((err) => { if (err && err.message) toast(err.message, true); });
+    };
+  });
+  const ownBtn = list.querySelector("[data-reward-own]");
+  if (ownBtn) ownBtn.onclick = () => { $("showAddRewardBtn").onclick(); $("newRewardTitle").focus(); $("addRewardForm").scrollIntoView({ behavior: "smooth", block: "center" }); };
   list.querySelectorAll("[data-reward-idea]").forEach((b) => {
     b.onclick = () => withBusyButton(b, "Adding...", async () => {
       try {
         const mm = meMember();
         const res = await api("/api/rewards", { method: "POST", body: JSON.stringify({ title: b.getAttribute("data-reward-idea"), memberId: null, createdBy: mm ? mm.id : null }) });
         await renderRewards();
-        toast(res.reward.status === "pending" ? "⏳ Added! A parent needs to OK it." : "🎁 Added — pick it in Win the Day!");
+        toast(res.alreadyHad ? "👍 You already have that one!" : res.reward.status === "pending" ? "⏳ Added! A parent needs to OK it." : "🎁 Added — pick it in Win the Day!");
       } catch (err) { toast(err.message, true); }
     });
   });
@@ -3314,7 +3428,7 @@ function renderRewardAdmin(data) {
     return;
   }
   const pinHtml = pinSet
-    ? `<div class="admin-box"><b>🔐 Parent PIN</b> <span class="muted">is set — parent mode is on for this phone.</span>
+    ? `<div class="admin-box ${state.parent.defaultPin ? "to-give" : ""}"><b>🔐 Parent PIN</b> <span class="muted">${state.parent.defaultPin ? "is still the starting PIN <b>1234</b> — change it so only grown-ups know it." : "is set — parent mode is on for this phone."}</span>
         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
           <button type="button" class="small secondary" id="lockParentBtn" style="margin:0; width:auto;">🔒 Lock parent mode (hand phone to a kid)</button>
           <button type="button" class="small secondary" id="changePinToggleBtn" style="margin:0; width:auto;">Change PIN</button>
@@ -3351,7 +3465,7 @@ function renderRewardAdmin(data) {
   $("saveParentPinBtn").onclick = async () => {
     try {
       await api("/api/parent/pin", { method: "POST", body: JSON.stringify({ memberId: mm.id, pin: $("newParentPin").value, currentPin: $("currentParentPin") ? $("currentParentPin").value : undefined }) });
-      state.parent.parentPinSet = true; state.parent.unlockedParentId = mm.id;
+      state.parent.parentPinSet = true; state.parent.defaultPin = false; state.parent.unlockedParentId = mm.id;
       toast("🔐 Parent PIN saved — parent mode is on for this phone");
       renderRewardAdmin(rewardsListCache || data);
     } catch (err) { toast(err.message, true); }
@@ -3432,7 +3546,7 @@ $("addRewardBtn").onclick = async () => {
     })});
     $("newRewardTitle").value = ""; hide("addRewardForm");
     await renderRewards();
-    toast(res.reward.status === "pending" ? "⏳ Added! A parent needs to OK it." : "🎁 Reward added — pick it in Win the Day!");
+    toast(res.alreadyHad ? "👍 That reward is already in the shop!" : res.reward.status === "pending" ? "⏳ Added! A parent needs to OK it." : "🎁 Reward added — pick it in Win the Day!");
   } catch (err) { showError("rewardError", err.message); }
 };
 
@@ -4640,7 +4754,7 @@ function collectDueReminders(now = new Date()) {
   const isDue = (at) => now >= at && now - at <= REMINDER_LATE_LIMIT_MS;
 
   (typeof allEvents !== "undefined" ? allEvents : []).forEach((e) => {
-    if (!e.starts_at || !eventInvolvesMember(e, who || "all")) return;
+    if (!e.starts_at || !(eventInvolvesMember(e, who || "all") || (!e.member_id && !(e.memberIds && e.memberIds.length)))) return;
     if (!eventOccurrenceKeys(e, today, today).includes(today)) return;
     const start = new Date(e.starts_at);
     const at = new Date(`${today}T${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}:00`);
@@ -5114,7 +5228,7 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
 // Invite links (…/?code=ABC123 from the welcome page) fill in the family code.
 (function prefillJoinCode() {
   const code = (new URLSearchParams(location.search).get("code") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
-  if (code) { $("loginJoinCode").value = code; $("tabLogin").click(); }
+  if (code) { $("loginJoinCode").value = code; $("tabLogin").click(); window.__inviteCode = code; }
   const who = (new URLSearchParams(location.search).get("who") || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
   if (who) { try { sessionStorage.setItem("ftf_invite_who", who); localStorage.setItem("ftf_me", who); } catch (err) {} }
   if (code || who) { try { history.replaceState(null, "", location.pathname); } catch (err) {} }
@@ -5592,6 +5706,22 @@ showTab("today");
 
 // --- Boot ---
 (async function boot() {
+  // Opened an invite link for a *different* family than the one this phone
+  // is logged in to (e.g. the Smith demo from earlier)? Log that one out so
+  // the invite's family login shows, with its code filled in.
+  if (state.token && window.__inviteCode) {
+    try {
+      const me = await api("/api/me");
+      if (!me.family || String(me.family.joinCode || "").toUpperCase() !== window.__inviteCode) {
+        localStorage.removeItem("ftf_token"); state.token = null;
+        show("authScreen"); $("tabLogin").click(); $("loginJoinCode").value = window.__inviteCode;
+        toast("👋 Type your family PIN to join your family");
+        return;
+      }
+    } catch (err) {
+      if (err.status === 401 || err.status === 403) { localStorage.removeItem("ftf_token"); state.token = null; }
+    }
+  }
   if (state.token) {
     try { await loadHome(); return; }
     catch (err) {

@@ -21,9 +21,40 @@ async function memberById(db, familyId, id) {
 }
 
 /** GET /api/rewards — the reward shop + the points rules. */
+// "🎬 Pick the movie" and "pick the movie" are the same reward.
+function rewardKey(title) {
+  return String(title || "").replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+// Tidy up copies of the same reward (same name, same person) that were added
+// more than once: keep the first (an approved one if there is one), move any
+// weekly picks over to it, and remove the rest.
+async function mergeDuplicateRewards(db, familyId) {
+  const rows = (await db.prepare("SELECT id, title, member_id, status FROM rewards WHERE family_id = ? ORDER BY created_at ASC, rowid ASC").bind(familyId).all()).results || [];
+  const groups = new Map();
+  for (const r of rows) {
+    const k = rewardKey(r.title) + "|" + (r.member_id || "");
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  }
+  const ops = [];
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const keep = list.find((r) => (r.status || "approved") === "approved") || list[0];
+    for (const r of list) {
+      if (r.id === keep.id) continue;
+      ops.push(db.prepare("UPDATE weekly_goals SET reward_id = ? WHERE reward_id = ?").bind(keep.id, r.id));
+      ops.push(db.prepare("DELETE FROM reward_redemptions WHERE reward_id = ?").bind(r.id));
+      ops.push(db.prepare("DELETE FROM rewards WHERE id = ?").bind(r.id));
+    }
+  }
+  if (ops.length) await db.batch(ops);
+}
+
 export async function listRewards(familyId, env) {
   const db = env.DB;
   const extra = await ensureRewardColumns(db);
+  if (extra) await mergeDuplicateRewards(db, familyId).catch(() => {});
   const rewards = await db
     .prepare(`SELECT id, title, star_cost, created_at${extra ? ", member_id, status, created_by" : ""} FROM rewards WHERE family_id = ? ORDER BY star_cost ASC`)
     .bind(familyId)
@@ -56,6 +87,13 @@ export async function createReward(request, familyId, env) {
   // one is set) added it; anyone else's waits for a parent to OK it.
   const parentCreator = creator ? await resolveParentActor(db, request, familyId, creator.id) : null;
   const status = parentCreator ? "approved" : "pending";
+
+  // Already have this one? Don't add a copy.
+  const existingRows = (await db.prepare(`SELECT id, title${extra ? ", member_id, status" : ""} FROM rewards WHERE family_id = ?`).bind(familyId).all()).results || [];
+  const dupe = existingRows.find((r) => rewardKey(r.title) === rewardKey(title) && (r.member_id || null) === (forMember ? forMember.id : null));
+  if (dupe) {
+    return json({ ok: true, alreadyHad: true, reward: { id: dupe.id, title: dupe.title, starCost, memberId: dupe.member_id || null, status: dupe.status || "approved" } });
+  }
 
   const rewardId = newId();
   if (extra) {
