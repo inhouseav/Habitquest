@@ -8,7 +8,7 @@ const VALID_CATEGORIES = ["breakfast", "lunch", "dinner", "snacks", "lunchboxes"
 // 💬 "Why we love it" — each family's own words about a recipe (kept per
 // family, so shared recipes can have a different note in every family).
 let notesReady = false;
-async function ensureRecipeNotes(db) {
+export async function ensureRecipeNotes(db) {
   if (notesReady) return true;
   try {
     await db.prepare(`CREATE TABLE IF NOT EXISTS recipe_notes (

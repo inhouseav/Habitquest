@@ -4,6 +4,20 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-12 — Demo family shows every new feature
+- "Try a demo family" (The Smith Family) now has:
+  - avatars 🦉 Sam, 🦊 Mia, 🦖 Jack
+  - interests and ❤️ favourites (Move/Cook/Home, meals, lunchbox)
+  - recipes with real quantities, plus Taco Tuesday, Spag Bol and Banana Pikelets
+  - 💬 why-we-love-it notes
+  - past meals, so "most cooked" has a story
+  - kid-picked dinners: tonight is Mia's pizza (👩‍🍳 Cook), Jack picked tacos, 2 free nights to drag onto, not locked yet
+  - a ⏳ Beach holiday countdown and a daily "Feed the fish"
+  - Jack's waiting reward (Trampoline park, needs ✅ Parent OK, PIN 1234)
+  - 🛒 Want to try: Dragon fruit (Jack), Pomegranate (Mia)
+  - parent PIN 1234 by default
+- Tour: the tab being explained now glows above the dark overlay.
+
 ## 2026-11-12 — Fun family cookbook (print / PDF)
 - Food → Family Cookbook → 📖 Make our family cookbook. Pick ❤️ Family favourites / ⭐ Starred / 📚 Every recipe, then preview the book and tap 🖨️ Print / Save PDF.
 - Book layout (A4):

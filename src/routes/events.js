@@ -35,7 +35,7 @@ function parseRecurrence(input, startsAt) {
 // ⏳ Countdowns: an event can be marked "count down to this" and shows on
 // Today as "3 sleeps until camp!". The column is added automatically.
 let countdownReady = false;
-async function ensureCountdown(db) {
+export async function ensureCountdown(db) {
   if (countdownReady) return true;
   try {
     const cols = new Set(((await db.prepare("SELECT name FROM pragma_table_info('events')").all()).results || []).map((r) => r.name));

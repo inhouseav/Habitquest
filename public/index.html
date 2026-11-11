@@ -262,6 +262,7 @@
   @keyframes fall { to { transform: translateY(110vh) rotate(540deg); } }
   .party-emoji { font-size: 4.2rem; animation: jarPop 0.7s ease; }
   /* 🧭 tour */
+  body.touring #tabBar { z-index: 2965 !important; }
   .tour-glow { outline: 4px solid #ffb703 !important; outline-offset: 2px; border-radius: 16px; animation: glow 1s ease-in-out infinite alternate; position: relative; z-index: 2970; background: #fffdf7 !important; }
   @keyframes glow { from { box-shadow: 0 0 0 0 rgba(255,183,3,0.6); } to { box-shadow: 0 0 0 10px rgba(255,183,3,0); } }
   .tour-dots { display: flex; justify-content: center; gap: 6px; margin: 10px 0; }
@@ -1729,12 +1730,12 @@ function markTourSeen(id) { try { localStorage.setItem("ftf_tour_" + id, "1"); }
 function startTour(force) {
   const me = meMember(); if (!me) return;
   if (!force && (me.role !== "child" || tourSeen(me.id))) return;
-  tourStep = 0; drawTour(); show("tourPopup");
+  tourStep = 0; document.body.classList.add("touring"); drawTour(); show("tourPopup");
 }
 function endTour() {
   const me = meMember(); if (me) markTourSeen(me.id);
   document.querySelectorAll(".tour-glow").forEach((x) => x.classList.remove("tour-glow"));
-  hide("tourPopup"); showTab("today");
+  hide("tourPopup"); document.body.classList.remove("touring"); showTab("today");
 }
 function drawTour() {
   const st = TOUR_STEPS[tourStep]; const me = meMember();

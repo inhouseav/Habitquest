@@ -9,7 +9,10 @@
 
 import { hashPin, newId, newJoinCode } from "./crypto.js";
 import { VALID_COLORS } from "../routes/members.js";
-import { ensureBonusTables, ensureWeeklyGoals, ensureRewardColumns } from "./schemaUpgrades.js";
+import { ensureBonusTables, ensureWeeklyGoals, ensureRewardColumns, ensureMemberStatus } from "./schemaUpgrades.js";
+import { ensureDinners } from "../routes/dinners.js";
+import { ensureCountdown } from "../routes/events.js";
+import { ensureRecipeNotes } from "../routes/recipes.js";
 
 export const DEMO_PIN = "0000";
 export const DEMO_FAMILY_NAME = "The Smith Family";
@@ -58,9 +61,9 @@ export async function seedDemoFamily(db, opts) {
   // --- Members (created_at staggered so they always list in this order) ---
   const sam = newId(), mia = newId(), jack = newId();
   const members = [
-    [sam, "Sam", "parent", VALID_COLORS[0], ["cooking", "running", "gardening"]],
-    [mia, "Mia", "child", VALID_COLORS[1], ["netball", "baking", "drawing"]],
-    [jack, "Jack", "child", VALID_COLORS[2], ["dinosaurs", "soccer", "lego"]],
+    [sam, "Sam", "parent", VALID_COLORS[0], ["cook", "garden", "outside"]],
+    [mia, "Mia", "child", VALID_COLORS[1], ["sport", "bake", "dance", "art"]],
+    [jack, "Jack", "child", VALID_COLORS[2], ["animals", "bike", "build", "sport"]],
   ];
   members.forEach(([id, name, role, color, interests], i) =>
     add("INSERT INTO members (id, family_id, display_name, role, color, interests, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now', ?))",
@@ -123,7 +126,9 @@ export async function seedDemoFamily(db, opts) {
       rewardIds[key] = newId();
       add("INSERT INTO rewards (id, family_id, title, star_cost) VALUES (?, ?, ?, ?)", rewardIds[key], familyId, title, 12);
     });
-  await ensureRewardColumns(db);
+  if (await ensureRewardColumns(db)) {
+    add("INSERT INTO rewards (id, family_id, title, star_cost, member_id, status, created_by) VALUES (?, ?, ?, ?, ?, 'pending', ?)", newId(), familyId, "Trampoline park 🤸", 12, jack, jack);
+  }
   if (await ensureWeeklyGoals(db)) {
     add("INSERT INTO weekly_goals (id, family_id, member_id, week_of, reward_id) VALUES (?, ?, ?, ?, ?)", newId(), familyId, mia, M, rewardIds.movie);
     add("INSERT INTO weekly_goals (id, family_id, member_id, week_of, reward_id) VALUES (?, ?, ?, ?, ?)", newId(), familyId, jack, M, rewardIds.park);
@@ -156,6 +161,12 @@ export async function seedDemoFamily(db, opts) {
   ev(6, "11:00", null, "Plant the veggie patch", "grow");
   ev(6, "13:00", jack, "Dinosaur museum trip", "grow");
   ev(12, "10:00", null, "Family bike ride", "move");
+  ev(0, "07:30", jack, "Feed the fish", "grow", { freq: "daily", until: addDays(M, 60) });
+  const countdownOk = await ensureCountdown(db);
+  const beachId = newId();
+  add("INSERT INTO events (id, family_id, member_id, title, pillar, starts_at, recurrence) VALUES (?, ?, NULL, ?, 'move', ?, NULL)",
+    beachId, familyId, "🏖️ Beach holiday", at(addDays(today, 16), "09:00"));
+  if (countdownOk) add("UPDATE events SET countdown = 1 WHERE id = ?", beachId);
 
   // --- Habits planned onto days ("Plan my week") ---
   [[mia, 1, 1], [mia, 1, 4], [jack, 1, 2], [jack, 1, 5], [sam, 1, 0], [sam, 1, 3], [sam, 2, 2]]
@@ -164,11 +175,14 @@ export async function seedDemoFamily(db, opts) {
 
   // --- Recipes ---
   const R = {};
-  [["pizza", "Veggie Pizza Night", "dinner", 1, ["Pizza bases", "Tomato paste", "Mozzarella", "Capsicum", "Mushrooms", "Cherry tomatoes"], ["Spread tomato paste on the bases", "Everyone adds their own toppings", "Bake at 220°C for 12 minutes"]],
-   ["oats", "Overnight Oats with Berries", "breakfast", 1, ["Rolled oats", "Milk", "Greek yoghurt", "Berries", "Honey"], ["Mix oats and milk in a jar", "Leave in the fridge overnight", "Top with yoghurt, berries and a drizzle of honey"]],
-   ["wraps", "Rainbow Wraps", "lunch", 1, ["Wraps", "Hummus", "Grated carrot", "Spinach", "Cucumber", "Cheese"], ["Spread hummus on a wrap", "Add a stripe of every colour", "Roll up tight and cut in half"]],
-   ["kebabs", "Fruit Kebabs", "snacks", 0, ["Strawberries", "Grapes", "Melon", "Banana"], ["Cut the fruit into chunks", "Thread onto skewers in a pattern"]],
-   ["stirfry", "Chicken & Veggie Stir-fry", "dinner", 0, ["Chicken", "Broccoli", "Carrot", "Snow peas", "Soy sauce", "Rice"], ["Cook the rice", "Stir-fry the chicken until golden", "Add the veggies and soy sauce for 3 minutes"]],
+  [["pizza", "Veggie Pizza Night", "dinner", 1, ["4 pizza bases", "1/2 cup tomato paste", "200g mozzarella, grated", "1 capsicum, sliced", "6 mushrooms, sliced", "1 cup cherry tomatoes"], ["Spread tomato paste on the bases", "Everyone adds their own toppings", "Bake at 220°C for 12 minutes (a grown-up job for the oven!)"]],
+   ["oats", "Overnight Oats with Berries", "breakfast", 1, ["2 cups rolled oats", "2 cups milk", "1 cup Greek yoghurt", "2 cups berries", "2 tsp honey"], ["Mix oats and milk in a jar", "Leave in the fridge overnight", "Top with yoghurt, berries and a drizzle of honey"]],
+   ["wraps", "Rainbow Wraps", "lunch", 1, ["4 wraps", "1/2 cup hummus", "1 carrot, grated", "2 handfuls spinach", "1 cucumber, sliced", "1 cup grated cheese"], ["Spread hummus on a wrap", "Add a stripe of every colour", "Roll up tight and cut in half"]],
+   ["kebabs", "Fruit Kebabs", "snacks", 0, ["1 punnet strawberries", "1 cup grapes", "1/4 melon", "2 bananas"], ["Cut the fruit into chunks", "Thread onto skewers in a pattern"]],
+   ["stirfry", "Chicken & Veggie Stir-fry", "dinner", 0, ["500g chicken, sliced", "1 head broccoli", "2 carrots", "1 cup snow peas", "2 tbsp soy sauce", "2 cups rice"], ["Cook the rice", "Stir-fry the chicken until golden (grown-up helper!)", "Add the veggies and soy sauce for 3 minutes"]],
+   ["tacos", "Taco Tuesday", "dinner", 1, ["500g beef mince", "1 packet taco seasoning", "8 small tortillas", "1 cup shredded lettuce", "2 tomatoes, diced", "1 cup grated cheese", "1 avocado"], ["Brown the mince in a pan, then stir in the seasoning", "Chop the lettuce, tomatoes and avocado into bowls", "Warm the tortillas", "Everyone builds their own tacos at the table!"]],
+   ["spag", "Spag Bol", "dinner", 0, ["500g beef mince", "1 onion", "1 carrot, grated", "1 zucchini, grated", "700g jar passata", "400g spaghetti", "Grated parmesan"], ["Cook the onion, then brown the mince", "Stir in the grated carrot and zucchini (hidden veg!)", "Pour in the passata and simmer for 20 minutes", "Cook the spaghetti and serve with the sauce"]],
+   ["pikelets", "Banana Pikelets", "breakfast", 0, ["2 ripe bananas", "2 eggs", "1 cup self-raising flour", "1 cup milk", "Butter for the pan"], ["Mash the bananas, then whisk in the eggs and milk", "Stir in the flour until just mixed", "Cook spoonfuls in a buttered pan, flip when bubbly"]],
    ["lunchbox", "Jack's Dino Lunchbox", "lunchboxes", 0, ["Cheese sandwich", "Apple slices", "Carrot sticks", "Yoghurt pouch"], ["Pack it all into the lunchbox!"]]]
     .forEach(([key, title, category, favorite, ingredients, steps]) => {
       R[key] = { id: newId(), title };
@@ -183,13 +197,48 @@ export async function seedDemoFamily(db, opts) {
   meal(0, "oats", null, "breakfast");
   meal(1, "wraps", null, "lunch");
   meal(1, "lunchbox", null, "lunch");
-  meal(2, "stirfry", null, "dinner", 0, [sam]);
-  meal(3, "pizza", null, "dinner", 1, [mia, jack, sam]);
   meal(4, "kebabs", null, "snacks");
-  meal(5, null, "BBQ at Grandma's", "dinner", 1);
+  // 🍽️ Dinners: kids pick, parent locks. Tonight is Mia's pizza pick
+  // (tap 👩‍🍳 Cook), Jack has picked tacos, and a couple of nights are left
+  // free so visitors can drag a recipe on themselves. Not locked yet.
+  const dinnersOk = await ensureDinners(db);
+  const t = Math.round((Date.parse(today) - Date.parse(M)) / 86400000); // today's index (0 = Mon)
+  const free = new Set([t + 1, t + 3].filter((x) => x <= 6));
+  const plan = [["spag", sam], ["stirfry", sam], ["tacos", jack], ["pizza", mia], [null, null], ["stirfry", sam], ["spag", sam]];
+  plan[t] = ["pizza", mia];
+  if (t !== 2 && !free.has(2)) plan[2] = ["tacos", jack];
+  else { const j = [0, 1, 2, 3, 4, 5, 6].find((i) => i !== t && !free.has(i) && i > t) ?? [0, 1, 2, 3, 4, 5, 6].find((i) => i !== t && !free.has(i)); plan[j] = ["tacos", jack]; }
+  plan.forEach(([key, by], i) => {
+    if (free.has(i)) return;
+    const day = addDays(M, i);
+    if (i === 5 && key === null) { add("INSERT INTO meal_plan_items (id, family_id, day, recipe_id, title, meal_type, together, votes) VALUES (?, ?, ?, NULL, ?, 'dinner', 1, '[]')", newId(), familyId, day, "BBQ at Grandma's"); return; }
+    if (!key) return;
+    if (dinnersOk) add("INSERT INTO meal_plan_items (id, family_id, day, recipe_id, title, meal_type, together, votes, picked_by) VALUES (?, ?, ?, ?, ?, 'dinner', 1, '[]', ?)", newId(), familyId, day, R[key].id, R[key].title, by);
+    else add("INSERT INTO meal_plan_items (id, family_id, day, recipe_id, title, meal_type, together, votes) VALUES (?, ?, ?, ?, ?, 'dinner', 1, '[]')", newId(), familyId, day, R[key].id, R[key].title);
+  });
+  // Recipes planned in earlier weeks, so "most cooked first" has a story.
+  [["tacos", 7], ["tacos", 14], ["pizza", 9], ["pizza", 16], ["spag", 10], ["oats", 8]].forEach(([key, back]) =>
+    add("INSERT INTO meal_plan_items (id, family_id, day, recipe_id, title, meal_type, together, votes) VALUES (?, ?, ?, ?, ?, 'dinner', 1, '[]')", newId(), familyId, addDays(M, -back), R[key].id, R[key].title));
+
+  // 💬 Why we love it (goes in the printed cookbook)
+  if (await ensureRecipeNotes(db)) {
+    [["tacos", "Every Tuesday we all build our own tacos — Jack piles on SO much cheese! 🧀"],
+     ["pizza", "Mia invented the smiley-face pizza. Everyone makes their own, so nobody argues about toppings 🍕"],
+     ["oats", "We make them the night before, so school mornings are easy and yummy 🫐"],
+     ["spag", "Dad's secret: hidden veggies! Jack still hasn't noticed the zucchini 🤫"]]
+      .forEach(([key, why]) => add("INSERT INTO recipe_notes (family_id, recipe_id, why) VALUES (?, ?, ?)", familyId, R[key].id, why));
+  }
+
+  // 😎 Avatars + ❤️ favourites (Family → tap a name)
+  if (await ensureMemberStatus(db)) {
+    const fav = (id, avatar, f) => add("UPDATE members SET avatar = ?, favorites = ? WHERE id = ?", avatar, JSON.stringify(f), id);
+    fav(sam, "🦉", { move: ["Morning walk", "Family bike ride"], cook: ["Cook a new veggie"], home: ["Phone-free dinner", "Water the veggie patch"], recipes: [R.stirfry.id, R.tacos.id, R.spag.id], lunchbox: [] });
+    fav(mia, "🦊", { move: ["Netball practice", "Dance party — 3 songs"], cook: ["Help make dinner", "Bake a healthy snack"], home: ["Make my bed"], recipes: [R.pizza.id, R.tacos.id, R.wraps.id, R.oats.id], lunchbox: ["🍎 Apple slices", "🧀 Cheese cubes", "🫐 Berries"] });
+    fav(jack, "🦖", { move: ["Ride my bike", "Backyard cricket"], cook: ["Pack my lunchbox"], home: ["Feed the dog"], recipes: [R.tacos.id, R.pizza.id, R.pikelets.id], lunchbox: ["🥪 Sandwich", "🥕 Carrot sticks", "🥛 Yoghurt"] });
+  }
 
   // --- Shopping list ---
-  [["Pizza bases", 0], ["Mozzarella", 0], ["Capsicum", 0], ["Wraps", 0], ["Bananas", 0], ["Berries", 1], ["Rolled oats", 1]]
+  [["Bananas", 0], ["Milk", 0], ["Dragon fruit (for Jack to try)", 0], ["Pomegranate (for Mia to try)", 0], ["Bread", 1], ["2 cups rolled oats", 1]]
     .forEach(([name, checked]) => add("INSERT INTO shopping_items (id, family_id, name, checked) VALUES (?, ?, ?, ?)", newId(), familyId, name, checked));
 
   // --- This week's family check-in notes ---
@@ -205,6 +254,9 @@ export async function seedDemoFamily(db, opts) {
     stamp(mia, "🍄", "Mushroom", "not_yet", 2);
     stamp(jack, "🥭", "Mango", "love", 5); stamp(jack, "🌽", "Corn", "love", 3); stamp(jack, "🥦", "Broccoli", "not_yet", 1);
     stamp(sam, "🐟", "Salmon", "ok", 7); stamp(sam, "🍆", "Eggplant", "love", 2);
+    // 🛒 Want to try (on the shopping list)
+    add("INSERT INTO food_wishlist (id, family_id, member_id, food_key, food_name, emoji) VALUES (?, ?, ?, ?, ?, ?)", newId(), familyId, jack, "dragon fruit", "Dragon fruit", "🐉");
+    add("INSERT INTO food_wishlist (id, family_id, member_id, food_key, food_name, emoji) VALUES (?, ?, ?, ?, ?, ?)", newId(), familyId, mia, "pomegranate", "Pomegranate", "❤️");
   }
 
   await db.batch(s);
