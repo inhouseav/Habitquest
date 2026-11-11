@@ -33,6 +33,16 @@ export async function ensureFoodPassport(db) {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(member_id, food_key)
     )`).run();
+    await db.prepare(`CREATE TABLE IF NOT EXISTS food_wishlist (
+      id TEXT PRIMARY KEY,
+      family_id TEXT NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+      member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+      food_key TEXT NOT NULL,
+      food_name TEXT NOT NULL,
+      emoji TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(member_id, food_key)
+    )`).run();
     ready = true;
   } catch (err) {
     ready = false;
@@ -56,11 +66,13 @@ export async function getFoodPassport(request, familyId, env) {
   if (!(await ensureFoodPassport(db))) return errorResponse("The food passport isn't available right now.", 500);
   const url = new URL(request.url);
   const day = validDay(url.searchParams.get("day")) ? url.searchParams.get("day") : new Date().toISOString().slice(0, 10);
-  const [membersRes, stampsRes] = await Promise.all([
+  const [membersRes, stampsRes, wishRes] = await Promise.all([
     db.prepare("SELECT id, display_name FROM members WHERE family_id = ? ORDER BY created_at ASC").bind(familyId).all(),
     db.prepare("SELECT id, member_id, food_name, emoji, verdict, day, starred FROM food_passport WHERE family_id = ? ORDER BY created_at ASC").bind(familyId).all(),
+    db.prepare("SELECT id, member_id, food_name, emoji FROM food_wishlist WHERE family_id = ? ORDER BY created_at ASC").bind(familyId).all(),
   ]);
   const stamps = stampsRes.results || [];
+  const wishes = wishRes.results || [];
   const members = await Promise.all((membersRes.results || []).map(async (m) => {
     const [todayRow, weekCount] = await Promise.all([
       db.prepare("SELECT id FROM star_ledger WHERE idempotency_key = ?").bind(`food:${m.id}:${day}`).first(),
@@ -71,6 +83,7 @@ export async function getFoodPassport(request, familyId, env) {
       memberId: m.id,
       name: m.display_name,
       stamps: mine,
+      toTry: wishes.filter((w) => w.member_id === m.id).map((w) => ({ id: w.id, food: w.food_name, emoji: w.emoji })),
       count: mine.length,
       starToday: !!todayRow,
       foodStarsThisWeek: weekCount,
@@ -94,6 +107,8 @@ export async function tryFood(request, familyId, env) {
   const member = await db.prepare("SELECT id FROM members WHERE id = ? AND family_id = ?").bind(body.memberId || "", familyId).first();
   if (!member) return errorResponse("Family member not found.", 404);
 
+  // Tried it — it's off the "want to try" list.
+  await db.prepare("DELETE FROM food_wishlist WHERE member_id = ? AND food_key = ?").bind(member.id, key).run();
   const existing = await db.prepare("SELECT id FROM food_passport WHERE member_id = ? AND food_key = ?").bind(member.id, key).first();
   if (existing) {
     await db.prepare("UPDATE food_passport SET verdict = ? WHERE id = ?").bind(verdict, existing.id).run();
@@ -123,6 +138,37 @@ export async function tryFood(request, familyId, env) {
     starsThisWeek(db, member.id, day),
   ]);
   return json({ ok: true, alreadyHad: false, star, reason, count: count ? count.n : 1, starsThisWeek: weekStars });
+}
+
+/**
+ * POST /api/food-passport/wish — { memberId, food, emoji? } "I want to try
+ * this": goes on their passport's 🛒 To try list and the shopping list.
+ */
+export async function wishFood(request, familyId, env) {
+  const db = env.DB;
+  if (!(await ensureFoodPassport(db))) return errorResponse("The food passport isn't available right now.", 500);
+  const body = (await readJson(request)) || {};
+  const name = String(body.food || "").trim().slice(0, 40);
+  const key = foodKey(name);
+  if (!key) return errorResponse("What food do you want to try?");
+  const member = await db.prepare("SELECT id, display_name FROM members WHERE id = ? AND family_id = ?").bind(body.memberId || "", familyId).first();
+  if (!member) return errorResponse("Family member not found.", 404);
+  const emoji = String(body.emoji || "🍽️").slice(0, 8);
+  await db.prepare("INSERT OR IGNORE INTO food_wishlist (id, family_id, member_id, food_key, food_name, emoji) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(newId(), familyId, member.id, key, name, emoji).run();
+  // On the shopping list too (once), so it's bought this week.
+  const shopName = `${name} (for ${member.display_name} to try)`;
+  const onList = await db.prepare("SELECT id FROM shopping_items WHERE family_id = ? AND lower(name) LIKE ?").bind(familyId, `${name.toLowerCase()}%`).first();
+  if (!onList) await db.prepare("INSERT INTO shopping_items (id, family_id, name) VALUES (?, ?, ?)").bind(newId(), familyId, shopName).run();
+  return json({ ok: true, addedToShopping: !onList });
+}
+
+/** DELETE /api/food-passport/wish/:id — take a food off the To try list. */
+export async function unwishFood(id, familyId, env) {
+  const db = env.DB;
+  if (!(await ensureFoodPassport(db))) return errorResponse("The food passport isn't available right now.", 500);
+  await db.prepare("DELETE FROM food_wishlist WHERE id = ? AND family_id = ?").bind(id, familyId).run();
+  return json({ ok: true });
 }
 
 /** DELETE /api/food-passport/:id — parents only (fixing a mistake). The star, if any, stays given. */

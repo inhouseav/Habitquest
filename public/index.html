@@ -267,6 +267,107 @@
   .tour-dots { display: flex; justify-content: center; gap: 6px; margin: 10px 0; }
   .tour-dots span { width: 9px; height: 9px; border-radius: 50%; background: #d6e4dd; }
   .tour-dots span.on { background: var(--terracotta); }
+  /* 🍽️ Dinners */
+  .dn-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .dn-seg { display: inline-flex; background: #eef3ee; border-radius: 999px; padding: 3px; gap: 2px; }
+  .dn-seg button { margin: 0; width: auto; padding: 6px 12px; border-radius: 999px; background: transparent; color: var(--text); box-shadow: none; font-size: 0.85rem; }
+  .dn-seg button.on { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.12); font-weight: 800; }
+  .dn-seg.small button { padding: 4px 10px; font-size: 0.78rem; }
+  .dn-hint { margin: 8px 0 6px; font-size: 0.92rem; }
+  .dn-week-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 10px 0 6px; }
+  .dn-week-head .dn-lock { margin: 0 0 0 auto; width: auto; }
+  .dn-locked { background: #e8f3ec; color: #2f7d68; border-radius: 999px; padding: 3px 10px; font-size: 0.8rem; font-weight: 700; }
+  .dn-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+  .dn-night { position: relative; background: #fffaf2; border: 2px dashed #e6d6bd; border-radius: 16px; padding: 8px 6px; min-height: 132px; display: flex; flex-direction: column; gap: 4px; transition: transform 0.12s, background 0.12s; }
+  .dn-night.full { border-style: solid; border-color: #f0dfc4; background: #fff; }
+  .dn-night.today { border-color: var(--terracotta); box-shadow: 0 0 0 2px rgba(193,113,79,0.2); }
+  .dn-night.past { opacity: 0.55; }
+  .dn-night.dn-over { background: #ffeccf; border-color: #ffb703; transform: scale(1.04); }
+  .dn-day { font-size: 0.82rem; }
+  .dn-tonight { background: var(--terracotta); color: #fff; border-radius: 999px; padding: 1px 6px; font-size: 0.66rem; font-weight: 800; }
+  .dn-empty { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; color: #b49a78; font-size: 0.76rem; font-weight: 700; }
+  .dn-meal { margin: 0; width: 100%; padding: 6px 4px; background: #fdf3e6 center/cover no-repeat; border-radius: 12px; box-shadow: none; color: var(--text); display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 74px; justify-content: flex-end; position: relative; overflow: hidden; }
+  .dn-meal.has-img .dn-emoji { display: none; }
+  .dn-meal.has-img .dn-title { background: rgba(255,255,255,0.88); border-radius: 8px; padding: 1px 4px; }
+  .dn-emoji { font-size: 1.9rem; line-height: 1; }
+  .dn-title { font-weight: 800; font-size: 0.78rem; line-height: 1.15; text-align: center; }
+  .dn-who { font-size: 0.68rem; color: #6b7d75; display: flex; align-items: center; }
+  .dn-who .ava { width: 18px; height: 18px; font-size: 0.7rem; margin-right: 3px; }
+  .dn-who .member-dot { width: 8px; height: 8px; margin-right: 4px; }
+  .dn-cook { margin: 0; width: 100%; padding: 6px 4px; font-size: 0.78rem; border-radius: 12px; white-space: nowrap; }
+  .dn-x { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; margin: 0; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.9); color: #a33; font-size: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+  .dn-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; }
+  .dn-tray-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .dn-tray-head .dn-seg { margin-left: auto; }
+  .dn-tray { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; margin-top: 8px; }
+  .dn-recipe { position: relative; background: #fdf3e6 center/cover no-repeat; border-radius: 16px; min-height: 112px; padding: 8px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; cursor: grab; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+  .dn-recipe.has-img .dn-emoji { display: none; }
+  .dn-recipe.has-img .dn-title { background: rgba(255,255,255,0.9); border-radius: 8px; padding: 2px 6px; }
+  .dn-recipe .dn-title { font-size: 0.82rem; }
+  .dn-recipe.sel { outline: 3px solid var(--terracotta); }
+  .dn-recipe.dn-dragging { opacity: 0.35; }
+  .dn-used { position: absolute; top: 6px; left: 6px; background: #fff; border-radius: 999px; padding: 1px 6px; font-size: 0.68rem; font-weight: 800; }
+  .dn-fav { position: absolute; top: 6px; right: 8px; }
+  .dn-ghost { position: fixed; z-index: 3000; pointer-events: none; transform: rotate(-4deg) scale(1.05); box-shadow: 0 12px 30px rgba(0,0,0,0.3); opacity: 0.95; }
+  body.dn-drag-on { user-select: none; -webkit-user-select: none; }
+  @media (max-width: 700px) {
+    .dn-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .dn-night { min-height: 104px; }
+    .dn-night.past { display: none; }
+    .dn-tray { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  /* 📖 Recipe popup */
+  #recipeDetailPanel { position: fixed; inset: 0; z-index: 2945; background: rgba(24, 63, 53, 0.4); display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow-y: auto; margin: 0 !important; border-radius: 0 !important; }
+  #recipeDetailPanel.hidden { display: none; }
+  .rp-card { width: min(720px, 100%); text-align: left; padding: 0 0 18px; overflow: hidden; }
+  .rp-close { position: absolute; top: 10px; right: 10px; z-index: 3; width: 40px; height: 40px; margin: 0; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.92); color: var(--text); font-size: 1.1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+  .rp-hero { height: 170px; background: linear-gradient(135deg, #fde8c8, #f9e0e6) center/cover no-repeat; display: flex; align-items: center; justify-content: center; font-size: 4.6rem; }
+  .rp-hero.has-img span { display: none; }
+  .rp-title { margin: 14px 18px 2px; }
+  .rp-meta { margin: 0 18px; color: #6b7d75; font-size: 0.9rem; }
+  .rp-go { display: flex; gap: 8px; margin: 12px 18px 0; }
+  .rp-go button { margin: 0; }
+  .rp-place { margin: 14px 18px 0; background: #fff8ec; border-radius: 16px; padding: 12px; }
+  .rp-types { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+  .rp-types button { margin: 0; width: auto; padding: 6px 12px; border-radius: 999px; background: #fff; color: var(--text); box-shadow: inset 0 0 0 2px #eadbc3; font-size: 0.85rem; }
+  .rp-types button.on { background: var(--terracotta); color: #fff; box-shadow: none; }
+  .rp-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+  .rp-day { margin: 0; padding: 8px 2px; border-radius: 14px; background: #fff; color: var(--text); box-shadow: inset 0 0 0 2px #eadbc3; display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: 0.8rem; }
+  .rp-day span { font-size: 1.15rem; font-weight: 800; }
+  .rp-day small { font-size: 0.6rem; color: #a07a4a; line-height: 1.1; text-align: center; }
+  .rp-day.today { box-shadow: inset 0 0 0 3px var(--terracotta); }
+  .rp-day.taken { background: #f4efe7; }
+  .rp-day:disabled { opacity: 0.35; }
+  .rp-cols { display: grid; grid-template-columns: 1fr 1.3fr; gap: 16px; margin: 14px 18px 0; }
+  .rp-cols h4 { margin: 0 0 6px; }
+  .rp-ings, .rp-steps { margin: 0; padding-left: 20px; line-height: 1.5; }
+  .rp-steps li { margin-bottom: 6px; }
+  .rp-more { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 18px 0; padding-top: 12px; border-top: 1px dashed #eee3cf; }
+  .rp-more button { margin: 0; width: auto; }
+  @media (max-width: 600px) { .rp-cols { grid-template-columns: 1fr; } .rp-hero { height: 130px; } }
+  /* 👩‍🍳 Cook mode */
+  #cookPopup { position: fixed; inset: 0; z-index: 2958; background: #fffaf2; display: flex; justify-content: center; overflow-y: auto; }
+  #cookPopup.hidden { display: none; }
+  #cookCard { width: min(760px, 100%); padding: 18px 18px 110px; display: flex; flex-direction: column; }
+  .ck-top { display: flex; align-items: center; gap: 10px; font-size: 1.1rem; }
+  .ck-emoji { font-size: 2rem; }
+  .ck-bar { height: 10px; background: #f0e4d2; border-radius: 999px; margin: 12px 0 18px; overflow: hidden; }
+  .ck-bar span { display: block; height: 100%; background: var(--terracotta); border-radius: 999px; transition: width 0.25s; }
+  .ck-kicker { font-weight: 800; color: var(--terracotta); font-size: 1.05rem; margin-bottom: 10px; }
+  .ck-step { font-size: clamp(1.5rem, 4.2vw, 2.3rem); font-weight: 700; line-height: 1.3; }
+  .ck-safe { margin-top: 14px; background: #fff0d6; border-radius: 12px; padding: 8px 12px; font-weight: 700; display: inline-block; }
+  .ck-ings { list-style: none; padding: 0; margin: 0; font-size: 1.25rem; }
+  .ck-ings li { padding: 8px 0; border-bottom: 1px dashed #eadbc3; }
+  .ck-ings input { width: 26px; height: 26px; vertical-align: middle; margin-right: 8px; }
+  .ck-done { font-size: 5rem; text-align: center; }
+  .ck-end { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+  .ck-end button { margin: 0; }
+  .ck-nav { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; justify-content: center; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: #fffaf2; border-top: 1px solid #eadbc3; }
+  .ck-nav button { margin: 0; max-width: 240px; font-size: 1.1rem; padding: 14px; }
+  /* passport: to try */
+  .pp-totry { margin-top: 10px; background: #fff6e8; border-radius: 14px; padding: 8px 10px; }
+  .pp-totry .chip { display: inline-flex; align-items: center; gap: 4px; margin: 4px 6px 0 0; background: #fff; border-radius: 999px; padding: 4px 4px 4px 10px; box-shadow: inset 0 0 0 2px #f1d9b5; font-weight: 700; font-size: 0.85rem; }
+  .pp-totry .chip button { margin: 0; width: auto; padding: 3px 8px; font-size: 0.75rem; border-radius: 999px; }
   .member-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; box-shadow: 0 0 0 2px #fff; }
   .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--gold); font-size: 0.75rem; margin-left: 6px; }
   .pill.fuel { background: var(--peach); }
@@ -795,63 +896,26 @@
     </section>
 
     <section class="tab-page" data-section="food">
-    <div class="card full-width" id="passportCard">
-      <h3>🥕 Food Explorer Passport</h3>
-      <p class="muted" style="margin:0;">Tried a food for the first time? Stamp it! Every try counts — even if it's "not yet".</p>
-      <div id="passportMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;"></div>
-      <div id="passportBody"><p class="loading-text">Loading...</p></div>
+    <div class="card full-width" id="dinnerCard">
+      <div class="dn-head">
+        <h3 style="margin:0;">🍽️ Dinners this week</h3>
+        <div class="dn-seg" id="dinnerWeeksSeg"><button type="button" data-dn-weeks="7" class="on">1 week</button><button type="button" data-dn-weeks="14">2 weeks</button></div>
+      </div>
+      <p class="dn-hint" id="dinnerHint">👇 Drag a recipe onto a night (or tap a recipe, then a night). Everyone gets one pick!</p>
+      <div id="dinnerNights" class="dn-nights"><p class="loading-text">Loading...</p></div>
+      <div class="dn-actions">
+        <button type="button" class="small" id="dinnerShopBtn" style="margin:0; width:auto;">🛒 Shopping list</button>
+        <button type="button" class="small secondary parent-only" id="dinnerLockBtn" style="margin:0; width:auto;">🔒 Lock the week</button>
+      </div>
+      <div class="dn-tray-head"><b>📖 Pick a recipe</b> <span class="muted">most cooked first</span>
+        <div class="dn-seg small" id="dinnerTrayCat"></div></div>
+      <div id="dinnerTray" class="dn-tray"></div>
     </div>
-    <div class="card">
-      <h3>This week's meals 🥗</h3>
-      <p id="togetherCountLine" class="muted hidden" style="font-weight:600;"></p>
-      <div id="mealPlanList" style="margin-top: 4px;"><p class="loading-text">Loading...</p></div>
-      <div style="display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;">
-        <button class="small secondary" id="showAddMealBtn">+ Suggest a meal</button>
-        <label style="width:auto; margin:0; font-weight:normal;" class="muted">Voting as</label>
-        <select id="mealVoterSelect" style="width:auto;"></select>
-      </div>
-      <button class="small secondary" id="addWeekIngredientsBtn" style="margin-top:8px;">🛒 Add this week's ingredients to shopping list</button>
-      <div id="addMealForm" class="hidden" style="margin-top: 12px;">
-        <label>Day</label>
-        <input id="newMealDay" type="date" />
-        <label>Meal</label>
-        <input id="newMealTitle" placeholder="e.g. Taco night" />
-        <label>Meal type</label>
-        <select id="newMealType">
-          <option value="breakfast">🥣 Breakfast</option>
-          <option value="lunch">🥪 Lunch</option>
-          <option value="dinner" selected>🍽️ Dinner</option>
-          <option value="snacks">🍎 Snacks</option>
-        </select>
-        <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:8px;">
-          <input type="checkbox" id="newMealTogether" style="width:auto;" />
-          👨‍👩‍👧 We're all eating this together
-        </label>
-        <label>Who's it for?</label>
-        <select id="newMealFor"><option value="">🌍 Everyone</option></select>
-        <button id="addMealBtn">Suggest</button>
-      </div>
-      <div class="error hidden" id="mealError"></div>
-    </div>
-    <div class="card">
-      <h3>Shopping list 🛒</h3>
-      <div id="shoppingList"><p class="loading-text">Loading...</p></div>
-      <div style="display:flex; gap: 8px; margin-top: 12px;">
-        <input id="newShoppingItem" placeholder="Add an item..." style="flex:1" />
-        <button class="small" id="addShoppingBtn" style="margin-top:0;">Add</button>
-      </div>
-      <div style="display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap;">
-        <button class="small secondary" id="copyShoppingBtn" style="margin:0;">📋 Copy list</button>
-        <button class="small secondary" id="shoppingInfoBtn" style="margin:0;" type="button">ℹ️ How this works</button>
-      </div>
-      <p class="muted hidden" id="shoppingInfoText" style="margin-top:8px; font-size:0.82rem;">Woolworths and Coles don't offer a one-tap way to add items from another app, so "Copy list" copies your list as text — paste it into their app's search or list screen.</p>
-      <div class="error hidden" id="shoppingError"></div>
-    </div>
-    <div class="card full-width">
-      <h3>Recipes 🍳</h3>
+    <div class="card full-width" id="recipesCard">
+      <h3>Recipes 🍳 <span class="muted" style="font-size:0.8rem; font-weight:600;">most cooked first</span></h3>
       <div id="recipeCategoryTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
       <div id="recipesList"><p class="loading-text">Loading...</p></div>
-      <div id="recipeDetailPanel" class="hidden" style="margin-top:12px; padding:12px; background:#fff; border-radius:12px;"></div>
+      <div id="recipeDetailPanel" class="hidden"></div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
         <button class="small secondary" id="showAddRecipeBtn">+ Add a recipe</button>
         <button class="small secondary" id="addRecipePackBtn" type="button">🇦🇺 Add family favourites pack</button>
@@ -904,6 +968,59 @@
       <div class="error hidden" id="recipeError"></div>
       <input type="file" id="photoFileInput" accept="image/*" class="hidden" />
       <input type="file" id="recipeScanInput" accept="image/*" class="hidden" />
+    </div>
+    <div class="card full-width" id="passportCard">
+      <h3>🥕 Food Explorer Passport</h3>
+      <p class="muted" style="margin:0;">Tried a food for the first time? Stamp it! Every try counts — even if it's "not yet".</p>
+      <div id="passportMemberTabs" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;"></div>
+      <div id="passportBody"><p class="loading-text">Loading...</p></div>
+    </div>
+    <div class="card">
+      <h3>Shopping list 🛒</h3>
+      <div id="shoppingList"><p class="loading-text">Loading...</p></div>
+      <div style="display:flex; gap: 8px; margin-top: 12px;">
+        <input id="newShoppingItem" placeholder="Add an item..." style="flex:1" />
+        <button class="small" id="addShoppingBtn" style="margin-top:0;">Add</button>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap;">
+        <button class="small secondary" id="copyShoppingBtn" style="margin:0;">📋 Copy list</button>
+        <button class="small secondary" id="shoppingInfoBtn" style="margin:0;" type="button">ℹ️ How this works</button>
+      </div>
+      <p class="muted hidden" id="shoppingInfoText" style="margin-top:8px; font-size:0.82rem;">Woolworths and Coles don't offer a one-tap way to add items from another app, so "Copy list" copies your list as text — paste it into their app's search or list screen.</p>
+      <div class="error hidden" id="shoppingError"></div>
+    </div>
+    <div class="card">
+      <h3>Breakfast, lunch & snacks 🥗</h3>
+      <p class="muted" style="margin:0;">Dinners are planned at the top ☝️ — this is for everything else.</p>
+      <p id="togetherCountLine" class="muted hidden" style="font-weight:600;"></p>
+      <div id="mealPlanList" style="margin-top: 4px;"><p class="loading-text">Loading...</p></div>
+      <div style="display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;">
+        <button class="small secondary" id="showAddMealBtn">+ Suggest a meal</button>
+        <label style="width:auto; margin:0; font-weight:normal;" class="muted">Voting as</label>
+        <select id="mealVoterSelect" style="width:auto;"></select>
+      </div>
+      <button class="small secondary" id="addWeekIngredientsBtn" style="margin-top:8px;">🛒 Add this week's ingredients to shopping list</button>
+      <div id="addMealForm" class="hidden" style="margin-top: 12px;">
+        <label>Day</label>
+        <input id="newMealDay" type="date" />
+        <label>Meal</label>
+        <input id="newMealTitle" placeholder="e.g. Taco night" />
+        <label>Meal type</label>
+        <select id="newMealType">
+          <option value="breakfast">🥣 Breakfast</option>
+          <option value="lunch">🥪 Lunch</option>
+          <option value="dinner" selected>🍽️ Dinner</option>
+          <option value="snacks">🍎 Snacks</option>
+        </select>
+        <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:8px;">
+          <input type="checkbox" id="newMealTogether" style="width:auto;" />
+          👨‍👩‍👧 We're all eating this together
+        </label>
+        <label>Who's it for?</label>
+        <select id="newMealFor"><option value="">🌍 Everyone</option></select>
+        <button id="addMealBtn">Suggest</button>
+      </div>
+      <div class="error hidden" id="mealError"></div>
     </div>
     <div class="card full-width">
       <h3>Family Cookbook 📸</h3>
@@ -1026,6 +1143,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="cookPopup" class="hidden" role="dialog" aria-label="Cook mode"><div id="cookCard"></div></div>
 <div id="avaPopup" class="hidden" role="dialog" aria-label="Pick your avatar">
   <div class="pop-card">
     <h3 style="margin:0;">Pick your face 😎</h3>
@@ -1562,7 +1680,7 @@ function showWhoPicker() {
 }
 async function refreshForMe() {
   renderMembers();
-  await Promise.all([renderHabits().catch(() => {}), Promise.resolve(renderCalendarGrid()), renderRewards().catch(() => {})]);
+  await Promise.all([renderHabits().catch(() => {}), Promise.resolve(renderCalendarGrid()), renderRewards().catch(() => {}), renderDinners().catch(() => {})]);
   if ($("plannerForMemberSelect")) renderPlannerForMemberOptions();
 }
 $("whoAmIBtn").onclick = showWhoPicker;
@@ -1788,7 +1906,7 @@ async function loadHome() {
   // home screen still loads instead of the whole page breaking.
   const sections = [
     ["calendar", renderEvents], ["reward shop", renderRewards],
-    ["recipes", renderRecipes], ["food passport", renderPassport], ["this week's meals", renderMealPlan], ["shopping list", renderShopping],
+    ["recipes", async () => { await renderRecipes(); await renderDinners(); }], ["food passport", renderPassport], ["this week's meals", renderMealPlan], ["shopping list", renderShopping],
     ["weekly check-in", loadMeeting], ["family memories", renderMemories], ["planner", loadPlannerMovementIdeas],
   ];
   await Promise.all(sections.map(([name, fn]) =>
@@ -3837,7 +3955,10 @@ async function renderRecipes() {
     btn.onclick = () => { recipeCategoryFilter = btn.getAttribute("data-recipe-tab"); renderRecipes(); };
   });
 
-  const visibleRecipes = recipeCategoryFilter === "all" ? recipesCache : recipesCache.filter((r) => r.category === recipeCategoryFilter);
+  if (!Object.keys(recipeUsage).length) {
+    try { const d = await api(`/api/dinners?start=${mondayOfWeek()}&days=${dinnerDays}`); (d.usage || []).forEach((u) => { recipeUsage[u.recipeId] = u.n; }); } catch (err) {}
+  }
+  const visibleRecipes = sortRecipesByUse(recipeCategoryFilter === "all" ? recipesCache : recipesCache.filter((r) => r.category === recipeCategoryFilter));
 
   const list = $("recipesList"); list.innerHTML = "";
   if (!visibleRecipes.length) {
@@ -3856,10 +3977,10 @@ async function renderRecipes() {
     card.innerHTML = `
       <div class="polaroid-photo">
         ${catMeta ? `<span class="polaroid-badge" title="${catMeta.label}">${catMeta.emoji}</span>` : ""}
-        <div class="polaroid-placeholder"><span>📷</span><span class="hint">Tap to add</span></div>
+        <div class="polaroid-placeholder"><span>${recipeEmoji(r)}</span></div>
       </div>
       <div class="polaroid-cap">${r.title}</div>
-      <div class="polaroid-meta">${r.ingredients.length} ingredients · ${r.steps.length} steps</div>
+      <div class="polaroid-meta">${recipeUsage[r.id] ? `🔁 ${recipeUsage[r.id]}× · ` : ""}${r.ingredients.length} ingredients · ${r.steps.length} steps</div>
     `;
     card.onclick = () => showRecipeDetail(r.id);
     card.setAttribute("draggable", "true");
@@ -3916,51 +4037,81 @@ function showRecipeDetail(recipeId) {
   const panel = $("recipeDetailPanel");
   if (!r) { openRecipeDetailId = null; hide("recipeDetailPanel"); return; }
   openRecipeDetailId = recipeId;
-
-  const catMeta = RECIPE_CATEGORY_META[r.category];
-  const cookFormHtml = cookingRecipeId === r.id
-    ? `<div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
-         <input type="date" id="cookDayInput" value="${todayStr()}" style="flex:1; min-width:140px;" />
-         <button class="small" id="cookConfirmBtn" style="margin:0;">Add to meal plan</button>
-         <button class="small secondary" id="cookCancelBtn" style="margin:0;">Cancel</button>
-       </div>`
-    : "";
-
-  panel.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-      <div>
-        <strong style="font-size:1.05rem;">${catMeta ? `${catMeta.emoji} ` : ""}${r.title}</strong>
-      </div>
-      <button class="small secondary" id="closeRecipeDetailBtn" style="margin:0; width:auto;">✕</button>
+  if (panel.parentElement !== document.body) document.body.appendChild(panel); // a popup, not a box under the grid
+  const cover = recipeCoverPhotos[r.id];
+  const ings = scaledIngredients(r);
+  const used = recipeUsage[r.id] || 0;
+  const start = mondayOfWeek(); const today = todayStr();
+  const taken = new Map(((dinnerData && dinnerData.dinners) || []).map((d) => [d.day, d]));
+  if (!recipePlaceType) recipePlaceType = r.category === "breakfast" ? "breakfast" : r.category === "lunch" || r.category === "lunchboxes" ? "lunch" : r.category === "snacks" ? "snacks" : "dinner";
+  const types = [["dinner", "🍽️ Family dinner"], ["breakfast", "🥣 Breakfast"], ["lunch", "🥪 Lunch"], ["snacks", "🍎 Snack"]];
+  const dayChips = Array.from({ length: 7 }, (_, i) => {
+    const day = addDays(start, i); const lbl = nightLabel(day); const t = recipePlaceType === "dinner" && taken.get(day);
+    return `<button type="button" class="rp-day ${day === today ? "today" : ""} ${t ? "taken" : ""}" data-rp-day="${day}" ${day < today ? "disabled" : ""}><b>${lbl.short}</b><span>${lbl.num}</span>${t ? `<small>${escapeHtml(t.title.slice(0, 14))}</small>` : ""}</button>`;
+  }).join("");
+  panel.innerHTML = `<div class="pop-card rp-card" role="dialog" aria-label="${escapeAttr(r.title)}">
+    <button type="button" class="rp-close" id="closeRecipeDetailBtn" aria-label="Close">✕</button>
+    <div class="rp-hero" ${cover ? `data-tile-cover="${cover}"` : ""}><span>${recipeEmoji(r)}</span></div>
+    <h2 class="rp-title">${escapeHtml(r.title)}</h2>
+    <div class="rp-meta">👨‍👩‍👧 For your family of ${familySize()}${used ? ` · 🔁 planned ${used}×` : ""}${r.favorite ? " · ⭐ favourite" : ""}</div>
+    <div class="rp-go">
+      <button type="button" id="rpCookBtn">👩‍🍳 Cook it now</button>
+      <button type="button" class="secondary" id="rpSpeakBtn">🔊 Read it to me</button>
     </div>
-    <div style="margin-top:8px;">
-      <strong>Ingredients</strong>
-      <ul>${r.ingredients.map((i) => `<li>${i}</li>`).join("")}</ul>
-      <strong>Steps</strong>
-      <ol>${r.steps.map((s) => `<li>${s}</li>`).join("")}</ol>
+    <div class="rp-place">
+      <b>📅 Put it on a day</b>
+      <div class="rp-types">${types.map(([k, l]) => `<button type="button" data-rp-type="${k}" class="${recipePlaceType === k ? "on" : ""}">${l}</button>`).join("")}</div>
+      <div class="rp-days">${dayChips}</div>
     </div>
-    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed #eee3cf;">
-      <button class="small secondary" id="cookThisBtn" style="margin:0;">🍳 Cook this</button>
-      <button class="small secondary" id="favThisBtn" style="margin:0;">${r.favorite ? "⭐ Favourited" : "☆ Favourite"}</button>
-      ${r.family_id ? `<button class="small secondary" id="editThisBtn" style="margin:0;">✏️ Edit</button>` : ""}
-      <button class="small secondary" id="photoThisBtn" style="margin:0;">📷 Add photo</button>
-      <button class="small secondary" id="aiPhotoThisBtn" style="margin:0;">✨ AI photo</button>
+    <div class="rp-cols">
+      <div><h4>🛒 Ingredients</h4><ul class="rp-ings">${ings.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul></div>
+      <div><h4>👣 Steps</h4><ol class="rp-steps">${r.steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol></div>
     </div>
-    ${cookFormHtml}
+    <div class="rp-more">
+      <button class="small secondary" id="favThisBtn">${r.favorite ? "⭐ Favourite" : "☆ Favourite"}</button>
+      <button class="small secondary" id="rpShopBtn">🛒 Add ingredients</button>
+      ${r.family_id ? `<button class="small secondary parent-only" id="editThisBtn">✏️ Edit</button>` : ""}
+      <button class="small secondary" id="photoThisBtn">📷 Add photo</button>
+      <button class="small secondary" id="aiPhotoThisBtn">✨ AI photo</button>
+    </div>
     <div class="error hidden" id="recipeDetailError"></div>
-  `;
+  </div>`;
   show("recipeDetailPanel");
-
-  $("closeRecipeDetailBtn").onclick = () => { openRecipeDetailId = null; hide("recipeDetailPanel"); };
-  $("cookThisBtn").onclick = () => { cookingRecipeId = r.id; showRecipeDetail(r.id); };
-  $("favThisBtn").onclick = async () => {
+  fillTileCovers(panel);
+  const close = () => { openRecipeDetailId = null; recipePlaceType = null; hide("recipeDetailPanel"); try { speechSynthesis.cancel(); } catch (err) {} };
+  $("closeRecipeDetailBtn").onclick = close;
+  panel.onclick = (e) => { if (e.target === panel) close(); };
+  $("rpCookBtn").onclick = () => openCookMode(r.id);
+  $("rpSpeakBtn").onclick = () => speak(`${r.title}. You need: ${ings.join(", ")}. ${r.steps.map((s, i) => `Step ${i + 1}. ${s}`).join(" ")}`);
+  panel.querySelectorAll("[data-rp-type]").forEach((b) => { b.onclick = () => { recipePlaceType = b.getAttribute("data-rp-type"); showRecipeDetail(r.id); }; });
+  panel.querySelectorAll("[data-rp-day]").forEach((b) => {
+    b.onclick = async () => {
+      const day = b.getAttribute("data-rp-day");
+      if (recipePlaceType === "dinner") { close(); await claimDinner(day, r.id); return; }
+      const me = meMember();
+      try {
+        await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day, title: r.title, recipeId: r.id, mealType: recipePlaceType, memberId: me ? me.id : null }) });
+        close(); await renderMealPlan(); renderDinners().catch(() => {});
+        toast(`${recipeEmoji(r)} ${r.title} on ${nightLabel(day).long}!`);
+      } catch (err) { $("recipeDetailError").textContent = err.message; $("recipeDetailError").classList.remove("hidden"); }
+    };
+  });
+  $("rpShopBtn").onclick = async () => {
     try {
-      await api(`/api/recipes/${r.id}/favorite`, { method: "POST", body: "{}" });
-      await renderRecipes();
+      const existing = await api("/api/shopping");
+      const have = new Set((existing.items || []).map((i) => i.name.trim().toLowerCase()));
+      let added = 0;
+      for (const line of ings) { if (have.has(line.toLowerCase())) continue; await api("/api/shopping", { method: "POST", body: JSON.stringify({ name: line }) }); added++; }
+      await renderShopping();
+      toast(added ? `🛒 Added ${added} ingredients (for ${familySize()})` : "Already on the list 👍");
     } catch (err) { toast(err.message, true); }
+  };
+  $("favThisBtn").onclick = async () => {
+    try { await api(`/api/recipes/${r.id}/favorite`, { method: "POST", body: "{}" }); await renderRecipes(); showRecipeDetail(r.id); } catch (err) { toast(err.message, true); }
   };
   if ($("editThisBtn")) {
     $("editThisBtn").onclick = () => {
+      close();
       editingRecipeId = r.id;
       fillRecipeForm(r);
       $("addRecipeBtn").textContent = "Save changes";
@@ -3977,32 +4128,16 @@ function showRecipeDetail(recipeId) {
   };
   $("aiPhotoThisBtn").onclick = async () => {
     const btn = $("aiPhotoThisBtn");
-    btn.disabled = true; btn.textContent = "✨ Generating...";
+    btn.disabled = true; btn.textContent = "✨ Making a picture...";
     try {
-      await api("/api/ai/image", { method: "POST", body: JSON.stringify({ recipeId: r.id })});
-      toast("✨ AI photo added to your Family Cookbook!");
-      await renderRecipes();
+      await api("/api/ai/image", { method: "POST", body: JSON.stringify({ recipeId: r.id }) });
+      toast("✨ AI photo added!");
+      await renderRecipes(); renderDinners().catch(() => {});
     } catch (err) { toast(err.message, true); }
     finally { if ($("aiPhotoThisBtn")) { btn.disabled = false; btn.textContent = "✨ AI photo"; } }
   };
-  if ($("cookCancelBtn")) $("cookCancelBtn").onclick = () => { cookingRecipeId = null; showRecipeDetail(r.id); };
-  if ($("cookConfirmBtn")) {
-    $("cookConfirmBtn").onclick = async () => {
-      const day = $("cookDayInput").value || todayStr();
-      try {
-        await api("/api/meal-plan", { method: "POST", body: JSON.stringify({ day, title: r.title, recipeId: r.id, mealType: mealTypeForRecipe(r) })});
-        cookingRecipeId = null;
-        await renderMealPlan();
-        const added = await addRecipeIngredientsToShoppingList(r).catch(() => 0);
-        toast(`Added "${r.title}" to the meal plan!${added ? ` 🛒 +${added} to shopping list.` : ""}`);
-        showRecipeDetail(r.id);
-      } catch (err) {
-        $("recipeDetailError").textContent = err.message || "Couldn't add that to the meal plan.";
-        $("recipeDetailError").classList.remove("hidden");
-      }
-    };
-  }
 }
+let recipePlaceType = null;
 function resetRecipeForm() {
   editingRecipeId = null;
   $("newRecipeTitle").value = ""; $("newRecipeIngredients").value = ""; $("newRecipeSteps").value = ""; $("newRecipeCategory").value = "";
@@ -4254,6 +4389,338 @@ $("mpOwnBtn").onclick = () => withBusyButton($("mpOwnBtn"), "…", async () => {
   } catch (err) { toast(err.message, true); }
 });
 $("mpOwnTitle").addEventListener("keydown", (e) => { if (e.key === "Enter") $("mpOwnBtn").click(); });
+
+// =====================================================================
+// 🍽️ Dinners: the meal-planning area (Maddie's notes 6, 8–11).
+// Recipes are picture tiles, most-cooked first. Drag one onto a night
+// (mouse: just drag; iPad/phone: hold for a moment, then drag) or tap
+// it to open the recipe and pick a night. Kids get one dinner pick a
+// week; taken nights say who picked them; a parent can swap and 🔒 lock
+// the week, which puts the dinners on the calendar.
+// =====================================================================
+let dinnerDays = 7;
+let dinnerData = null;
+let recipeUsage = {}; // recipeId -> times planned
+let dinnerTrayCat = "dinner";
+const FAMILY_BASE_SERVES = 4; // our recipes are written for 4
+
+const RECIPE_EMOJI = [
+  [/taco|nacho|burrito|mexican/i, "🌮"], [/spag|pasta|bol|lasagne|mac/i, "🍝"], [/pizza/i, "🍕"], [/schnitzel|chicken|drumstick|nugget/i, "🍗"],
+  [/steak|beef|roast/i, "🥩"], [/omelette|egg/i, "🍳"], [/oat|porridge|weet|cereal|muesli/i, "🥣"], [/avo/i, "🥑"], [/pikelet|pancake/i, "🥞"],
+  [/curry|dal/i, "🍛"], [/salad/i, "🥗"], [/soup|stew/i, "🍲"], [/fish|salmon|tuna/i, "🐟"], [/burger/i, "🍔"], [/wrap/i, "🌯"],
+  [/sushi/i, "🍣"], [/fried rice|rice/i, "🍚"], [/stir.?fry|noodle/i, "🍜"], [/sausage|snag|hot dog/i, "🌭"], [/sandwich|lunchbox|toastie/i, "🥪"],
+  [/smoothie/i, "🥤"], [/muffin|cake|bake/i, "🧁"], [/fruit|berr/i, "🍓"], [/veg|broccoli/i, "🥦"], [/potato|chips|wedges/i, "🥔"],
+];
+function recipeEmoji(r) {
+  const hit = RECIPE_EMOJI.find(([re]) => re.test(r.title || ""));
+  return hit ? hit[1] : ((RECIPE_CATEGORY_META[r.category] || {}).emoji || "🍽️");
+}
+function sortRecipesByUse(list) {
+  return [...list].sort((a, b) => (recipeUsage[b.id] || 0) - (recipeUsage[a.id] || 0) || (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || a.title.localeCompare(b.title));
+}
+function familySize() { return Math.max(1, (state.members || []).length); }
+
+// "500g mince" for 4 → "625g mince" for 5. Counts round up to whole things.
+const UNICODE_FRAC = { "½": 0.5, "¼": 0.25, "¾": 0.75, "⅓": 1 / 3, "⅔": 2 / 3 };
+function parseQty(t) {
+  t = t.trim();
+  if (UNICODE_FRAC[t] !== undefined) return UNICODE_FRAC[t];
+  const mixed = t.match(/^(\d+)\s+(\d+)\/(\d+)$/); if (mixed) return +mixed[1] + mixed[2] / mixed[3];
+  const frac = t.match(/^(\d+)\/(\d+)$/); if (frac) return frac[1] / frac[2];
+  return parseFloat(t);
+}
+function fmtQty(q) {
+  const whole = Math.floor(q + 1e-9); const rest = q - whole;
+  const fr = [[0, ""], [0.25, "¼"], [1 / 3, "⅓"], [0.5, "½"], [2 / 3, "⅔"], [0.75, "¾"], [1, ""]];
+  let best = fr[0]; fr.forEach((f) => { if (Math.abs(rest - f[0]) < Math.abs(rest - best[0])) best = f; });
+  const w = whole + (best[0] === 1 ? 1 : 0);
+  return (w ? String(w) : "") + best[1] || "0";
+}
+function scaleIngredient(line, factor) {
+  if (Math.abs(factor - 1) < 0.01) return line;
+  const m = String(line).match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?|[½¼¾⅓⅔])\s*(.*)$/);
+  if (!m) return line;
+  let q = parseQty(m[1]) * factor; let rest = m[2];
+  let unit = (rest.match(/^(g|kg|ml|l|L|cups?|tbsp|tsp|tablespoons?|teaspoons?)\b/) || [])[1];
+  // "700g jar passata" — you buy whole jars, so count jars instead.
+  if (unit && /^(g|kg|ml|l|L)\s+(jar|tin|can|packet|pack|bag|tub|bottle)/i.test(rest)) {
+    const n = Math.max(1, Math.ceil(factor - 0.34));
+    return n === 1 ? line : `${n} × ${line}`;
+  }
+  let qs;
+  if (unit && /^(g|ml)$/i.test(unit)) {
+    q = q >= 100 ? Math.round(q / 25) * 25 : Math.max(5, Math.round(q / 5) * 5);
+    if (q >= 1000) { qs = String(Math.round(q / 100) / 10); rest = rest.replace(/^g/, "kg").replace(/^ml/, "L"); unit = unit === "g" ? "kg" : "L"; }
+    else qs = String(q);
+  }
+  else if (unit) qs = fmtQty(Math.max(0.25, Math.round(q * 4) / 4));
+  else qs = String(Math.max(1, Math.ceil(q - 0.34)));
+  return `${qs}${unit && /^(g|kg|ml|l|L)$/.test(unit) ? "" : " "}${rest}`.replace(/\s+/g, " ").trim();
+}
+function scaledIngredients(r, times = 1) {
+  const f = (familySize() / FAMILY_BASE_SERVES) * times;
+  return (r.ingredients || []).map((i) => scaleIngredient(i, f));
+}
+function nightLabel(day) {
+  const d = new Date(day + "T00:00:00");
+  return { short: d.toLocaleDateString([], { weekday: "short" }), num: d.getDate(), long: d.toLocaleDateString([], { weekday: "long" }) };
+}
+
+async function renderDinners() {
+  if (!$("dinnerNights")) return;
+  const start = mondayOfWeek();
+  const data = await api(`/api/dinners?start=${start}&days=${dinnerDays}`);
+  dinnerData = data;
+  recipeUsage = {}; (data.usage || []).forEach((u) => { recipeUsage[u.recipeId] = u.n; });
+  const me = meMember();
+  const today = todayStr();
+  const lockedWeeks = new Set((data.locks || []).map((l) => l.weekOf));
+  const weeks = dinnerDays === 14 ? [start, addDays(start, 7)] : [start];
+  $("dinnerNights").innerHTML = weeks.map((wk, wi) => {
+    const locked = lockedWeeks.has(wk);
+    const lock = (data.locks || []).find((l) => l.weekOf === wk);
+    const nights = Array.from({ length: 7 }, (_, i) => {
+      const day = addDays(wk, i); const lbl = nightLabel(day);
+      const d = (data.dinners || []).find((x) => x.day === day);
+      const r = d && recipesCache.find((rr) => rr.id === d.recipeId);
+      const past = day < today;
+      const canRemove = d && !locked && !past && (isParentHere() || (me && d.pickedBy === me.id));
+      const cover = r && recipeCoverPhotos[r.id];
+      return `<div class="dn-night ${day === today ? "today" : ""} ${d ? "full" : ""} ${past ? "past" : ""}" data-dinner-day="${day}">
+        <div class="dn-day"><b>${lbl.short}</b> ${lbl.num}${day === today ? ` <span class="dn-tonight">Tonight</span>` : ""}</div>
+        ${d ? `<button type="button" class="dn-meal" data-dn-open="${d.recipeId || ""}" ${cover ? `data-tile-cover="${cover}"` : ""}><span class="dn-emoji">${r ? recipeEmoji(r) : "🍽️"}</span><span class="dn-title">${escapeHtml(d.title)}</span></button>
+          <div class="dn-who">${d.pickedBy ? `${whoMark(d.pickedBy)}${escapeHtml(memberNameFor(d.pickedBy))} picked` : ""}</div>
+          ${day === today && r ? `<button type="button" class="small dn-cook" data-dn-cook="${r.id}">👩‍🍳 Cook</button>` : ""}
+          ${canRemove ? `<button type="button" class="dn-x" data-dn-remove="${day}" aria-label="Take off ${escapeAttr(lbl.long)}">✕</button>` : ""}`
+        : `<div class="dn-empty">${past ? "—" : "＋ Drop a<br>recipe here"}</div>`}
+      </div>`;
+    }).join("");
+    const head = `<div class="dn-week-head"><b>${wi === 0 ? "This week" : "Next week"}</b>
+      ${locked ? `<span class="dn-locked">🔒 Locked in${lock && lock.lockedBy ? ` by ${escapeHtml(memberNameFor(lock.lockedBy))}` : ""} · on the calendar</span>` : ""}
+      <button type="button" class="small secondary dn-lock parent-only" data-dn-lock="${wk}" data-dn-locked="${locked ? 1 : 0}">${locked ? "🔓 Unlock" : "🔒 Lock the week"}</button></div>`;
+    return `${head}<div class="dn-row">${nights}</div>`;
+  }).join("");
+  hide("dinnerLockBtn");
+  const thisLocked = lockedWeeks.has(start);
+  $("dinnerHint").innerHTML = thisLocked
+    ? "🔒 This week's dinners are locked in — they're on the calendar. Tap a meal to see the recipe."
+    : me ? `👇 Drag a recipe onto a night${me.role === "child" ? " — you get <b>one pick</b> this week!" : ""} (or tap a recipe, then pick a night).`
+      : `👇 Tap <b>👤 Who are you?</b> at the top, then drag a recipe onto a night.`;
+  $("dinnerShopBtn").textContent = `🛒 Shopping list for ${familySize()} ${familySize() === 1 ? "person" : "people"}`;
+  drawDinnerTray();
+  const nightsEl = $("dinnerNights");
+  fillTileCovers(nightsEl);
+  nightsEl.querySelectorAll("[data-dn-open]").forEach((b) => { b.onclick = () => { const id = b.getAttribute("data-dn-open"); if (id) showRecipeDetail(id); }; });
+  nightsEl.querySelectorAll("[data-dn-cook]").forEach((b) => { b.onclick = () => openCookMode(b.getAttribute("data-dn-cook")); });
+  nightsEl.querySelectorAll("[data-dn-remove]").forEach((b) => {
+    b.onclick = (e) => { e.stopPropagation(); unclaimDinner(b.getAttribute("data-dn-remove")); };
+  });
+  nightsEl.querySelectorAll("[data-dn-lock]").forEach((b) => {
+    b.onclick = () => lockDinnerWeek(b.getAttribute("data-dn-lock"), b.getAttribute("data-dn-locked") === "1");
+  });
+  // Tap-to-place: picked a recipe in the tray? tap a night.
+  nightsEl.querySelectorAll(".dn-night").forEach((n) => {
+    n.addEventListener("click", (e) => {
+      if (!dinnerSelected || e.target.closest("button")) return;
+      const id = dinnerSelected; dinnerSelected = null; drawDinnerTray();
+      claimDinner(n.getAttribute("data-dinner-day"), id);
+    });
+  });
+}
+let dinnerSelected = null;
+function drawDinnerTray() {
+  const cats = [["dinner", "🍽️ Dinners"], ["all", "📖 All"]];
+  $("dinnerTrayCat").innerHTML = cats.map(([k, l]) => `<button type="button" data-dn-cat="${k}" class="${dinnerTrayCat === k ? "on" : ""}">${l}</button>`).join("");
+  $("dinnerTrayCat").querySelectorAll("[data-dn-cat]").forEach((b) => { b.onclick = () => { dinnerTrayCat = b.getAttribute("data-dn-cat"); drawDinnerTray(); }; });
+  let list = sortRecipesByUse(recipesCache.filter((r) => dinnerTrayCat === "all" || r.category === "dinner"));
+  if (!list.length) list = sortRecipesByUse(recipesCache);
+  const tray = $("dinnerTray");
+  tray.innerHTML = list.length ? list.map((r) => {
+    const n = recipeUsage[r.id] || 0; const cover = recipeCoverPhotos[r.id];
+    return `<div class="dn-recipe ${dinnerSelected === r.id ? "sel" : ""}" data-dn-recipe="${r.id}" ${cover ? `data-tile-cover="${cover}"` : ""} role="button" tabindex="0" aria-label="${escapeAttr(r.title)}">
+      ${n ? `<span class="dn-used">🔁 ${n}</span>` : ""}${r.favorite ? `<span class="dn-fav">⭐</span>` : ""}
+      <span class="dn-emoji">${recipeEmoji(r)}</span><span class="dn-title">${escapeHtml(r.title)}</span></div>`;
+  }).join("") : `<p class="muted">No recipes yet — add some in Recipes below (or the 🇦🇺 family favourites pack).</p>`;
+  fillTileCovers(tray);
+  tray.querySelectorAll("[data-dn-recipe]").forEach((t) => enableRecipeDrag(t, t.getAttribute("data-dn-recipe")));
+}
+
+// Drag a recipe tile onto a night. Works with a mouse, and on iPad/phone
+// with "hold, then drag" (a quick swipe still scrolls the page).
+let dragJustEnded = 0;
+function enableRecipeDrag(tile, recipeId) {
+  tile.addEventListener("contextmenu", (e) => e.preventDefault());
+  tile.addEventListener("click", () => {
+    if (Date.now() - dragJustEnded < 400) return;
+    showRecipeDetail(recipeId);
+  });
+  tile.addEventListener("pointerdown", (e) => {
+    if (e.button > 0) return;
+    const sx = e.clientX, sy = e.clientY;
+    const touch = e.pointerType !== "mouse";
+    let dragging = false, ghost = null, over = null, holdTimer = null;
+    const blockScroll = (ev) => { if (dragging) ev.preventDefault(); };
+    const begin = () => {
+      dragging = true;
+      document.addEventListener("touchmove", blockScroll, { passive: false });
+      ghost = tile.cloneNode(true); ghost.classList.add("dn-ghost");
+      const rect = tile.getBoundingClientRect(); ghost.style.width = rect.width + "px"; ghost.style.height = rect.height + "px";
+      document.body.appendChild(ghost); placeGhost(sx, sy);
+      tile.classList.add("dn-dragging"); document.body.classList.add("dn-drag-on");
+      if (navigator.vibrate) try { navigator.vibrate(15); } catch (err) {}
+    };
+    const placeGhost = (x, y) => { if (ghost) { ghost.style.left = x - ghost.offsetWidth / 2 + "px"; ghost.style.top = y - ghost.offsetHeight / 2 + "px"; } };
+    const move = (ev) => {
+      if (!dragging) {
+        const dist = Math.hypot(ev.clientX - sx, ev.clientY - sy);
+        if (touch) { if (dist > 10) cleanup(); return; }
+        if (dist < 6) return;
+        begin();
+      }
+      placeGhost(ev.clientX, ev.clientY);
+      if (ghost) ghost.style.display = "none";
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      if (ghost) ghost.style.display = "";
+      const night = el && el.closest("[data-dinner-day]");
+      if (over && over !== night) over.classList.remove("dn-over");
+      over = night; if (over) over.classList.add("dn-over");
+    };
+    const up = () => {
+      const target = over; const wasDragging = dragging;
+      cleanup();
+      if (wasDragging) { dragJustEnded = Date.now(); if (target) claimDinner(target.getAttribute("data-dinner-day"), recipeId); }
+    };
+    const cleanup = () => {
+      clearTimeout(holdTimer);
+      document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); document.removeEventListener("pointercancel", up);
+      document.removeEventListener("touchmove", blockScroll);
+      if (ghost) ghost.remove(); ghost = null; if (over) over.classList.remove("dn-over"); over = null;
+      tile.classList.remove("dn-dragging"); document.body.classList.remove("dn-drag-on");
+      dragging = false;
+    };
+    if (touch) holdTimer = setTimeout(begin, 260);
+    document.addEventListener("pointermove", move); document.addEventListener("pointerup", up); document.addEventListener("pointercancel", up);
+  });
+}
+
+async function claimDinner(day, recipeId) {
+  const me = meMember();
+  const r = recipesCache.find((x) => x.id === recipeId);
+  if (!me) { toast("👤 Pick who you are first — then drag your dinner on!", true); showWhoPicker(); return; }
+  if (day < todayStr()) { toast("That night's already been — pick one that's coming up!", true); return; }
+  const send = (memberId) => api("/api/dinners/claim", { method: "POST", body: JSON.stringify({ day, recipeId, memberId }) });
+  const done = async (res) => {
+    const lbl = nightLabel(day).long;
+    toast(`${r ? recipeEmoji(r) : "🍽️"} ${res.dinner.title} on ${lbl}!${res.movedFrom ? ` (moved from ${nightLabel(res.movedFrom).long})` : ""}${res.replaced ? ` — swapped out ${res.replaced}` : ""}`);
+    await Promise.all([renderDinners(), renderMealPlan().catch(() => {})]);
+    renderRecipes().catch(() => {});
+  };
+  try { await done(await send(me.id)); }
+  catch (err) {
+    const parentCanFix = me.role === "parent" && !isParentHere() && (err.status === 409 || err.status === 403);
+    if (parentCanFix) {
+      try { await withParentPin("swap this dinner", async (pid) => done(await send(pid))); } catch (e) { if (e && e.message) toast(e.message, true); }
+    } else toast(err.message, true);
+  }
+}
+async function unclaimDinner(day) {
+  const me = meMember(); if (!me) return;
+  try { await api("/api/dinners/unclaim", { method: "POST", body: JSON.stringify({ day, memberId: me.id }) }); toast("Taken off — pick another!"); }
+  catch (err) { toast(err.message, true); }
+  await Promise.all([renderDinners(), renderMealPlan().catch(() => {})]);
+}
+async function lockDinnerWeek(weekOf, isLocked) {
+  try {
+    await withParentPin(isLocked ? "unlock the week" : "lock the week's dinners", async (pid) => {
+      const res = await api(`/api/dinners/${isLocked ? "unlock" : "lock"}`, { method: "POST", body: JSON.stringify({ weekOf, actorId: pid, tzOffset: new Date().getTimezoneOffset() }) });
+      toast(isLocked ? "🔓 Unlocked — dinners taken off the calendar" : `🔒 Locked in! ${res.events} dinner${res.events === 1 ? "" : "s"} on the calendar at 6 pm`);
+    });
+  } catch (err) { if (err && err.message) toast(err.message, true); return; }
+  await renderDinners();
+  if (currentTab === "plan") renderEvents().catch(() => {}); else calendarStale = true;
+  renderEvents().catch(() => {});
+}
+
+// 🛒 One tap: every planned dinner's ingredients, worked out for the family.
+document.querySelectorAll("[data-dn-weeks]").forEach((b) => {
+  b.onclick = () => { dinnerDays = Number(b.getAttribute("data-dn-weeks")); document.querySelectorAll("[data-dn-weeks]").forEach((x) => x.classList.toggle("on", x === b)); renderDinners().catch(() => {}); };
+});
+$("dinnerShopBtn").onclick = () => withBusyButton($("dinnerShopBtn"), "Adding...", async () => {
+  try {
+    const start = mondayOfWeek(); const end = addDays(start, dinnerDays - 1);
+    const meals = await api(`/api/meal-plan?startDay=${start}&endDay=${end}`);
+    const counts = {};
+    (meals.items || []).filter((it) => it.recipeId && it.day >= todayStr()).forEach((it) => { counts[it.recipeId] = (counts[it.recipeId] || 0) + 1; });
+    const ids = Object.keys(counts);
+    if (!ids.length) { toast("Put some dinners on the week first 👆", true); return; }
+    const existing = await api("/api/shopping");
+    const have = new Set((existing.items || []).map((i) => i.name.trim().toLowerCase()));
+    let added = 0;
+    for (const id of ids) {
+      const r = recipesCache.find((x) => x.id === id); if (!r) continue;
+      for (const line of scaledIngredients(r, counts[id])) {
+        const k = line.trim().toLowerCase(); if (!k || have.has(k)) continue;
+        have.add(k); await api("/api/shopping", { method: "POST", body: JSON.stringify({ name: line }) }); added++;
+      }
+    }
+    await renderShopping();
+    toast(added ? `🛒 Added ${added} things — enough for ${familySize()} people` : "Everything's already on the list 👍");
+    if (added) $("shoppingList").scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (err) { toast(err.message, true); }
+});
+
+// --- 👩‍🍳 Cook mode: one big step at a time, with 🔊 read aloud ---
+let cook = null;
+function speak(text) {
+  try {
+    if (!("speechSynthesis" in window)) { toast("Your device can't read aloud 😕", true); return; }
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(String(text).replace(/<[^>]+>/g, " "));
+    u.rate = 0.95; u.lang = "en-AU";
+    speechSynthesis.speak(u);
+  } catch (err) {}
+}
+function openCookMode(recipeId) {
+  const r = recipesCache.find((x) => x.id === recipeId); if (!r) return;
+  cook = { r, page: 0, got: new Set() };
+  hide("recipeDetailPanel");
+  drawCook(); show("cookPopup");
+}
+function cookPages() { return 1 + cook.r.steps.length + 1; }
+function drawCook() {
+  const { r, page } = cook; const total = cookPages(); const ings = scaledIngredients(r);
+  let body = "";
+  if (page === 0) {
+    body = `<div class="ck-kicker">Get these ready 🧺 <span class="muted">(for ${familySize()})</span></div>
+      <ul class="ck-ings">${ings.map((i, n) => `<li><label><input type="checkbox" data-ck-got="${n}" ${cook.got.has(n) ? "checked" : ""} /> ${escapeHtml(i)}</label></li>`).join("")}</ul>`;
+  } else if (page <= r.steps.length) {
+    body = `<div class="ck-kicker">Step ${page} of ${r.steps.length}</div><div class="ck-step">${escapeHtml(r.steps[page - 1])}</div>
+      ${/grown-up|oven|knife|hot|bbq|fry|boil/i.test(r.steps[page - 1]) ? `<p class="ck-safe">🧑‍🍳 Grown-up helper for this bit!</p>` : ""}`;
+  } else {
+    body = `<div class="ck-done">🎉</div><div class="ck-step">You cooked ${escapeHtml(r.title)}!</div>
+      <div class="ck-end">
+        <button type="button" data-ck-photo>📷 Add a photo</button>
+        <button type="button" class="secondary" data-ck-try>🥕 Did anyone try something new?</button>
+      </div>`;
+  }
+  $("cookCard").innerHTML = `<div class="ck-top"><span class="ck-emoji">${recipeEmoji(r)}</span><b>${escapeHtml(r.title)}</b>
+      <button type="button" class="small secondary" data-ck-close style="margin:0 0 0 auto; width:auto;">✕ Close</button></div>
+    <div class="ck-bar"><span style="width:${Math.round(((page + 1) / total) * 100)}%"></span></div>
+    <div class="ck-body">${body}</div>
+    <div class="ck-nav">
+      <button type="button" class="secondary" data-ck-prev ${page === 0 ? "disabled" : ""}>◀ Back</button>
+      <button type="button" class="secondary" data-ck-speak>🔊 Read it</button>
+      ${page < total - 1 ? `<button type="button" data-ck-next>Next ▶</button>` : `<button type="button" data-ck-close>Done ✅</button>`}
+    </div>`;
+  const c = $("cookCard");
+  c.querySelectorAll("[data-ck-close]").forEach((b) => { b.onclick = () => { try { speechSynthesis.cancel(); } catch (err) {} hide("cookPopup"); cook = null; }; });
+  const prev = c.querySelector("[data-ck-prev]"); if (prev) prev.onclick = () => { cook.page--; drawCook(); };
+  const next = c.querySelector("[data-ck-next]"); if (next) next.onclick = () => { cook.page++; drawCook(); };
+  c.querySelector("[data-ck-speak]").onclick = () => speak(page === 0 ? `Get these ready. ${ings.join(". ")}` : page <= r.steps.length ? `Step ${page}. ${r.steps[page - 1]}` : `Well done! You cooked ${r.title}!`);
+  c.querySelectorAll("[data-ck-got]").forEach((x) => { x.onchange = () => { const n = Number(x.getAttribute("data-ck-got")); if (x.checked) cook.got.add(n); else cook.got.delete(n); }; });
+  const ph = c.querySelector("[data-ck-photo]"); if (ph) ph.onclick = () => { pendingPhotoRecipeId = r.id; pendingPhotoHabitId = null; $("photoFileInput").value = ""; $("photoFileInput").click(); };
+  const tr = c.querySelector("[data-ck-try]"); if (tr) tr.onclick = () => { hide("cookPopup"); cook = null; showTab("food"); setTimeout(() => $("passportCard").scrollIntoView({ behavior: "smooth", block: "start" }), 150); };
+}
 
 async function renderMealPlan() {
   const start = mondayOfWeek(); const end = addDays(start, 6);
@@ -5823,11 +6290,15 @@ function drawPassport() {
       <b>${escapeHtml(m.name)} tried ${escapeHtml(passportAsking.food)}! How was it?</b>
       <div class="verdict-btns">${Object.entries(PASSPORT_VERDICTS).map(([k, v]) => `<button type="button" class="small ${k === "love" ? "" : "secondary"}" data-passport-verdict="${k}">${v.emoji} ${v.label}</button>`).join("")}
         <button type="button" class="small secondary" data-passport-cancel>Cancel</button></div>
+      ${passportAsking.already ? "" : `<div style="margin-top:8px;"><button type="button" class="small secondary" data-passport-wish style="width:auto; margin:0;">🛒 Not yet — I want to try it! (add to shopping)</button></div>`}
     </div>` : "";
+  const toTry = (m.toTry || []).length ? `<div class="pp-totry"><b>🛒 Want to try</b> <span class="muted" style="font-size:0.8rem;">— on the shopping list. Tried it? Tap ✅</span><br>
+      ${m.toTry.map((w) => `<span class="chip">${escapeHtml(w.emoji || "🍽️")} ${escapeHtml(w.food)} <button type="button" data-totry-tried="${escapeAttr(w.food)}" data-totry-emoji="${escapeAttr(w.emoji || "🍽️")}">✅ Tried it</button><button type="button" class="secondary" data-totry-x="${w.id}" aria-label="Remove">✕</button></span>`).join("")}</div>` : "";
   $("passportBody").innerHTML = `
     <p style="margin:10px 0 0; font-weight:700;">${escapeHtml(m.name)} has tried <span style="color:var(--terracotta);">${m.count}</span> new ${m.count === 1 ? "food" : "foods"}!</p>
     <div style="margin-top:4px;">${badges}${next ? `<span class="muted" style="font-size:0.8rem;">${next[0] - m.count} more for ${next[1]}</span>` : ""}</div>
     <p class="passport-bonus">${bonus}</p>
+    ${toTry}
     ${ask}
     <div class="passport-grid">${PASSPORT_FOODS.map(([e, f]) => tile(e, f)).join("")}${custom.map((s) => tile(s.emoji || "🍽️", s.food)).join("")}</div>
     <form id="passportOtherForm" style="display:flex; gap:6px; margin-top:10px;">
@@ -5843,6 +6314,21 @@ function drawPassport() {
       const askEl = $("passportAsk"); if (askEl) askEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
     };
   });
+  $("passportBody").querySelectorAll("[data-totry-tried]").forEach((b) => {
+    b.onclick = () => { passportAsking = { food: b.getAttribute("data-totry-tried"), emoji: b.getAttribute("data-totry-emoji"), already: false }; drawPassport(); };
+  });
+  $("passportBody").querySelectorAll("[data-totry-x]").forEach((b) => {
+    b.onclick = async () => { try { await api(`/api/food-passport/wish/${b.getAttribute("data-totry-x")}`, { method: "DELETE" }); await renderPassport(); } catch (err) { toast(err.message, true); } };
+  });
+  const wishBtn = $("passportBody").querySelector("[data-passport-wish]");
+  if (wishBtn) wishBtn.onclick = async () => {
+    const ask = passportAsking; if (!ask) return;
+    try {
+      const res = await api("/api/food-passport/wish", { method: "POST", body: JSON.stringify({ memberId: passportMemberId, food: ask.food, emoji: ask.emoji }) });
+      passportAsking = null; await renderPassport(); renderShopping().catch(() => {});
+      toast(`🛒 ${ask.food} is on the shopping list${res.addedToShopping ? "" : " already"} — try it this week!`);
+    } catch (err) { toast(err.message, true); }
+  };
   $("passportOtherForm").onsubmit = (e) => {
     e.preventDefault();
     const food = $("passportOtherInput").value.trim();

@@ -12,6 +12,7 @@ import * as habitRoutes from "./routes/habits.js";
 import * as rewardRoutes from "./routes/rewards.js";
 import * as recipeRoutes from "./routes/recipes.js";
 import * as mealPlanRoutes from "./routes/mealPlan.js";
+import * as dinnerRoutes from "./routes/dinners.js";
 import * as shoppingRoutes from "./routes/shopping.js";
 import * as meetingRoutes from "./routes/meetings.js";
 import * as pushRoutes from "./routes/push.js";
@@ -167,6 +168,14 @@ async function handleApi(request, env, url, ctx) {
 
   if (path === "/api/food-passport" && method === "GET") return foodPassportRoutes.getFoodPassport(request, familyId, env);
   if (path === "/api/food-passport/try" && method === "POST") return foodPassportRoutes.tryFood(request, familyId, env);
+  if (path === "/api/food-passport/wish" && method === "POST") return foodPassportRoutes.wishFood(request, familyId, env);
+  const foodWishMatch = path.match(/^\/api\/food-passport\/wish\/([^/]+)$/);
+  if (foodWishMatch && method === "DELETE") return foodPassportRoutes.unwishFood(foodWishMatch[1], familyId, env);
+  if (path === "/api/dinners" && method === "GET") return dinnerRoutes.listDinners(request, familyId, env);
+  if (path === "/api/dinners/claim" && method === "POST") return dinnerRoutes.claimDinner(request, familyId, env);
+  if (path === "/api/dinners/unclaim" && method === "POST") return dinnerRoutes.unclaimDinner(request, familyId, env);
+  if (path === "/api/dinners/lock" && method === "POST") return dinnerRoutes.lockWeek(request, familyId, env);
+  if (path === "/api/dinners/unlock" && method === "POST") return dinnerRoutes.unlockWeek(request, familyId, env);
   const foodStampMatch = path.match(/^\/api\/food-passport\/([^/]+)$/);
   if (foodStampMatch && method === "DELETE") return foodPassportRoutes.deleteFoodStamp(foodStampMatch[1], request, familyId, env);
   if (path === "/api/weekly" && method === "GET") return weeklyRoutes.getWeekly(request, familyId, env);

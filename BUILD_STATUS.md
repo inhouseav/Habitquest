@@ -4,6 +4,25 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-12 — Food page = the week's meal planning area
+- New 🍽️ Dinners card at the top (1 week / 2 weeks). Drag a recipe picture onto a night: mouse drag, or on iPad/phone hold for a moment then drag. Or tap a recipe and pick a day in its popup.
+- Kids pick, parent locks (`src/routes/dinners.js`):
+  - one dinner a night; each kid gets one pick a week (a second pick moves the first)
+  - a taken night says who picked it
+  - a parent can swap any night, then 🔒 Lock the week, which puts each dinner on the calendar at 6–7 pm as a family event; 🔓 Unlock removes them
+  - new `meal_plan_items.picked_by` and `meal_week_locks` (added automatically)
+- Recipes are sorted most-used first (🔁 count), in the tray and in the Recipes grid. The Recipes card now comes second.
+- Tapping a recipe opens a popup (no longer inline):
+  - big picture
+  - ingredients worked out for the family size (recipes are written for 4)
+  - steps
+  - "Put it on a day" (Family dinner / Breakfast / Lunch / Snack + day chips)
+  - 👩‍🍳 Cook it now, 🔊 Read it to me, ⭐, 🛒, ✏️, 📷, ✨
+- 👩‍🍳 Cook mode: full screen, ingredients checklist first, then one big step at a time, 🔊 read aloud (speech), and "grown-up helper" on hot/sharp steps. It ends with 📷 add a photo and 🥕 "Did anyone try something new?" (opens the passport).
+- 🛒 "Shopping list for N people" adds every planned meal's ingredients scaled to the family (whole jars/tins, rounded counts, g→kg).
+- Passport 🛒 "Not yet — I want to try it!" adds the food to a "Want to try" list and to the shopping list. "✅ Tried it" stamps it and takes it off the list (`food_wishlist`).
+- The old "This week's meals" card is renamed "Breakfast, lunch & snacks" and moved down.
+
 ## 2026-11-12 — Habit editor: top 5 first, own ideas saved
 - Each slot (Move/Cook/Home) shows the family's 5 most-ticked habits first with a 🏆 ×N badge (from `/api/habits/completions`, which now includes `slot`).
 - ✏️ My own idea picks a matching emoji as you type (Walk the dog → 🐕) and is saved to the family's ideas (Cook ideas in a new `cook` list), so it's a picture tile next time.
