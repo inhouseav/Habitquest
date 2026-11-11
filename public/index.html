@@ -291,6 +291,7 @@
   .cal-day[data-date-key]:hover { box-shadow: inset 0 0 0 2px var(--terracotta); }
   .cal-day-add { margin-left: auto; width: 18px; height: 18px; border-radius: 50%; background: var(--sage); color: var(--text); font-size: 0.8rem; line-height: 18px; text-align: center; font-weight: 700; flex: 0 0 auto; }
   .cal-day.picked { box-shadow: inset 0 0 0 2px var(--terracotta); background: #fff6ef; }
+  .cal-event-chip.fam { font-weight: 700; }
   .cal-event-chip { border-radius: 6px; padding: 2px 4px; color: #183F35; font-size: 0.62rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
   .cal-habit-markers { display: flex; flex-wrap: wrap; gap: 3px; margin-top: auto; padding-top: 2px; }
   .cal-habit-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(24, 63, 53, 0.15); }
@@ -1051,7 +1052,13 @@
       <label>Ends <input type="time" id="qaEndInput" /></label>
       <div class="chip-row" id="qaDur"></div>
     </div>
-    <label class="qa-check"><input type="checkbox" id="qaRepeatCheck" /> 🔁 Every week <span id="qaUntilWrap" class="hidden">until <input type="date" id="qaUntilInput" style="width:auto; margin:0;" /></span></label>
+    <div class="pick-head">How often?</div>
+    <div class="chip-row" id="qaRepeat">
+      <button type="button" class="small" data-qa-repeat="">Just once</button>
+      <button type="button" class="small secondary" data-qa-repeat="daily">🔁 Every day</button>
+      <button type="button" class="small secondary" data-qa-repeat="weekly">🔁 Every week</button>
+      <span id="qaUntilWrap" class="hidden" style="align-self:center; font-weight:700;">until <input type="date" id="qaUntilInput" style="width:auto; margin:0;" /></span>
+    </div>
     <label id="qaHabitWrap" class="qa-check hidden"><input type="checkbox" id="qaHabitCheck" checked /> <span id="qaHabitLabel">⭐ Count it as a habit that day</span></label>
     <details class="qa-more" id="qaMore"><summary>More…</summary>
       <label class="qa-check"><input type="checkbox" id="qaCountdownCheck" /> ⏳ Show a countdown on Today ("3 sleeps until…")</label>
@@ -1645,7 +1652,7 @@ function renderCalMemberTabs() {
     return `<button class="small ${active ? "" : "secondary"}" data-cal-member-tab="${t.id}" style="margin:0;">${t.color ? `<span class="member-dot" style="background:${t.color};"></span>` : ""}${t.label}</button>`;
   }).join("");
   wrap.querySelectorAll("[data-cal-member-tab]").forEach((btn) => {
-    btn.onclick = () => { calendarMemberFilter = btn.getAttribute("data-cal-member-tab"); renderCalendarGrid(); };
+    btn.onclick = () => { calendarMemberFilter = btn.getAttribute("data-cal-member-tab"); renderCalMemberTabs(); renderCalendarGrid(); };
   });
 }
 
@@ -1661,8 +1668,13 @@ function eventOccurrenceKeys(e, rangeStartKey, rangeEndKeyInclusive) {
   if (!e.recurrence) return [startKey];
   let rec;
   try { rec = typeof e.recurrence === "string" ? JSON.parse(e.recurrence) : e.recurrence; } catch (err) { return [startKey]; }
-  if (!rec || rec.freq !== "weekly" || !rec.until) return [startKey];
+  if (!rec || (rec.freq !== "weekly" && rec.freq !== "daily") || !rec.until) return [startKey];
   const keys = [];
+  if (rec.freq === "daily") {
+    let k = startKey > rangeStartKey ? startKey : rangeStartKey;
+    for (let i = 0; i < 400 && k <= rec.until && k <= rangeEndKeyInclusive; i++) { keys.push(k); k = addDays(k, 1); }
+    return keys;
+  }
   let cursorKey = startKey;
   for (let i = 0; i < 104 && cursorKey <= rec.until; i++) {
     if (cursorKey >= rangeStartKey && cursorKey <= rangeEndKeyInclusive) keys.push(cursorKey);
@@ -1680,15 +1692,22 @@ function eventInvolvesMember(e, memberId) {
 
 // Display name + color for an event chip, covering all three shapes: one
 // specific person, several specific people, or the whole family.
+// Each person has their own colour (a soft tint + a strong edge); family
+// events (everyone) are hot pink so they stand out.
+const FAMILY_PINK = "#FF3E9A";
+function personTint(hex) { return /^#[0-9a-f]{6}$/i.test(hex || "") ? hex + "2E" : "#E4EAD9"; }
 function eventWhoAndColor(e) {
   if (e.memberIds && e.memberIds.length) {
     const names = e.memberIds.map((id) => memberNameFor(id)).filter(Boolean);
-    return { who: names.length > 2 ? `${names.slice(0, 2).join(", ")} +${names.length - 2}` : names.join(" & "), bg: "var(--gold)" };
+    const edge = memberColorFor(e.memberIds[0]) || "#C9A227";
+    const edges = e.memberIds.map((id) => memberColorFor(id)).filter(Boolean);
+    return { who: names.length > 2 ? `${names.slice(0, 2).join(", ")} +${names.length - 2}` : names.join(" & "), bg: personTint(edge), edge, edges };
   }
   if (e.member_id) {
-    return { who: memberNameFor(e.member_id), bg: memberColorFor(e.member_id) || (e.pillar && PILLAR_COLORS[e.pillar]) || "#E4EAD9" };
+    const edge = memberColorFor(e.member_id) || "#9BB59A";
+    return { who: memberNameFor(e.member_id), bg: personTint(edge), edge, edges: [edge] };
   }
-  return { who: "👨‍👩‍👧 Everyone", bg: (e.pillar && PILLAR_COLORS[e.pillar]) || "#E4EAD9" };
+  return { who: "👨‍👩‍👧 Everyone", bg: "#FFE3F0", edge: FAMILY_PINK, edges: [FAMILY_PINK], family: true };
 }
 
 async function loadStars(memberId) {
@@ -1844,7 +1863,9 @@ function renderCalendarGrid() {
           const repeatIcon = e.recurrence ? "🔁 " : "";
           const label = who ? `${who}: ${e.title}` : e.title;
           const time = e.starts_at ? formatClock(localHHMM(e.starts_at)) + (e.ends_at ? "–" + formatClock(localHHMM(e.ends_at)) : "") : "";
-          return `<div class="cal-event-chip" style="background:${bg}" data-event-id="${e.id}" title="${escapeHtml(label)}"><span class="cal-chip-time">${escapeHtml(time)} </span>${repeatIcon}${escapeHtml(eventLabel(e.title))}<span class="cal-chip-who"> · ${escapeHtml(who || "")}</span></div>`;
+          const wc = eventWhoAndColor(e);
+          const edgeCss = wc.edges && wc.edges.length > 1 ? `border-left:5px solid ${wc.edges[0]}; box-shadow: inset -5px 0 0 ${wc.edges[1]};` : `border-left:5px solid ${wc.edge};`;
+          return `<div class="cal-event-chip ${wc.family ? "fam" : ""}" style="background:${bg}; ${edgeCss}" data-event-id="${e.id}" title="${escapeHtml(label)}"><span class="cal-chip-time">${escapeHtml(time)} </span>${repeatIcon}${escapeHtml(eventLabel(e.title))}<span class="cal-chip-who"> · ${escapeHtml(who || "")}</span></div>`;
         }).join("")
       : "";
     const habitMarkers = cell.key && habitsByDay[cell.key]
@@ -1982,11 +2003,13 @@ function qaReset(day) {
   return { day, editId: null, tile: null, own: false, task: null,
     who: new Set(me && me !== "shared" && state.members.some((m) => m.id === me) ? [me] : []),
     time: day === todayStr() && new Date().getHours() >= 15 ? "19:00" : "15:30", end: "",
-    repeat: false, until: addDays(day, 90) };
+    repeat: "", until: addDays(day, 90) };
 }
 function qaApplyToInputs() {
   $("qaTimeInput").value = qa.time; $("qaEndInput").value = qa.end || "";
-  $("qaRepeatCheck").checked = qa.repeat; $("qaUntilInput").value = qa.until; $("qaUntilWrap").classList.toggle("hidden", !qa.repeat);
+  $("qaUntilInput").value = qa.until;
+  document.querySelectorAll("#qaRepeat [data-qa-repeat]").forEach((b) => b.classList.toggle("secondary", b.getAttribute("data-qa-repeat") !== (qa.repeat || "")));
+  $("qaUntilWrap").classList.toggle("hidden", !qa.repeat);
   $("qaDateInput").value = qa.day;
 }
 // Step 1 = "What?" (tiles), step 2 = "Who & when?" — one screen each.
@@ -2016,10 +2039,10 @@ function openEditEvent(e) {
   qa = { ...qaReset(day), editId: e.id, own: true,
     who: new Set(e.memberIds && e.memberIds.length ? e.memberIds : e.member_id ? [e.member_id] : []),
     time: localHHMM(e.starts_at) || "15:30", end: e.ends_at ? localHHMM(e.ends_at) : "",
-    repeat: !!e.recurrence, until: e.recurrence ? e.recurrence.until : addDays(day, 90), exact: true };
+    repeat: e.recurrence ? (e.recurrence.freq || "weekly") : "", until: e.recurrence ? e.recurrence.until : addDays(day, 90), exact: true };
   $("qaTitle").textContent = "✏️ Change event";
   show("qaDayRow"); show("qaDeleteBtn");
-  $("qaOwnTitle").value = e.title; $("qaDeleteBtn").textContent = e.recurrence ? "🗑 Delete (every week)" : "🗑 Delete";
+  $("qaOwnTitle").value = e.title; $("qaDeleteBtn").textContent = e.recurrence ? `🗑 Delete (${(e.recurrence.freq || "weekly") === "daily" ? "every day" : "every week"})` : "🗑 Delete";
   clearError("qaError"); $("qaCountdownCheck").checked = !!e.countdown; $("qaMore").open = !!e.countdown;
   qaApplyToInputs(); drawQuickAdd(); qaShowStep(2); show("quickAddPopup");
 }
@@ -2050,7 +2073,7 @@ function drawQuickAdd() {
   $("qaTimeRow").classList.toggle("hidden", !qa.exact);
   $("qaExactBtn").textContent = qa.exact ? "Done ✓" : "⏰ Exact time";
   const dayName = new Date(qa.day + "T00:00:00").toLocaleDateString([], { weekday: "long" });
-  $("qaAddBtn").textContent = qa.editId ? "Save changes ✓" : qa.repeat ? `Add every ${dayName} ✓` : `Add to ${dayName} ✓`;
+  $("qaAddBtn").textContent = qa.editId ? "Save changes ✓" : qa.repeat === "daily" ? "Add every day ✓" : qa.repeat ? `Add every ${dayName} ✓` : `Add to ${dayName} ✓`;
 
   $("qaTiles").querySelectorAll("[data-qa-tile]").forEach((b) => b.onclick = () => { qa.tile = Number(b.getAttribute("data-qa-tile")); qa.own = false; qa.task = null; drawQuickAdd(); qaShowStep(2); });
   $("qaTiles").querySelector("[data-qa-surprise]").onclick = () => {
@@ -2091,7 +2114,12 @@ $("todayPlanAddBtn").onclick = () => openAddEventForDay(todayStr());
 $("qaTimeInput").onchange = (e) => { if (e.target.value) { qa.time = e.target.value; drawQuickAdd(); } };
 $("qaEndInput").onchange = (e) => { qa.end = e.target.value || ""; drawQuickAdd(); };
 $("qaDateInput").onchange = (e) => { if (e.target.value) { qa.day = e.target.value; drawQuickAdd(); } };
-$("qaRepeatCheck").onchange = (e) => { qa.repeat = e.target.checked; $("qaUntilWrap").classList.toggle("hidden", !qa.repeat); drawQuickAdd(); };
+document.querySelectorAll("#qaRepeat [data-qa-repeat]").forEach((b) => b.onclick = () => {
+  qa.repeat = b.getAttribute("data-qa-repeat");
+  if (qa.repeat === "daily" && qa.until > addDays(qa.day, 30)) qa.until = addDays(qa.day, 30);
+  if (qa.repeat === "weekly" && qa.until <= addDays(qa.day, 30)) qa.until = addDays(qa.day, 90);
+  qaApplyToInputs(); drawQuickAdd();
+});
 $("qaUntilInput").onchange = (e) => { if (e.target.value) qa.until = e.target.value; };
 $("qaSummary").onclick = () => qaShowStep(1);
 $("qaExactBtn").onclick = () => { qa.exact = !qa.exact; drawQuickAdd(); };
@@ -2115,7 +2143,7 @@ $("qaAddBtn").onclick = () => withBusyButton($("qaAddBtn"), qa && qa.editId ? "S
   if (qa.repeat && (!qa.until || qa.until < qa.day)) return showError("qaError", "Pick when the weekly repeat should stop.");
   const startsAt = new Date(`${qa.day}T${qa.time}`).toISOString();
   const endsAt = qa.end ? new Date(`${qa.day}T${qa.end}`).toISOString() : null;
-  const recurrence = qa.repeat ? { freq: "weekly", until: qa.until } : null;
+  const recurrence = qa.repeat ? { freq: qa.repeat, until: qa.until } : null;
   const memberIds = [...qa.who];
   try {
     if (qa.editId) {
@@ -2132,7 +2160,7 @@ $("qaAddBtn").onclick = () => withBusyButton($("qaAddBtn"), qa && qa.editId ? "S
     hide("quickAddPopup");
     await renderEvents();
     renderHabits().catch(() => {});
-    toast(`📅 Added "${title}"${qa.repeat ? " — every week" : ""}!${habitMsg}`);
+    toast(`📅 Added "${title}"${qa.repeat === "daily" ? " — every day" : qa.repeat ? " — every week" : ""}!${habitMsg}`);
   } catch (err) { showError("qaError", err.message); }
 });
 
@@ -2178,7 +2206,7 @@ function renderTodayPlan() {
   const whoHtml = (ids) => ids.length
     ? ids.map((id) => { const m = state.members.find((mm) => mm.id === id); return m ? `<span class="tp-who"><span class="member-dot" style="background:${m.color || "#ccc"}"></span>${escapeHtml(m.display_name)}</span>` : ""; }).join("")
     : `<span class="tp-who">🌍 Everyone</span>`;
-  const colorOf = (ids) => { const m = ids.length === 1 && state.members.find((mm) => mm.id === ids[0]); return m ? m.color || "#ccc" : "var(--terracotta)"; };
+  const colorOf = (ids) => { if (!ids.length) return FAMILY_PINK; const m = state.members.find((mm) => mm.id === ids[0]); return m ? m.color || "#ccc" : FAMILY_PINK; };
   let lineDone = false;
   const pastItems = items.filter((x) => x.start && endOf(x) <= now);
   const showList = items.filter((x) => tpShowAll || !pastItems.includes(x));
@@ -2638,7 +2666,7 @@ async function renderHabits() {
         }
         return `
         <div style="display:flex; align-items:center; gap:6px;">
-          <button class="habit-row-btn ${h.completed ? 'done' : ''}" data-habit="${h.id}" ${h.completed ? 'disabled' : ''} style="flex:1;">
+          <button class="habit-row-btn ${h.completed ? 'done' : ''}" data-habit="${h.id}" style="flex:1;">
             <span class="habit-check" style="font-size:1.1rem;">${h.completed ? '✓' : '○'}</span>
             <span style="font-size:1rem; flex-shrink:0;">${h.plannedToday ? slotMeta.emoji : (h.emoji || slotMeta.emoji)}</span>
             <span class="habit-title" style="font-weight:600;">${escapeHtml(h.title)}${h.plannedToday ? `<span class="habit-today-tag">📅 today${h.plannedTime ? " · " + escapeHtml(formatClock(h.plannedTime)) : ""}</span>` : ""}</span>
@@ -2665,7 +2693,7 @@ async function renderHabits() {
             <p class="muted" style="font-size:0.72rem; font-weight:700; margin:0 0 4px;">✨ BONUS — just for fun, not needed to win</p>
             <div class="habit-rows">${bonusList.map((b) => `
               <div style="display:flex; align-items:center; gap:6px;">
-                <button class="habit-row-btn bonus ${b.completed ? 'done' : ''}" data-bonus-habit="${b.id}" ${b.completed ? 'disabled' : ''} style="flex:1;">
+                <button class="habit-row-btn bonus ${b.completed ? 'done' : ''}" data-bonus-habit="${b.id}" style="flex:1;">
                   <span class="habit-check" style="font-size:1.1rem;">${b.completed ? '✓' : '○'}</span>
                   <span style="font-size:1rem; flex-shrink:0;">${b.emoji || "✨"}</span>
                   <span class="habit-title" style="font-weight:600;">${escapeHtml(b.title)}</span>
@@ -2697,6 +2725,16 @@ async function renderHabits() {
 
   list.querySelectorAll("button[data-habit]").forEach((btn) => {
     btn.onclick = async () => {
+      if (btn.classList.contains("done")) {
+        // Tapped a ticked habit → untick it (a mis-tap).
+        btn.classList.remove("done"); btn.disabled = true;
+        try {
+          await api(`/api/habits/${btn.getAttribute("data-habit")}/uncomplete`, { method: "POST", body: JSON.stringify({ day: todayStr() }) });
+          toast("↩️ Unticked");
+        } catch (err) { toast(err.message, true); }
+        await renderHabits().catch(() => {});
+        return;
+      }
       // Show the tick straight away — don't make a kid wait for the server.
       btn.classList.add("done"); btn.disabled = true;
       const check = btn.querySelector(".habit-check"); if (check) check.textContent = "✓";
@@ -2710,6 +2748,13 @@ async function renderHabits() {
 
   list.querySelectorAll("button[data-bonus-habit]").forEach((btn) => {
     btn.onclick = async () => {
+      if (btn.classList.contains("done")) {
+        btn.classList.remove("done"); btn.disabled = true;
+        try { await api(`/api/habits/bonus/${btn.getAttribute("data-bonus-habit")}/uncomplete`, { method: "POST", body: JSON.stringify({ day: todayStr() }) }); toast("↩️ Unticked"); }
+        catch (err) { toast(err.message, true); }
+        await renderHabits().catch(() => {});
+        return;
+      }
       btn.classList.add("done"); btn.disabled = true;
       try {
         await api(`/api/habits/bonus/${btn.getAttribute("data-bonus-habit")}/complete`, { method: "POST", body: JSON.stringify({ day: todayStr() }) });

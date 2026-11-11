@@ -392,3 +392,48 @@ export async function completeBonusHabit(bonusId, request, familyId, env) {
     .run();
   return json({ ok: true, day });
 }
+
+/**
+ * POST /api/habits/:id/uncomplete — { day } untick today's habit (a mis-tap).
+ * Takes back its star, the family-activity extra if it came from this habit,
+ * and today's win from the streak if the day had been won.
+ */
+export async function uncompleteHabit(habitId, request, familyId, env) {
+  const body = (await readJson(request)) || {};
+  const day = body.day && validDay(body.day) ? body.day : todayStr();
+  if (!isTickableDay(day)) return errorResponse("You can only untick today's habits.", 400);
+  const db = env.DB;
+  const habit = await db.prepare("SELECT id, member_id, slot FROM weekly_habits WHERE id = ? AND family_id = ?").bind(habitId, familyId).first();
+  if (!habit) return errorResponse("Habit not found.", 404);
+  const done = await db.prepare("SELECT id FROM habit_completions WHERE habit_id = ? AND day = ?").bind(habitId, day).first();
+  if (!done) return json({ ok: true, alreadyUnticked: true });
+
+  const totalRow = await db.prepare("SELECT COUNT(*) AS n FROM weekly_habits WHERE member_id = ?").bind(habit.member_id).first();
+  const beforeRow = await db.prepare("SELECT COUNT(*) AS n FROM habit_completions WHERE member_id = ? AND day = ?").bind(habit.member_id, day).first();
+  const wasWon = totalRow && beforeRow && totalRow.n > 0 && beforeRow.n >= totalRow.n;
+
+  await db.prepare("DELETE FROM habit_completions WHERE habit_id = ? AND day = ?").bind(habitId, day).run();
+  await db.prepare("DELETE FROM star_ledger WHERE idempotency_key = ?").bind(`habit:${habitId}:${day}`).run();
+  if (await ensureHabitPlanTime(db)) {
+    const plan = await db.prepare("SELECT is_family FROM habit_day_plan WHERE member_id = ? AND slot = ? AND day = ?").bind(habit.member_id, habit.slot, day).first();
+    if (plan && plan.is_family) await db.prepare("DELETE FROM star_ledger WHERE idempotency_key = ?").bind(`family:${habit.member_id}:${day}`).run();
+  }
+  if (wasWon) {
+    const s = await db.prepare("SELECT current_streak, last_won_day FROM habit_streaks WHERE member_id = ?").bind(habit.member_id).first();
+    if (s && s.last_won_day === day) {
+      const cur = Math.max(0, (s.current_streak || 1) - 1);
+      await db.prepare("UPDATE habit_streaks SET current_streak = ?, last_won_day = ? WHERE member_id = ?")
+        .bind(cur, cur > 0 ? addDaysStr(day, -1) : null, habit.member_id).run();
+    }
+  }
+  return json({ ok: true, starsThisWeek: await starsThisWeek(db, habit.member_id, day) });
+}
+
+/** POST /api/habits/bonus/:id/uncomplete — { day } untick a bonus habit. */
+export async function uncompleteBonusHabit(bonusId, request, familyId, env) {
+  const body = (await readJson(request)) || {};
+  const day = body.day && validDay(body.day) ? body.day : todayStr();
+  const db = env.DB;
+  await db.prepare("DELETE FROM bonus_completions WHERE bonus_habit_id = ? AND day = ? AND family_id = ?").bind(bonusId, day, familyId).run();
+  return json({ ok: true });
+}

@@ -4,6 +4,13 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Notes batch 1: untick, calendar people + colours, every day (2026-11-12)
+
+- **Untick a habit:** tap a ticked habit (or bonus) again → unticked; takes back its star, the family-activity extra if it came from it, and today's win from the streak. Routes `POST /api/habits/:id/uncomplete`, `/api/habits/bonus/:id/uncomplete`.
+- **Calendar person buttons:** the highlight now moves when you tap a person (the filter worked but the button didn't change, so it looked broken). A person's view = their events + family events.
+- **Colours:** every event is a soft tint of its person's colour with a strong coloured edge (two people → two edges); family events (Everyone) are hot pink. Today's plan uses the same colours.
+- **How often?** Just once / 🔁 Every day / 🔁 Every week (+ until date) in the quick add and when changing an event. Server accepts `recurrence.freq = "daily"`.
+
 ## ✅ Kid-friendly tweaks (2026-11-11)
 
 - Quick add shows "🕒 3:30 PM" from the time buttons; the start/end boxes are behind "⏰ Exact time" (open automatically when changing an event).

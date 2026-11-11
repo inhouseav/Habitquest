@@ -24,11 +24,11 @@ function validDay(value) {
 // full RRULE picker — this is for an 8-year-old to use without help.
 // { freq: "weekly", until: "YYYY-MM-DD" } or null for a one-off event.
 function parseRecurrence(input, startsAt) {
-  if (!input || typeof input !== "object" || input.freq !== "weekly") return null;
+  if (!input || typeof input !== "object" || (input.freq !== "weekly" && input.freq !== "daily")) return null;
   if (!validDay(input.until)) return null;
   const startDay = startsAt && !Number.isNaN(Date.parse(startsAt)) ? new Date(startsAt).toISOString().slice(0, 10) : null;
   if (startDay && input.until < startDay) return null; // "until" can't be before the event starts
-  return { freq: "weekly", until: input.until };
+  return { freq: input.freq, until: input.until };
 }
 
 /** GET /api/events — list this family's shared calendar events. */

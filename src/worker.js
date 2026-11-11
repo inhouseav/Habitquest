@@ -139,6 +139,10 @@ async function handleApi(request, env, url, ctx) {
   if (path === "/api/habits" && method === "GET") return habitRoutes.getHabits(request, familyId, env);
   if (path === "/api/habits/completions" && method === "GET") return habitRoutes.listCompletions(familyId, env);
   if (path === "/api/habits/set" && method === "POST") return habitRoutes.setHabits(request, familyId, env);
+  const bonusUncompleteMatch = path.match(/^\/api\/habits\/bonus\/([^/]+)\/uncomplete$/);
+  if (bonusUncompleteMatch && method === "POST") return habitRoutes.uncompleteBonusHabit(bonusUncompleteMatch[1], request, familyId, env);
+  const habitUncompleteMatch = path.match(/^\/api\/habits\/([^/]+)\/uncomplete$/);
+  if (habitUncompleteMatch && method === "POST") return habitRoutes.uncompleteHabit(habitUncompleteMatch[1], request, familyId, env);
   const bonusCompleteMatch = path.match(/^\/api\/habits\/bonus\/([^/]+)\/complete$/);
   if (bonusCompleteMatch && method === "POST") {
     return habitRoutes.completeBonusHabit(bonusCompleteMatch[1], request, familyId, env);
