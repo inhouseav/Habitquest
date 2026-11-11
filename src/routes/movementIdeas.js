@@ -3,7 +3,7 @@ import { newId } from "../lib/crypto.js";
 import { hasParentSession } from "../lib/parent.js";
 
 const MAX_TITLE_LENGTH = 60;
-const VALID_CATEGORIES = ["movement", "home"];
+const VALID_CATEGORIES = ["movement", "home", "cook"];
 
 function categoryOf(value) {
   return VALID_CATEGORIES.includes(value) ? value : "movement";

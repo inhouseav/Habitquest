@@ -159,7 +159,7 @@ export async function listCompletions(familyId, env) {
   const db = env.DB;
   const rows = await db
     .prepare(
-      `SELECT hc.day, hc.member_id as memberId, wh.title, wh.emoji
+      `SELECT hc.day, hc.member_id as memberId, wh.title, wh.emoji, wh.slot
        FROM habit_completions hc
        JOIN weekly_habits wh ON wh.id = hc.habit_id
        WHERE hc.family_id = ?

@@ -4,6 +4,11 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-12 — Habit editor: top 5 first, own ideas saved
+- Each slot (Move/Cook/Home) shows the family's 5 most-ticked habits first with a 🏆 ×N badge (from `/api/habits/completions`, which now includes `slot`).
+- ✏️ My own idea picks a matching emoji as you type (Walk the dog → 🐕) and is saved to the family's ideas (Cook ideas in a new `cook` list), so it's a picture tile next time.
+- Idea tiles use matching emojis instead of 🏃/🏡 for everything.
+
 ## 2026-11-12 — Kid-friendly screens
 - 😎 Avatars: everyone picks an emoji face (Family list → tap the face, or at the end of the tour). It shows instead of the coloured dot on habits, the calendar, quick add, Today's plan and the passport. Stored in `members.avatar` (added automatically).
 - ⭐ Star jar on Today replaces the progress bar; new stars pop in.

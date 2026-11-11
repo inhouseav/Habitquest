@@ -161,6 +161,7 @@
   .pick-tile.photo.has-img .pt-emoji { display: none; }
   .pick-tile.photo .pt-title { background: linear-gradient(transparent, rgba(24,63,53,0.78)); color: #fff; width: 100%; padding: 22px 8px 8px; }
   .pick-tile .pt-badge { position: absolute; top: 6px; left: 8px; font-size: 0.9rem; }
+  .pick-tile .pt-badge.pt-top { background: #ffe6a8; color: #7a4b00; border-radius: 10px; padding: 1px 6px; font-size: 0.72rem; font-weight: 800; }
   .pick-tile.own { border-style: dashed; color: var(--muted, #6b7d73); }
   .pick-head { margin: 16px 0 8px; font-size: 1.08rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
   .pick-head .muted { font-size: 0.8rem; font-weight: 600; }
@@ -1970,6 +1971,7 @@ let calendarViewMode = "week"; // "week" | "2week" | "month" — 1 week is simpl
 let calendarMonth = new Date(); // any date within the currently shown month (month view only)
 let calendarWeekStart = mondayOfWeek(); // Monday of the currently shown week (week/2week views)
 let allEvents = [];
+let topHabitsLoading = false;
 let allHabitCompletions = []; // [{day, memberId, title, emoji}] — tiny dots on the calendar
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; // month view (grid starts Sunday)
 const WEEKDAY_LABELS_MON = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]; // week/2week views (grid starts Monday)
@@ -2585,7 +2587,7 @@ let plannerActiveTab = "movement";
 let plannerPendingItem = null; // { type: "movement"|"recipe", category?, ideaId?, value }
 
 async function loadPlannerMovementIdeas() {
-  await Promise.all(Object.keys(PLANNER_IDEA_CATEGORIES).map(async (category) => {
+  await Promise.all([...Object.keys(PLANNER_IDEA_CATEGORIES), "cook"].map(async (category) => {
     const data = await api(`/api/movement-ideas?category=${category}`);
     plannerIdeasByCategory[category] = data.ideas || [];
   }));
@@ -3038,8 +3040,21 @@ async function renderHabits() {
       tile.classList.add("on");
       const own = form.querySelector(`[data-own-wrap="${slot}"]`); own.classList.remove("hidden");
       const input = form.querySelector(`[name="title${slot}"]`); input.value = ""; input.focus();
+      const em = form.querySelector(`[name="emoji${slot}"]`); em.value = ""; delete em.dataset.typed;
     };
   });
+  // ✏️ My own idea: pick a matching emoji as you type (unless you chose one).
+  list.querySelectorAll("[data-auto-emoji]").forEach((input) => {
+    const slot = Number(input.getAttribute("data-auto-emoji"));
+    const em = input.closest("form").querySelector(`[name="emoji${slot}"]`);
+    em.addEventListener("input", () => { em.dataset.typed = em.value ? "1" : ""; });
+    input.addEventListener("input", () => { if (!em.dataset.typed) em.value = input.value.trim() ? habitEmojiFor(input.value, slot) : ""; });
+  });
+  // Load the family's ticks once, so 🏆 top habits can show first.
+  if (habitEditingMemberId && !allHabitCompletions.length && !topHabitsLoading) {
+    topHabitsLoading = true;
+    api("/api/habits/completions").then((d) => { allHabitCompletions = d.completions || []; if (allHabitCompletions.length) renderHabits(); }).catch(() => {});
+  }
   fillTileCovers(list);
 
   list.querySelectorAll("form[data-habit-form]").forEach((form) => {
@@ -3048,7 +3063,7 @@ async function renderHabits() {
       const memberId = form.getAttribute("data-habit-form");
       const habits = [1, 2, 3].map((slot) => {
         const title = form.querySelector(`[name="title${slot}"]`).value.trim();
-        const emoji = form.querySelector(`[name="emoji${slot}"]`).value.trim();
+        const emoji = form.querySelector(`[name="emoji${slot}"]`).value.trim() || (title ? habitEmojiFor(title, slot) : "");
         return title ? { slot, title, emoji } : null;
       }).filter(Boolean);
       const bonus = BONUS_SLOTS.map((slot) => {
@@ -3060,9 +3075,14 @@ async function renderHabits() {
         await api("/api/habits/set", { method: "POST", body: JSON.stringify({ memberId, habits, bonus }) });
         // Remember typed Move/Home habits in the Planner lists, so they're
         // there to pick next time (no duplicates — the server ignores repeats).
-        const remember = habits.filter((h) => h.slot === 1 || h.slot === 3)
-          .map((h) => api("/api/movement-ideas", { method: "POST", body: JSON.stringify({ title: h.title, category: h.slot === 1 ? "movement" : "home" }) }).catch(() => {}));
+        // ✏️ Own ideas are saved too (Cook ones in their own list), so they
+        // become a picture tile next time.
+        const known = (slot, t) => habitTileOptions(slot).some((o) => o.title.toLowerCase() === t.toLowerCase() && !o.top);
+        const own = habits.filter((h) => h.slot !== 2 || !/^Cook /.test(h.title));
+        const newOnes = own.filter((h) => !known(h.slot, h.title));
+        const remember = own.map((h) => api("/api/movement-ideas", { method: "POST", body: JSON.stringify({ title: h.title, category: h.slot === 1 ? "movement" : h.slot === 2 ? "cook" : "home" }) }).catch(() => {}));
         Promise.all(remember).then(() => loadPlannerMovementIdeas()).catch(() => {});
+        if (newOnes.length) setTimeout(() => toast(`💾 ${newOnes.map((h) => `${h.emoji} ${h.title}`).join(", ")} saved to your ideas`), 1600);
         habitEditingMemberId = null;
         await renderHabits();
         toast("Habits saved!");
@@ -3338,8 +3358,8 @@ function moduleIdeasHtml(slot) {
 // first), Home -> your Planner home ideas. Most-used first.
 function habitQuickPickOptions(slot) {
   const listOrStarters = (cat) => ((plannerIdeasByCategory[cat] || []).length ? plannerIdeasByCategory[cat].map((i) => i.title) : STARTER_IDEAS[cat]);
-  if (slot === 1) return listOrStarters("movement").map((title) => ({ title, emoji: "🏃" }));
-  if (slot === 3) return listOrStarters("home").map((title) => ({ title, emoji: "🏡" }));
+  if (slot === 1) return listOrStarters("movement").map((title) => ({ title, emoji: habitEmojiFor(title, 1) }));
+  if (slot === 3) return listOrStarters("home").map((title) => ({ title, emoji: habitEmojiFor(title, 3) }));
   if (slot === 2) {
     return [...recipesCache]
       .sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0))
@@ -3357,25 +3377,54 @@ function habitQuickPickHtml(slot) {
 }
 // Picture tiles for one habit slot: the family's own ideas first, then
 // ideas from the 7 modules — tap one and you're done (or "✏️ My own").
+// The family's most-done habits for a slot (from every tick so far).
+function topHabitsForSlot(slot, n = 5) {
+  const counts = new Map();
+  (allHabitCompletions || []).filter((c) => Number(c.slot) === slot && c.title).forEach((c) => {
+    const k = c.title.toLowerCase().trim();
+    const cur = counts.get(k) || { title: c.title, emoji: c.emoji || habitEmojiFor(c.title, slot), count: 0 };
+    cur.count++; counts.set(k, cur);
+  });
+  return [...counts.values()].sort((a, b) => b.count - a.count).slice(0, n);
+}
+// An emoji that suits a habit someone typed ("Walk the dog" → 🐕).
+const HABIT_EMOJI = [
+  [/dog/i, "🐕"], [/cat\b|pet|fish|rabbit|guinea/i, "🐾"], [/bed\b/i, "🛏️"], [/teeth|brush/i, "🪥"], [/water\b|drink/i, "💧"],
+  [/fruit|apple|banana/i, "🍎"], [/veg|broccoli|carrot/i, "🥦"], [/salad/i, "🥗"], [/bake|muffin|cake|cookie/i, "🧁"], [/smoothie/i, "🥤"],
+  [/lunch ?box|lunch/i, "🥪"], [/breakfast/i, "🥣"], [/dinner|cook|recipe|meal/i, "🍳"], [/snack/i, "🍏"], [/garden|plant|seed|herb|water the/i, "🌱"],
+  [/tidy|clean|vacuum|sweep/i, "🧹"], [/dish|table/i, "🍽️"], [/wash|laundry|clothes/i, "🧺"], [/sleep|bedtime|bed on time/i, "😴"],
+  [/screen|tablet|ipad|phone|tv/i, "📵"], [/read|book/i, "📚"], [/outside|park|nature/i, "🌳"], [/skip|jump|trampoline/i, "🤸"],
+  [/stretch|yoga/i, "🧘"], [/scooter|skate/i, "🛴"], [/lego|build/i, "🧱"], [/kick|ball/i, "⚽"],
+];
+function habitEmojiFor(title, slot) {
+  const lead = (String(title || "").match(LEAD_EMOJI_RE) || [""])[0].trim();
+  if (lead) return lead;
+  const hit = HABIT_EMOJI.find(([re]) => re.test(title || ""));
+  if (hit) return hit[1];
+  return eventEmoji(title, (HABIT_SLOT_META[slot] || {}).emoji || "⭐");
+}
 function habitTileOptions(slot) {
   const seen = new Set();
   const out = [];
   const add = (o) => { const k = o.title.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(o); } };
+  // 🏆 What we actually do most, first.
+  topHabitsForSlot(slot).forEach((t) => add({ title: t.title, emoji: t.emoji, top: t.count }));
   if (slot === 2) {
+    (plannerIdeasByCategory.cook || []).forEach((i) => add({ title: i.title, emoji: habitEmojiFor(i.title, 2), ours: true }));
     [...recipesCache].sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0)).slice(0, 8)
       .forEach((r) => add({ title: `Cook ${r.title}`, emoji: (RECIPE_CATEGORY_META[r.category] || {}).emoji || "🍳", cover: r.cover_photo_id || "", fav: !!r.favorite }));
   } else {
     habitQuickPickOptions(slot).slice(0, 8).forEach((o) => add({ ...o, ours: true }));
   }
   (MODULE_IDEAS[slot] || []).forEach(([, ideas]) => ideas.forEach(([emoji, title]) => add({ emoji, title })));
-  return out.slice(0, 14);
+  return out.slice(0, 16);
 }
 function habitTilesHtml(slot, existing) {
   const current = existing ? (existing.usualTitle || existing.title) : "";
   const opts = habitTileOptions(slot);
   const matched = opts.some((o) => o.title.toLowerCase() === current.toLowerCase());
   const tiles = opts.map((o) => `<button type="button" class="pick-tile ${o.cover ? "photo" : ""} ${o.title.toLowerCase() === current.toLowerCase() ? "on" : ""}" data-pick-slot="${slot}" data-pick-title="${escapeAttr(o.title)}" data-pick-emoji="${escapeAttr(o.emoji)}" ${o.cover ? `data-tile-cover="${o.cover}"` : ""}>
-      ${o.fav ? `<span class="pt-badge">⭐</span>` : ""}<span class="pt-emoji">${escapeHtml(o.emoji)}</span><span class="pt-title">${escapeHtml(o.title)}</span></button>`).join("");
+      ${o.top ? `<span class="pt-badge pt-top">🏆 ×${o.top}</span>` : o.fav ? `<span class="pt-badge">⭐</span>` : ""}<span class="pt-emoji">${escapeHtml(o.emoji)}</span><span class="pt-title">${escapeHtml(o.title)}</span></button>`).join("");
   const own = `<button type="button" class="pick-tile own ${current && !matched ? "on" : ""}" data-pick-own="${slot}"><span class="pt-emoji">✏️</span><span class="pt-title">${current && !matched ? escapeHtml(current) : "My own idea"}</span></button>`;
   return { html: `<div class="pick-grid">${tiles}${own}</div>`, showOwn: !!(current && !matched) };
 }
@@ -3394,11 +3443,12 @@ function habitEditFormHtml(m) {
     const existing = m.habits.find((h) => h.slot === slot);
     const meta = HABIT_SLOT_META[slot];
     const tiles = habitTilesHtml(slot, existing);
-    return `<div class="pick-head">${meta.emoji} ${meta.label} <span class="muted">— tap one</span></div>
+    const hasTop = topHabitsForSlot(slot).length > 0;
+    return `<div class="pick-head">${meta.emoji} ${meta.label} <span class="muted">— tap one${hasTop ? " · 🏆 = what you do most" : ""}</span></div>
     ${tiles.html}
     <div class="own-input ${tiles.showOwn ? "" : "hidden"}" data-own-wrap="${slot}" style="display:flex; gap:6px; margin-top:8px;">
-      <input name="emoji${slot}" placeholder="🙂" maxlength="4" value="${existing ? escapeAttr(existing.emoji) : ''}" style="width:52px; text-align:center;" />
-      <input name="title${slot}" placeholder="${meta.placeholder}" value="${existing ? escapeAttr(existing.usualTitle || existing.title) : ''}" style="flex:1;" />
+      <input name="emoji${slot}" placeholder="🙂" maxlength="4" value="${existing ? escapeAttr(existing.emoji) : ''}" style="width:52px; text-align:center; font-size:1.3rem;" />
+      <input name="title${slot}" data-auto-emoji="${slot}" placeholder="${meta.placeholder}" value="${existing ? escapeAttr(existing.usualTitle || existing.title) : ''}" style="flex:1;" />
     </div>`;
   }).join("");
   return `<form data-habit-form="${m.memberId}">
