@@ -4,6 +4,10 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-12 — Quick add uses favourites; new table cards
+- Calendar quick add: the person using the device sees their ❤️ Move/Home favourites first (marked ❤️).
+- New set of 12 display-table cards (scratchpad, given to Maddie as a PDF). New cards: Everyone's favourites, Kids pick / parent locks, Let's cook!, Our family cookbook. Updated: Win the Day (star jar + party), Kids choose, Plan the week together, Passport, Stars.
+
 ## 2026-11-12 — Demo family shows every new feature
 - "Try a demo family" (The Smith Family) now has:
   - avatars 🦉 Sam, 🦊 Mia, 🦖 Jack

@@ -2545,7 +2545,10 @@ function localHHMM(iso) { return iso ? new Date(iso).toTimeString().slice(0, 5) 
 function localDay(iso) { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
 function qaTileOptions() {
   const seen = new Set(); const out = [];
-  const add = (title, emoji, category) => { const k = (title || "").trim().toLowerCase(); if (!k || seen.has(k)) return; seen.add(k); out.push({ title: title.trim(), emoji, category }); };
+  const add = (title, emoji, category, love) => { const k = (title || "").trim().toLowerCase(); if (!k || seen.has(k)) return; seen.add(k); out.push({ title: title.trim(), emoji, category, love }); };
+  // ❤️ The chosen person's (or your own) favourite things to do come first.
+  const forId = (meMember() || {}).id; // (kept to "me" so tiles don't jump around while choosing who)
+  if (forId) { const f = memberFavs(forId); f.move.forEach((t) => add(t, habitEmojiFor(t, 1), "movement", true)); f.home.forEach((t) => add(t, habitEmojiFor(t, 3), "home", true)); }
   (plannerIdeasByCategory.movement || []).forEach((i) => add(i.title, eventEmoji(i.title, "🏃"), "movement"));
   (plannerIdeasByCategory.home || []).forEach((i) => add(i.title, eventEmoji(i.title, "🏡"), "home"));
   ((lastHabitsData && lastHabitsData.members) || []).forEach((m) => (m.habits || []).forEach((h) => { if (h.slot !== 2) add(h.usualTitle || h.title, h.emoji || "⭐", h.slot === 1 ? "movement" : "home"); }));
@@ -2603,7 +2606,7 @@ function openEditEvent(e) {
 }
 function drawQuickAdd() {
   const opts = qaTileOptions();
-  $("qaTiles").innerHTML = opts.map((o, i) => `<button type="button" class="pick-tile ${qa.tile === i ? "on" : ""}" data-qa-tile="${i}"><span class="pt-emoji">${escapeHtml(o.emoji)}</span><span class="pt-title">${escapeHtml(o.title)}</span></button>`).join("") +
+  $("qaTiles").innerHTML = opts.map((o, i) => `<button type="button" class="pick-tile ${qa.tile === i ? "on" : ""}" data-qa-tile="${i}">${o.love ? `<span class="pt-badge pt-top">❤️</span>` : ""}<span class="pt-emoji">${escapeHtml(o.emoji)}</span><span class="pt-title">${escapeHtml(o.title)}</span></button>`).join("") +
     `<button type="button" class="pick-tile" data-qa-surprise><span class="pt-emoji">🎲</span><span class="pt-title">Surprise me!</span></button>` +
     `<button type="button" class="pick-tile own ${qa.own && !qa.task && !qa.editId ? "on" : ""}" data-qa-own><span class="pt-emoji">✏️</span><span class="pt-title">Something new</span></button>`;
   $("qaSeg").querySelectorAll("[data-qa-seg]").forEach((b) => b.classList.toggle("on", b.getAttribute("data-qa-seg") === (qa.seg || "acts")));
