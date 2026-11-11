@@ -4,6 +4,15 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Family day at a glance: Today's plan, edit events, start/finish times, every week (2026-11-11)
+
+- **📅 Today's plan on Today** (whole family): time (start–finish), emoji + name, who (colour per person). "▶ Now / ⏭ Next … (in 2h 15m)" banner, a red "11:39 now" line, finished items folded into "✓ 5 done earlier", the next 6 (4 on phones) with "＋ N more". Tap an item to change it; "＋ Add" opens quick add for today. On a sideways iPad it sits beside Win the Day.
+- **Quick add times:** Starts + Finishes (optional) with 30 min / 1 hour / 1½ / 2 hours buttons; preset chips incl. 🏫 School pickup (2:30). Jobs fill sensible times (Pick up 2:30–3:30, Drop off 8:00–8:45 …). "Who's doing it?" for jobs.
+- **🔁 Every week** right in the quick add (until a date, default ~3 months).
+- **Edit any event:** tap it on the calendar or Today's plan → same popup: name, who, day (Today / Tomorrow / weekdays / date), start/finish, every week, countdown — Save, or 🗑 Delete. Server: `POST /api/events/:id/update`.
+- **Automatic emojis** on events (🏐 netball, 🦷 dentist, 🛒 shopping, 🎨 art …) on the calendar, Today's plan and the family screen.
+- **Phones:** the week calendar is a day list (times and who on each event) instead of 7 tiny columns.
+
 ## ✅ Countdowns, Family screen, Jobs & plans quick add (2026-11-11)
 
 - **⏳ Countdowns:** "🏕️ 3 sleeps until Camp" chips on Today (next 5, up to 120 days ahead). Add with "＋ Countdown" (Camp, Birthday, Holiday, Beach day, Christmas, Party, Big game, School holidays, or type one + a date), or tick "⏳ Show a countdown on Today" in the calendar quick add. Stored as events with `countdown = 1` (column added automatically; record in db/migrations/024).

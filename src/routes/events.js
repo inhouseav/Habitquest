@@ -173,3 +173,57 @@ export async function deleteEvent(eventId, familyId, env) {
   await db.prepare("DELETE FROM events WHERE id = ?").bind(eventId).run();
   return json({ ok: true });
 }
+
+/**
+ * POST /api/events/:id/update — change an event: { title?, startsAt?, endsAt?,
+ * memberIds?, recurrence? (null = stop repeating), countdown? }. For a
+ * repeating event this changes the whole series.
+ */
+export async function updateEvent(eventId, request, familyId, env) {
+  const body = (await readJson(request)) || {};
+  const db = env.DB;
+  const existing = await db.prepare("SELECT id, starts_at FROM events WHERE id = ? AND family_id = ?").bind(eventId, familyId).first();
+  if (!existing) return errorResponse("Event not found.", 404);
+
+  const sets = [];
+  const args = [];
+  if (body.title !== undefined) {
+    const title = String(body.title || "").trim();
+    if (!validTitle(title)) return errorResponse(`Please enter a title (1-${MAX_TITLE_LENGTH} characters).`);
+    sets.push("title = ?"); args.push(title);
+  }
+  const startsAt = body.startsAt !== undefined ? body.startsAt : existing.starts_at;
+  if (body.startsAt !== undefined) {
+    if (!validDate(body.startsAt)) return errorResponse("Please provide a valid start date/time.");
+    sets.push("starts_at = ?"); args.push(body.startsAt);
+  }
+  if (body.endsAt !== undefined) {
+    if (body.endsAt && !validDate(body.endsAt)) return errorResponse("End date/time isn't valid.");
+    if (body.endsAt && new Date(body.endsAt) <= new Date(startsAt)) return errorResponse("The finish time needs to be after the start time.");
+    sets.push("ends_at = ?"); args.push(body.endsAt || null);
+  }
+  if (body.recurrence !== undefined) {
+    const recurrence = body.recurrence ? parseRecurrence(body.recurrence, startsAt) : null;
+    sets.push("recurrence = ?"); args.push(recurrence ? JSON.stringify(recurrence) : null);
+  }
+  if (body.countdown !== undefined && (await ensureCountdown(db))) {
+    sets.push("countdown = ?"); args.push(body.countdown ? 1 : 0);
+  }
+  let memberIds = null;
+  if (Array.isArray(body.memberIds)) {
+    memberIds = [...new Set(body.memberIds.filter(Boolean))];
+    if (memberIds.length) {
+      const found = await db.prepare(`SELECT id FROM members WHERE family_id = ? AND id IN (${memberIds.map(() => "?").join(",")})`).bind(familyId, ...memberIds).all();
+      if ((found.results || []).length !== memberIds.length) return errorResponse("One of those family members wasn't found.", 404);
+    }
+    sets.push("member_id = ?"); args.push(memberIds.length === 1 ? memberIds[0] : null);
+  }
+  if (sets.length) await db.prepare(`UPDATE events SET ${sets.join(", ")} WHERE id = ?`).bind(...args, eventId).run();
+  if (memberIds) {
+    await db.prepare("DELETE FROM event_members WHERE event_id = ?").bind(eventId).run();
+    if (memberIds.length >= 2) {
+      for (const mId of memberIds) await db.prepare("INSERT INTO event_members (event_id, member_id) VALUES (?, ?)").bind(eventId, mId).run();
+    }
+  }
+  return json({ ok: true });
+}

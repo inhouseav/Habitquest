@@ -111,6 +111,8 @@ async function handleApi(request, env, url, ctx) {
 
   if (path === "/api/events" && method === "GET") return eventRoutes.listEvents(familyId, env);
   if (path === "/api/events" && method === "POST") return eventRoutes.createEvent(request, familyId, env);
+  const eventUpdateMatch = path.match(/^\/api\/events\/([^/]+)\/update$/);
+  if (eventUpdateMatch && method === "POST") return eventRoutes.updateEvent(eventUpdateMatch[1], request, familyId, env);
   const eventDeleteMatch = path.match(/^\/api\/events\/([^/]+)$/);
   if (eventDeleteMatch && method === "DELETE") {
     return eventRoutes.deleteEvent(eventDeleteMatch[1], familyId, env);
