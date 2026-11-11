@@ -4,6 +4,16 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## ✅ Picture tiles everywhere + iPad wall-calendar layout (2026-11-11)
+
+From Maddie's iPad testing notes + a review of the Calmo Daily family calendar:
+- **Choose habits:** Move / Cook / Home are big picture tiles (family ideas and recipes with photos first, then ideas from the 7 modules); tap one, or "✏️ My own idea". Bonus habits fold away. Big "✅ Save my habits" button.
+- **Win the Day progress card:** ⭐ stars this week · 🔥 day streak · 🎁 how many more to your reward, a big progress bar, "3 more ⭐ to Pick the movie!", and rewards as tappable picture cards (no dropdown).
+- **Calendar quick add:** tap a day → popup with the family's saved activities, habits and past events as tiles → who (chips) → when (Morning / After school / Dinner time / Evening or a time) → "Add to Thursday ✓". For a Move/Home activity for one person it can also make it their habit that day. "More options" opens the full form (repeat weekly).
+- **Meals quick add:** ＋ on a day → recipe picture cards (favourites ⭐ and the right meal type first) → one tap adds it (+ ingredients to the shopping list). Or type something else.
+- **Reward shop:** rewards are colourful picture cards; "💡 Reward ideas kids love" — fun experiences, never food (dietitian survey) — tap to add (kids' ideas wait for a parent).
+- **Sideways iPad / laptop (like a wall calendar):** side menu with a big clock + date; 1-week calendar is big day boxes 4 + 3 with the time and who under each event.
+
 ## ✅ Tap a calendar day to add an event (2026-11-10)
 
 - Each day in the calendar is tappable (small ＋ in the corner): it opens the Add Event form with that day's date filled in (4pm, or the next hour if it's later today), the day highlighted and a ✕ to close. Tapping an existing event still opens that event. The old "+ Add an event" button is gone; a hint says "👆 Tap a day to add something to it". Works in week, 2-week and month views on phone, iPad and laptop.
