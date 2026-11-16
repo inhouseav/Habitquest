@@ -4,6 +4,9 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-16 — Quick add: type your own first
+- The quick add popup now opens with a big "✏️ What's happening?" box (type it → Next) at the top. The idea tiles sit below under "…or tap an idea". The old "Something new" tile is gone (the box replaces it).
+
 - "+ Add family member" now shows for kids too; once the family has a parent, it asks for the parent PIN first (so a kid can set up the family with a grown-up's OK).
 
 ## 2026-11-16 — Family started by a kid

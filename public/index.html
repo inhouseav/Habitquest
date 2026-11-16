@@ -392,6 +392,12 @@
   .pp-totry { margin-top: 10px; background: #fff6e8; border-radius: 14px; padding: 8px 10px; }
   .pp-totry .chip { display: inline-flex; align-items: center; gap: 4px; margin: 4px 6px 0 0; background: #fff; border-radius: 999px; padding: 4px 4px 4px 10px; box-shadow: inset 0 0 0 2px #f1d9b5; font-weight: 700; font-size: 0.85rem; }
   .pp-totry .chip button { margin: 0; width: auto; padding: 3px 8px; font-size: 0.75rem; border-radius: 999px; }
+  .qa-type { background: #fff; border: 2px solid var(--terracotta); border-radius: 18px; padding: 14px 16px; margin: 10px 0 14px; }
+  .qa-type-head { display: block; font-size: 1.25rem; font-weight: 800; margin: 0 0 8px !important; }
+  .qa-type-row { display: flex; gap: 8px; }
+  .qa-type-row input { margin: 0; flex: 1; font-size: 1.15rem; padding: 14px 16px; border-radius: 14px; }
+  .qa-type-row button { margin: 0; width: auto; padding: 0 22px; font-size: 1.05rem; border-radius: 14px; }
+  .pick-head.qa-or { font-size: 0.95rem; color: #6b7d75; }
   .member-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; box-shadow: 0 0 0 2px #fff; }
   .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--gold); font-size: 0.75rem; margin-left: 6px; }
   .pill.fuel { background: var(--peach); }
@@ -1333,7 +1339,14 @@
   <div class="ftf-sheet wide">
     <div style="display:flex; align-items:center; gap:8px;"><h2 id="qaTitle" style="margin:0;">➕ Add</h2><button type="button" class="small secondary" id="qaCloseBtn" style="margin:0 0 0 auto; width:auto;">✕</button></div>
     <div id="qaPickSection">
-      <div class="pick-head">What's happening?</div>
+      <form id="qaTypeForm" class="qa-type" autocomplete="off">
+        <label for="qaTypeInput" class="qa-type-head">✏️ What's happening?</label>
+        <div class="qa-type-row">
+          <input id="qaTypeInput" maxlength="80" placeholder="Type it… e.g. Netball game, Sleepover at Ava's" />
+          <button type="submit" id="qaTypeBtn">Next →</button>
+        </div>
+      </form>
+      <div class="pick-head qa-or">…or tap an idea 👇</div>
       <div class="seg-tabs" id="qaSeg">
         <button type="button" data-qa-seg="acts">⭐ Activities</button>
         <button type="button" data-qa-seg="jobs">📝 Jobs &amp; plans</button>
@@ -2605,6 +2618,7 @@ function openAddEventForDay(day) {
   $("qaOwnTitle").value = ""; hide("qaDayRow"); hide("qaDeleteBtn");
   clearError("qaError"); $("qaCountdownCheck").checked = false; $("qaMore").open = false;
   qaApplyToInputs(); drawQuickAdd(); qaShowStep(1); show("quickAddPopup");
+  $("qaTypeInput").value = ""; if (window.matchMedia("(pointer: fine)").matches) setTimeout(() => $("qaTypeInput").focus(), 50);
 }
 function openEditEvent(e) {
   const day = localDay(e.starts_at);
@@ -2621,8 +2635,7 @@ function openEditEvent(e) {
 function drawQuickAdd() {
   const opts = qaTileOptions();
   $("qaTiles").innerHTML = opts.map((o, i) => `<button type="button" class="pick-tile ${qa.tile === i ? "on" : ""}" data-qa-tile="${i}">${o.love ? `<span class="pt-badge pt-top">❤️</span>` : ""}<span class="pt-emoji">${escapeHtml(o.emoji)}</span><span class="pt-title">${escapeHtml(o.title)}</span></button>`).join("") +
-    `<button type="button" class="pick-tile" data-qa-surprise><span class="pt-emoji">🎲</span><span class="pt-title">Surprise me!</span></button>` +
-    `<button type="button" class="pick-tile own ${qa.own && !qa.task && !qa.editId ? "on" : ""}" data-qa-own><span class="pt-emoji">✏️</span><span class="pt-title">Something new</span></button>`;
+    `<button type="button" class="pick-tile" data-qa-surprise><span class="pt-emoji">🎲</span><span class="pt-title">Surprise me!</span></button>`;
   $("qaSeg").querySelectorAll("[data-qa-seg]").forEach((b) => b.classList.toggle("on", b.getAttribute("data-qa-seg") === (qa.seg || "acts")));
   $("qaTiles").classList.toggle("hidden", (qa.seg || "acts") !== "acts");
   $("qaTasks").classList.toggle("hidden", qa.seg !== "jobs");
@@ -2656,7 +2669,7 @@ function drawQuickAdd() {
     else { qa.tile = null; qa.own = true; $("qaOwnTitle").value = `${pick.emoji} ${pick.title}`; }
     qa.task = null; drawQuickAdd(); qaShowStep(2); toast("🎲 How about this?");
   };
-  $("qaTiles").querySelector("[data-qa-own]").onclick = () => { qa.tile = null; qa.own = true; qa.task = null; drawQuickAdd(); qaShowStep(2); $("qaOwnTitle").value = ""; $("qaOwnTitle").placeholder = "Type it… e.g. Swimming lesson"; $("qaOwnTitle").focus(); };
+
   $("qaSeg").querySelectorAll("[data-qa-seg]").forEach((b) => b.onclick = () => { qa.seg = b.getAttribute("data-qa-seg"); drawQuickAdd(); });
   $("qaTasks").querySelectorAll("[data-qa-task]").forEach((b) => b.onclick = () => {
     const t = b.getAttribute("data-qa-task");
@@ -2694,6 +2707,15 @@ document.querySelectorAll("#qaRepeat [data-qa-repeat]").forEach((b) => b.onclick
 });
 $("qaUntilInput").onchange = (e) => { if (e.target.value) qa.until = e.target.value; };
 $("qaSummary").onclick = () => qaShowStep(1);
+// ✏️ Type your own event first (ideas are below it).
+$("qaTypeForm").onsubmit = (e) => {
+  e.preventDefault();
+  const v = $("qaTypeInput").value.trim();
+  if (!v) { $("qaTypeInput").focus(); return; }
+  qa.tile = null; qa.own = true; qa.task = null;
+  drawQuickAdd(); qaShowStep(2);
+  show("qaOwnTitle"); $("qaOwnTitle").value = v;
+};
 $("qaExactBtn").onclick = () => { qa.exact = !qa.exact; drawQuickAdd(); };
 $("qaBackBtn").onclick = () => { if (qa.editId) return; qa.own = false; qa.task = null; drawQuickAdd(); qaShowStep(1); };
 $("qaCloseBtn").onclick = () => hide("quickAddPopup");
