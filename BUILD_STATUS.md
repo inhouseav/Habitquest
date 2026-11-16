@@ -4,6 +4,11 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-16 — New families: the creator can add people straight away
+- Bug: since the default parent PIN (1234), the parent who just created a family was locked out of parent jobs (no adding members, "Habits are set by a parent"). Fix: signup now unlocks parent mode for the creator on that device.
+- A parent who isn't unlocked gets "🔓 Unlock to set habits" on Today. "+ Add family member" asks for the PIN first instead of failing.
+- The who-picker PIN box says "(it starts as 1234)" while the default PIN is still in use.
+
 ## 2026-11-16 — Fresh start link
 - `https://habitquest.ihav.workers.dev/?new` logs this device out of whatever family it was in and opens "Start a family", so you can make a brand-new family. Other families are untouched.
 

@@ -1866,6 +1866,7 @@ function showWhoPicker() {
       if (m && m.role === "parent" && state.parent && state.parent.parentPinSet && state.parent.unlockedParentId !== id) {
         whoPinFor = id;
         $("whoPinName").textContent = m.display_name;
+        $("whoPinInput").placeholder = state.parent && state.parent.defaultPin ? "Parent PIN (it starts as 1234)" : "Parent PIN";
         $("whoPinInput").value = ""; clearError("whoPinError");
         hide("whoList"); hide("whoSharedBtn"); show("whoPinStep");
         $("whoPinInput").focus();
@@ -2282,7 +2283,10 @@ async function giveStar(memberId) {
   } catch (err) { toast(err.message, true); }
 }
 
-$("showAddMemberBtn").onclick = () => openPeoplePopup("add");
+$("showAddMemberBtn").onclick = () => {
+  if (canProgram()) return openPeoplePopup("add");
+  withParentPin("add family members", () => openPeoplePopup("add")).catch(() => {});
+};
 
 // --- Events: calendar grid (1 week / 2 weeks / full month) ---
 let calendarViewMode = "week"; // "week" | "2week" | "month" — 1 week is simplest for a kid, so it's the default
@@ -3203,7 +3207,7 @@ async function renderHabits() {
     const wonBadge = m.dayWon ? `<span class="day-won-badge">🎉 Day won!</span>` : "";
     const headerHtml = `<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;">
       <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;">${whoMark(m.memberId, m.color, true)}<strong>${escapeHtml(m.displayName)}</strong> ${streakBadge} ${wonBadge}</div>
-      ${canProgram() ? `<button class="small secondary" data-edit-member="${m.memberId}">${m.totalHabits ? 'Edit' : 'Choose'} habits ✏️</button>` : `<span class="muted" style="font-size:0.75rem;">🔒 Habits are set by a parent</span>`}
+      ${canProgram() ? `<button class="small secondary" data-edit-member="${m.memberId}">${m.totalHabits ? 'Edit' : 'Choose'} habits ✏️</button>` : ((meMember() || {}).role === "parent" ? `<button class="small secondary" data-unlock-habits style="width:auto; margin:0;">🔓 Unlock to set habits</button>` : `<span class="muted" style="font-size:0.75rem;">🔒 Habits are set by a parent</span>`)}
     </div>`;
 
     let bodyHtml;
@@ -3336,6 +3340,9 @@ async function renderHabits() {
     };
   });
 
+  list.querySelectorAll("[data-unlock-habits]").forEach((btn) => {
+    btn.onclick = () => withParentPin("set habits", async () => { await renderHabits(); }).catch(() => {});
+  });
   list.querySelectorAll("[data-edit-member]").forEach((btn) => {
     btn.onclick = () => {
       habitEditingMemberId = habitEditingMemberId === btn.getAttribute("data-edit-member") ? null : btn.getAttribute("data-edit-member");

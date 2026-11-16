@@ -5,7 +5,7 @@ import { createSession } from "../lib/sessions.js";
 import { VALID_COLORS, refreshPersonColors } from "./members.js";
 import { seedDemoFamily, DEMO_PIN } from "../lib/demoSeed.js";
 import { ensureFoodPassport } from "./foodPassport.js";
-import { parentStatus } from "../lib/parent.js";
+import { parentStatus, ensureParentColumns } from "../lib/parent.js";
 import { attachDemoPictures } from "../lib/demoPictures.js";
 
 const MAX_NAME_LENGTH = 60;
@@ -95,6 +95,11 @@ export async function signup(request, env) {
   if (await ensureMemberStatus(db)) await db.prepare("UPDATE members SET joined_at = datetime('now') WHERE id = ?").bind(memberId).run();
 
   const token = await createSession(db, familyId);
+  // The parent who made the family starts unlocked on this device, so they
+  // can add everyone and set habits straight away (parent PIN starts as 1234).
+  if (firstMemberRole === "parent" && (await ensureParentColumns(db).catch(() => false))) {
+    await db.prepare("UPDATE sessions SET parent_member_id = ? WHERE id = ?").bind(memberId, token).run().catch(() => {});
+  }
 
   return json({
     ok: true,
