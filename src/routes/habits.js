@@ -101,10 +101,12 @@ export async function getHabits(request, familyId, env) {
     habitsByMember[h.member_id].push({
       id: h.id,
       slot: h.slot,
-      title: planned ? planned.title : h.title,
+      // A day plan no longer swaps the habit (Maddie: habits should stay
+      // the same every day); the usual habit always shows.
+      title: h.title,
       usualTitle: h.title,
-      plannedToday: !!planned,
-      plannedTime: planned ? planned.time : null,
+      plannedToday: false,
+      plannedTime: null,
       emoji: h.emoji || "",
       completed: completedHabitIds.has(h.id),
     });

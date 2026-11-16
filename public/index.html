@@ -399,6 +399,16 @@
   .qa-type-row button { margin: 0; width: auto; padding: 0 22px; font-size: 1.05rem; border-radius: 14px; }
   .pick-head.qa-or { font-size: 0.95rem; color: #6b7d75; }
   .lunchbox-chip.idea-plan-chip { background: #fff; box-shadow: inset 0 0 0 2px #f0d9b8; }
+  .plan-habits { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .ph-row { display: grid; grid-template-columns: 130px 1fr; gap: 10px; align-items: center; }
+  .ph-who { display: flex; align-items: center; font-size: 0.95rem; }
+  .ph-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .ph-habit { position: relative; background: #fff; border-radius: 12px; padding: 8px 10px; box-shadow: inset 0 0 0 2px #efe5d3; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .ph-habit.done { background: #edf7f0; box-shadow: inset 0 0 0 2px #b9dcc6; }
+  .ph-k { font-size: 0.7rem; font-weight: 800; color: #8a958d; text-transform: uppercase; letter-spacing: .03em; }
+  .ph-t { font-weight: 700; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ph-tick { position: absolute; top: 6px; right: 8px; color: #2f7d68; font-weight: 900; }
+  @media (max-width: 700px) { .ph-row { grid-template-columns: 1fr; gap: 4px; } }
   .member-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; box-shadow: 0 0 0 2px #fff; }
   .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--gold); font-size: 0.75rem; margin-left: 6px; }
   .pill.fuel { background: var(--peach); }
@@ -920,12 +930,16 @@
       </div>
       <div class="error hidden" id="eventError"></div>
     </div>
+    <div class="card full-width" id="planHabitsCard">
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><h3 style="margin:0;">⭐ Our everyday habits</h3><span class="muted" style="font-size:0.85rem;">the same 3 every day — tick them in Today</span></div>
+      <div id="planHabitsList" class="plan-habits"></div>
+    </div>
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-        <h3 style="margin:0;">📅 Plan my week</h3>
-        <button type="button" class="small secondary" id="plannerManageBtn" style="margin:0; width:auto;">⚙️ Ideas</button>
+        <h3 style="margin:0;">💡 Our activity ideas</h3>
+        <button type="button" class="small secondary" id="plannerManageBtn" style="margin:0; width:auto;">⚙️ Change ideas</button>
       </div>
-      <p class="muted planner-simple-hint">Tap a day on the calendar to add something — your saved ideas are there as tiles. <b>⚙️ Ideas</b> lets a parent change the lists.</p>
+      <p class="muted planner-simple-hint">These ideas show up as tiles when you tap a day on the calendar. <b>⚙️ Change ideas</b> to add your own.</p>
       <div class="planner-ideas">
       <p class="muted">Tap an idea to put it on a day.</p>
       <p class="muted hidden" id="plannerManageHint" style="background:#fff6ee; border-radius:8px; padding:6px 10px;">⚙️ Manage: tap ✕ to remove an idea, or add new ones below. Tap Done when finished.</p>
@@ -970,7 +984,7 @@
         </div>
       </div>
       </div>
-      <div style="margin-top:14px; padding-top:10px; border-top:1px dashed #eee3cf;">
+      <div class="hidden">
         <button type="button" class="small secondary" id="plannerWeekToggleBtn" style="margin:0; width:auto;">📅 Plan my week ▾</button>
         <div id="plannerWeekPlanWrap" class="hidden"></div>
       </div>
@@ -2651,7 +2665,7 @@ function drawQuickAdd() {
   const today = todayStr();
   $("qaDayChips").innerHTML = [0, 1, 2, 3, 4, 5, 6].map((i) => { const d = addDays(today, i); const l = i === 0 ? "Today" : i === 1 ? "Tomorrow" : new Date(d + "T00:00:00").toLocaleDateString([], { weekday: "short", day: "numeric" }); return `<button type="button" class="small ${qa.day === d ? "" : "secondary"}" data-qa-day="${d}">${l}</button>`; }).join("");
   const o = qa.tile !== null ? opts[qa.tile] : null;
-  const habitable = !qa.editId && o && o.category && qa.who.size <= 1;
+  const habitable = false; // calendar things no longer change anyone's habits
   $("qaHabitWrap").classList.toggle("hidden", !habitable);
   if (habitable) {
     const who = qa.who.size ? memberNameFor([...qa.who][0]) + "'s" : "everyone's";
@@ -3206,8 +3220,9 @@ async function renderHabits() {
   $("winDayDate").innerHTML = `📅 <b>${new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" })}</b> · 🎯 Do all 3 to win the day!`;
   const list = $("habitsList"); list.innerHTML = "";
 
-  habitDayPlanItems = planData.items || []; // the week plan is a nice-to-have, never blocks the habits card
+  habitDayPlanItems = []; // "Plan my week" was removed — habits stay the same every day (planData ignored)
   try { renderTodayPlan(); } catch (err) {}
+  try { renderPlanHabits(); } catch (err) {}
 
   // Tabs — one person's habits shown at a time instead of everyone stacked
   // in one long list. Keeps whoever's already selected if they still exist.
@@ -3527,9 +3542,21 @@ async function renderHabits() {
   });
 }
 
+// ⭐ Plan page: everyone's 3 everyday habits at a glance (replaces "Plan my week").
+function renderPlanHabits() {
+  const wrap = $("planHabitsList"); if (!wrap || !lastHabitsData) return;
+  const meta = { 1: ["🏃", "Move"], 2: ["🍳", "Cook"], 3: ["🏡", "Home"] };
+  wrap.innerHTML = (lastHabitsData.members || []).map((m) => {
+    const cells = [1, 2, 3].map((slot) => {
+      const h = (m.habits || []).find((x) => x.slot === slot);
+      return `<div class="ph-habit ${h && h.completed ? "done" : ""}"><span class="ph-k">${meta[slot][0]} ${meta[slot][1]}</span><span class="ph-t">${h ? `${escapeHtml(h.emoji || "")} ${escapeHtml(h.usualTitle || h.title)}` : '<span class="muted">not picked yet</span>'}</span>${h && h.completed ? '<span class="ph-tick">✓</span>' : ""}</div>`;
+    }).join("");
+    return `<div class="ph-row"><div class="ph-who">${whoMark(m.memberId, m.color)}<b>${escapeHtml(m.displayName)}</b></div><div class="ph-cells">${cells}</div></div>`;
+  }).join("") || '<p class="muted">Add your family first.</p>';
+}
 // "Plan my week" lives in the Planner card, for whoever's tab is showing in
 // Win the Day (normally "me" on this phone).
-let plannerWeekOpen = true; // "Plan my week" is the main thing on this card now
+let plannerWeekOpen = false; // "Plan my week" was removed (habits stay the same every day)
 function renderPlannerWeekPlan(m, weekStart) {
   const wrap = $("plannerWeekPlanWrap");
   $("plannerWeekToggleBtn").textContent = `📅 Plan my week${m ? " — " + m.displayName : ""} ${plannerWeekOpen ? "▴" : "▾"}`;

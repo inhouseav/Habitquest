@@ -4,6 +4,11 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-16 — "Plan my week" removed; habits stay the same every day
+- Maddie didn't want planned items swapping her habits on Today. Day plans no longer change anyone's habits (server always returns the usual habit; the app ignores old day plans; quick add no longer offers "make it a habit that day").
+- "Plan my week" is gone from the Plan page. In its place: "⭐ Our everyday habits", each person's 3 habits (Move / Cook / Home) with ✓ when done today.
+- The ideas card is now "💡 Our activity ideas" (⚙️ Change ideas); those ideas are the tiles in calendar quick add.
+
 ## 2026-11-16 — Family favourites pack: quicker, no worry about doubles
 - The button finishes as soon as the recipes are added. AI pictures are made afterwards in the background, with a "✨ Making recipe pictures… 3 of 20" note.
 - The pack button hides once the family has the recipes. The server already skipped recipes you have, so pressing twice never doubles up.
