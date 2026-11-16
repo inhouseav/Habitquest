@@ -4,6 +4,8 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+- "+ Add family member" now shows for kids too; once the family has a parent, it asks for the parent PIN first (so a kid can set up the family with a grown-up's OK).
+
 ## 2026-11-16 — Family started by a kid
 - If a family has no parent yet (e.g. a kid made it and picked "Child"), kids aren't put in kid view. "+ Add family member" opens straight away and suggests adding a Parent, with a note on the Family page.
 
