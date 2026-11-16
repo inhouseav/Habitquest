@@ -4,6 +4,8 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+- Removed "⭐ Our everyday habits" from the Plan page again (Maddie: not needed, habits live on Today). Card is hidden, code kept.
+
 ## 2026-11-16 — "Plan my week" removed; habits stay the same every day
 - Maddie didn't want planned items swapping her habits on Today. Day plans no longer change anyone's habits (server always returns the usual habit; the app ignores old day plans; quick add no longer offers "make it a habit that day").
 - "Plan my week" is gone from the Plan page. In its place: "⭐ Our everyday habits", each person's 3 habits (Move / Cook / Home) with ✓ when done today.
