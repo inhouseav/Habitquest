@@ -427,6 +427,7 @@
   .qadds-own { display: flex; gap: 6px; margin-top: 8px; }
   .qadds-own input { margin: 0; flex: 1; }
   .cal-day.dn-over { box-shadow: inset 0 0 0 3px #ffb703 !important; background: #fff4dc !important; }
+  .habit-row-btn.not-mine, button.not-mine { opacity: 0.6; cursor: not-allowed; }
   .member-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; box-shadow: 0 0 0 2px #fff; }
   .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--gold); font-size: 0.75rem; margin-left: 6px; }
   .pill.fuel { background: var(--peach); }
@@ -3381,7 +3382,18 @@ async function renderHabits() {
   if ($("rewardProgress") && activeM) loadRewardProgress($("rewardProgress"), activeM);
   renderPlannerWeekPlan(activeM, planWeekStart);
 
+  // 🙅 Only you can tick your own habits (a parent in parent mode can help;
+  // on a shared device there's no "you", so anyone can).
+  const ownerOf = (hid, bonus) => ((lastHabitsData && lastHabitsData.members) || []).find((mm) => (bonus ? mm.bonusHabits || [] : mm.habits || []).some((h) => h.id === hid));
+  const lockNotMine = (btn, hid, bonus) => {
+    const o = ownerOf(hid, bonus);
+    if (!o || canTickFor(o.memberId)) return false;
+    btn.classList.add("not-mine"); btn.title = `Only ${o.displayName} can tick ${o.displayName}'s habits`;
+    btn.onclick = () => toast(`👀 Only ${o.displayName} can tick ${o.displayName}'s habits`);
+    return true;
+  };
   list.querySelectorAll("button[data-habit]").forEach((btn) => {
+    if (lockNotMine(btn, btn.getAttribute("data-habit"), false)) return;
     btn.onclick = async () => {
       if (btn.classList.contains("done")) {
         // Tapped a ticked habit → untick it (a mis-tap).
@@ -3409,6 +3421,7 @@ async function renderHabits() {
   });
 
   list.querySelectorAll("button[data-bonus-habit]").forEach((btn) => {
+    if (lockNotMine(btn, btn.getAttribute("data-bonus-habit"), true)) return;
     btn.onclick = async () => {
       if (btn.classList.contains("done")) {
         btn.classList.remove("done"); btn.disabled = true;
@@ -3668,6 +3681,11 @@ function enableDropDrag(el, targetSel, onDrop, onTap) {
   });
 }
 
+function canTickFor(memberId) {
+  const me = getMe();
+  if (!me || me === "shared" || me === memberId) return true;
+  return isParentHere();
+}
 // ⭐ Plan page: everyone's 3 everyday habits at a glance (replaces "Plan my week").
 function renderPlanHabits() {
   const wrap = $("planHabitsList"); if (!wrap || !lastHabitsData) return;

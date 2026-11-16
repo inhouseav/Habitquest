@@ -4,6 +4,9 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-17 — You can only tick your own habits
+- On Today, someone else's habits are faded and can't be ticked or unticked ("👀 Only Jack can tick Jack's habits"). Exceptions: a parent in parent mode (to help little kids), and "We share this device" mode. App-side only (the server doesn't know which person is holding the device).
+
 ## 2026-11-17 — Profiles: "Add your own" on every tab
 - 😎 Me: add your own thing you love (saved in interests with a matching emoji, e.g. 🐴 Horse riding).
 - 🍽️ Meals: add your own meal. It's also added to Recipes as a dinner (with "✏️ Add the ingredients / steps" placeholders) and ❤️'d, so it works in the dinner planner.
