@@ -1022,9 +1022,11 @@
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
         <button class="small secondary" id="showAddRecipeBtn">+ Add a recipe</button>
         <button class="small secondary" id="addRecipePackBtn" type="button">🇦🇺 Add family favourites pack</button>
+        <button class="small secondary hidden" id="makeMissingPicsBtn" type="button">✨ Make missing pictures</button>
         <button class="small secondary" id="scanRecipeBtn">📷 Scan a recipe photo</button>
         <button class="small secondary" id="showLunchboxBuilderBtn">🎒 Build a lunchbox</button>
       </div>
+      <p class="muted hidden" id="packPicturesNote" style="margin:6px 0 0; font-size:0.85rem;"></p>
       <div id="lunchboxBuilder" class="hidden" style="margin-top: 12px;">
         <label>Lunchbox name</label>
         <input id="newLunchboxTitle" placeholder="e.g. Monday's lunchbox" />
@@ -4201,11 +4203,16 @@ let openRecipeDetailId = null;
 async function renderRecipes() {
   const data = await api("/api/recipes");
   recipesCache = data.recipes;
+  // Pack already added? Hide the button so it isn't pressed again.
+  $("addRecipePackBtn").classList.toggle("hidden", recipesCache.filter((r) => r.family_id).length >= 15);
   if ($("plannerRecipesPalette")) renderPlannerRecipesPane();
   try {
     const coverData = await api("/api/recipes/cover-photos");
     recipeCoverPhotos = coverData.covers || {};
   } catch (err) { recipeCoverPhotos = {}; }
+  const missingPics = recipesCache.filter((r) => r.family_id && !recipeCoverPhotos[r.id]);
+  $("makeMissingPicsBtn").classList.toggle("hidden", !missingPics.length || packPicturesRunning);
+  $("makeMissingPicsBtn").textContent = `✨ Make pictures for ${missingPics.length} recipe${missingPics.length === 1 ? "" : "s"}`;
 
   const tabsWrap = $("recipeCategoryTabs");
   const tabDefs = [{ key: "all", label: "All", emoji: "🍳" }, ...Object.keys(RECIPE_CATEGORY_META).map((k) => ({ key: k, ...RECIPE_CATEGORY_META[k] }))];
@@ -4419,20 +4426,38 @@ function resetRecipeForm() {
 // One tap: the family's favourites + popular Aussie family meals and
 // lunchboxes. Skips anything already there, then makes AI pictures for the
 // new ones in the background, one at a time.
+// Pressing it twice never makes copies (the server skips recipes you already
+// have). Recipes appear straight away; the AI pictures are made afterwards,
+// a few at a time, with a little progress note — no need to wait.
+let packPicturesRunning = false;
 $("addRecipePackBtn").onclick = () => withBusyButton($("addRecipePackBtn"), "Adding recipes...", async () => {
   try {
     const res = await api("/api/recipes/pack", { method: "POST", body: "{}" });
-    await renderRecipes();
+    await renderRecipes(); renderDinners().catch(() => {});
     loadPlannerMovementIdeas().catch(() => {});
-    toast(res.added.length ? `🍽️ Added ${res.added.length} recipes (${res.added.filter((r) => r.favorite).length} family favourites ⭐)` : "You already have all of these!");
-    for (let i = 0; i < res.added.length; i++) {
-      try {
-        await api("/api/ai/image", { method: "POST", body: JSON.stringify({ recipeId: res.added[i].id }) });
-        if (i % 3 === 2 || i === res.added.length - 1) await renderRecipes();
-      } catch (err) { if (i === 0) break; } // AI pictures not available — skip the rest quietly
-    }
+    toast(res.added.length ? `🍽️ Added ${res.added.length} recipes (${res.added.filter((r) => r.favorite).length} family favourites ⭐) — pictures are on their way!` : "👍 You already have all of these — nothing was doubled up.");
+    makePackPictures(res.added.map((r) => r.id));
   } catch (err) { toast(err.message, true); }
 });
+$("makeMissingPicsBtn").onclick = () => {
+  hide("makeMissingPicsBtn");
+  makePackPictures(recipesCache.filter((r) => r.family_id && !recipeCoverPhotos[r.id]).map((r) => r.id));
+};
+async function makePackPictures(ids) {
+  if (!ids.length || packPicturesRunning) return;
+  packPicturesRunning = true;
+  const note = $("packPicturesNote");
+  try {
+    for (let i = 0; i < ids.length; i++) {
+      note.textContent = `✨ Making recipe pictures… ${i + 1} of ${ids.length} (you can keep using the app)`;
+      show("packPicturesNote");
+      try {
+        await api("/api/ai/image", { method: "POST", body: JSON.stringify({ recipeId: ids[i] }) });
+        if (i % 3 === 2 || i === ids.length - 1) { await renderRecipes(); renderDinners().catch(() => {}); }
+      } catch (err) { if (i === 0) break; } // AI pictures not available — skip the rest quietly
+    }
+  } finally { packPicturesRunning = false; hide("packPicturesNote"); }
+}
 $("showAddRecipeBtn").onclick = () => { resetRecipeForm(); hide("lunchboxBuilder"); show("addRecipeForm"); };
 $("cancelEditRecipeBtn").onclick = () => { resetRecipeForm(); hide("addRecipeForm"); };
 

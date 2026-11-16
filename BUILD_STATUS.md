@@ -4,6 +4,11 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-16 — Family favourites pack: quicker, no worry about doubles
+- The button finishes as soon as the recipes are added. AI pictures are made afterwards in the background, with a "✨ Making recipe pictures… 3 of 20" note.
+- The pack button hides once the family has the recipes. The server already skipped recipes you have, so pressing twice never doubles up.
+- New "✨ Make pictures for N recipes" button appears when family recipes have no picture (e.g. the page was closed while pictures were being made).
+
 ## 2026-11-16 — Plan my week: drag your own ideas onto a day
 - Under the 3 habits, "✨ Our ideas" now lists the family's own ideas (Move / Cook / Home, made with ⚙️ Ideas). Drag (or tap → pick a day) to put one on a day; it stands in for that day's habit in that slot. A kid gets the grown-up PIN pad (swapping a habit is a parent job).
 
