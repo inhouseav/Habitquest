@@ -144,6 +144,12 @@
   #familyScreen .fs-item { background: #fff; border-radius: 16px; padding: 12px 16px; margin-bottom: 8px; font-size: 1.15rem; font-weight: 700; display: flex; gap: 12px; align-items: baseline; }
   #familyScreen .fs-item .fs-time { color: var(--terracotta); min-width: 78px; }
   #familyScreen .fs-item .fs-who { margin-left: auto; font-weight: 600; opacity: 0.6; font-size: 0.95rem; }
+  #familyScreen > div:first-child { overflow-y: auto; }
+  #familyScreen .fs-hrow { background: #fff; border-radius: 16px; padding: 8px 12px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+  #familyScreen .fs-hwho { display: flex; align-items: center; font-weight: 800; font-size: 1rem; flex: 0 0 110px; }
+  #familyScreen .fs-habs { display: flex; flex-wrap: wrap; gap: 6px; }
+  #familyScreen .fs-hab { background: #f6f1e7; border-radius: 999px; padding: 3px 9px; font-weight: 700; font-size: 0.85rem; }
+  #familyScreen .fs-hab.done { background: #e3f3e8; color: #2f7d68; }
   #familyScreen .fs-photo { border-radius: 28px; background: #e9e1d2 center / cover no-repeat; position: relative; overflow: hidden; min-height: 300px; display: flex; align-items: flex-end; }
   #familyScreen .fs-cap { width: 100%; padding: 40px 22px 18px; background: linear-gradient(transparent, rgba(24,63,53,0.75)); color: #fff; font-weight: 700; font-size: 1.2rem; }
   #familyScreen .fs-hint { position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; opacity: 0.45; font-size: 0.9rem; font-weight: 600; }
@@ -1365,6 +1371,8 @@
     <div id="fsCountdowns" class="countdown-strip"></div>
     <h3>📅 Today's plan</h3>
     <div id="fsPlan"></div>
+    <h3>⭐ Today's habits</h3>
+    <div id="fsHabits"></div>
   </div>
   <div class="fs-photo" id="fsPhoto"><div class="fs-cap" id="fsCap"></div></div>
   <div class="fs-hint">👆 Tap anywhere to open Fuel the Fun</div>
@@ -2269,10 +2277,12 @@ function renderCalMemberTabs() {
 // in case, so a bad date never causes a runaway loop).
 function eventOccurrenceKeys(e, rangeStartKey, rangeEndKeyInclusive) {
   const startKey = ymd(new Date(e.starts_at));
-  if (!e.recurrence) return [startKey];
+  // One-off events only count inside the range asked for (so "today" means today).
+  const inRange = startKey >= rangeStartKey && startKey <= rangeEndKeyInclusive ? [startKey] : [];
+  if (!e.recurrence) return inRange;
   let rec;
-  try { rec = typeof e.recurrence === "string" ? JSON.parse(e.recurrence) : e.recurrence; } catch (err) { return [startKey]; }
-  if (!rec || (rec.freq !== "weekly" && rec.freq !== "daily") || !rec.until) return [startKey];
+  try { rec = typeof e.recurrence === "string" ? JSON.parse(e.recurrence) : e.recurrence; } catch (err) { return inRange; }
+  if (!rec || (rec.freq !== "weekly" && rec.freq !== "daily") || !rec.until) return inRange;
   const keys = [];
   if (rec.freq === "daily") {
     let k = startKey > rangeStartKey ? startKey : rangeStartKey;
@@ -6714,8 +6724,19 @@ function fsPlanHtml() {
     if (!items.some((x) => x.title.toLowerCase() === it.title.toLowerCase())) items.push({ time: it.time || "", title: "⭐ " + it.title, who: memberNameFor(it.memberId) || "" });
   });
   items.sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
-  if (!items.length) return `<div class="fs-item">🌈 Nothing planned yet — a great day to win your habits!</div>`;
-  return items.slice(0, 6).map((x) => `<div class="fs-item"><span class="fs-time">${x.time ? escapeHtml(formatClock(x.time)) : "All day"}</span><span>${escapeHtml(x.title)}</span><span class="fs-who">${escapeHtml(x.who)}</span></div>`).join("");
+  if (!items.length) return `<div class="fs-item">🌈 Nothing on the calendar today — a great day to win your habits!</div>`;
+  return items.slice(0, 5).map((x) => `<div class="fs-item"><span class="fs-time">${x.time ? escapeHtml(formatClock(x.time)) : "All day"}</span><span>${escapeHtml(x.title)}</span><span class="fs-who">${escapeHtml(x.who)}</span></div>`).join("");
+}
+// Everyone's 3 habits for today, with ✓ for the ones done.
+function fsHabitsHtml() {
+  const members = (lastHabitsData && lastHabitsData.members) || [];
+  if (!members.length) return "";
+  return members.map((m) => {
+    const hs = [1, 2, 3].map((slot) => (m.habits || []).find((h) => h.slot === slot)).filter(Boolean);
+    const done = hs.filter((h) => h.completed).length;
+    const chips = hs.map((h) => `<span class="fs-hab ${h.completed ? "done" : ""}">${h.completed ? "✓" : "○"} ${escapeHtml(h.emoji || "")} ${escapeHtml(h.usualTitle || h.title)}</span>`).join("") || '<span class="fs-hab">no habits picked yet</span>';
+    return `<div class="fs-hrow"><div class="fs-hwho">${whoMark(m.memberId, m.color)}${escapeHtml(m.displayName)}${hs.length && done === hs.length ? " 🏆" : ""}</div><div class="fs-habs">${chips}</div></div>`;
+  }).join("");
 }
 async function fsLoadSlides() {
   try {
@@ -6733,6 +6754,7 @@ function fsShowSlide() {
 async function openFamilyScreen() {
   fsTick(); clearInterval(fsClockTimer); fsClockTimer = setInterval(fsTick, 15000);
   $("fsPlan").innerHTML = fsPlanHtml();
+  $("fsHabits").innerHTML = fsHabitsHtml();
   $("fsCountdowns").innerHTML = countdownChipsHtml();
   show("familyScreen");
   fsSlides = await fsLoadSlides(); fsIndex = 0; fsShowSlide();

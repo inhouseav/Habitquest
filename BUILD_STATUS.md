@@ -4,6 +4,10 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-16 — Family screen: only today's things, plus habits
+- Bug: `eventOccurrenceKeys()` returned a one-off event's date even when it was outside the range, so "Today's plan" (family screen and Today page) listed future events. One-off events now only count inside the range.
+- Family screen (after 2 minutes idle) adds "⭐ Today's habits": each person's 3 habits with ✓ for done, 🏆 when all 3 are done.
+
 ## 2026-11-16 — ⚡ Quick adds under the calendar
 - A row of chore/job chips under the calendar: trash, feed the dog, set the table, washing, school bag, plants, tidy room, homework.
   - Drag one onto a calendar day (mouse drag, or hold-then-drag on iPad/phone) and quick add opens for that day with the name filled in: pick who and a time, then Add.
