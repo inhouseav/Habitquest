@@ -6711,6 +6711,18 @@ showTab("today");
 
 // --- Boot ---
 (async function boot() {
+  // 🆕 Fresh start link (…/?new): forget whichever family this device was
+  // logged in to and open "Start a family", so a new family can be made.
+  try {
+    const u = new URL(location.href);
+    if (u.searchParams.has("new")) {
+      ["ftf_token", "ftf_me"].forEach((k) => { try { localStorage.removeItem(k); } catch (err) {} });
+      state.token = null;
+      u.searchParams.delete("new"); history.replaceState(null, "", u.pathname + (u.search || ""));
+      show("authScreen"); $("tabSignup").click();
+      return;
+    }
+  } catch (err) {}
   // Opened an invite link for a *different* family than the one this phone
   // is logged in to (e.g. the Smith demo from earlier)? Log that one out so
   // the invite's family login shows, with its code filled in.

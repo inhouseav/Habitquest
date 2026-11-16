@@ -4,6 +4,9 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-16 — Fresh start link
+- `https://habitquest.ihav.workers.dev/?new` logs this device out of whatever family it was in and opens "Start a family", so you can make a brand-new family. Other families are untouched.
+
 ## 2026-11-12 — Quick add uses favourites; new table cards
 - Calendar quick add: the person using the device sees their ❤️ Move/Home favourites first (marked ❤️).
 - New set of 12 display-table cards (scratchpad, given to Maddie as a PDF). New cards: Everyone's favourites, Kids pick / parent locks, Let's cook!, Our family cookbook. Updated: Win the Day (star jar + party), Kids choose, Plan the week together, Passport, Stars.
