@@ -4,6 +4,8 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+- Removed "💡 Our activity ideas" from the Plan page (Maddie's call). The saved ideas still power the quick add tiles and habit picker; new ones are still saved when typed in the habit editor. The card is hidden (id ideasCard), code kept.
+
 - Removed "⭐ Our everyday habits" from the Plan page again (Maddie: not needed, habits live on Today). Card is hidden, code kept.
 
 ## 2026-11-16 — "Plan my week" removed; habits stay the same every day
