@@ -4,6 +4,9 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-16 — Plan my week: drag your own ideas onto a day
+- Under the 3 habits, "✨ Our ideas" now lists the family's own ideas (Move / Cook / Home, made with ⚙️ Ideas). Drag (or tap → pick a day) to put one on a day; it stands in for that day's habit in that slot. A kid gets the grown-up PIN pad (swapping a habit is a parent job).
+
 ## 2026-11-16 — Quick add: type your own first
 - The quick add popup now opens with a big "✏️ What's happening?" box (type it → Next) at the top. The idea tiles sit below under "…or tap an idea". The old "Something new" tile is gone (the box replaces it).
 

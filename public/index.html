@@ -398,6 +398,7 @@
   .qa-type-row input { margin: 0; flex: 1; font-size: 1.15rem; padding: 14px 16px; border-radius: 14px; }
   .qa-type-row button { margin: 0; width: auto; padding: 0 22px; font-size: 1.05rem; border-radius: 14px; }
   .pick-head.qa-or { font-size: 0.95rem; color: #6b7d75; }
+  .lunchbox-chip.idea-plan-chip { background: #fff; box-shadow: inset 0 0 0 2px #f0d9b8; }
   .member-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; box-shadow: 0 0 0 2px #fff; }
   .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--gold); font-size: 0.75rem; margin-left: 6px; }
   .pill.fuel { background: var(--peach); }
@@ -3468,12 +3469,14 @@ async function renderHabits() {
     chip.ondragstart = (evt) => {
       evt.dataTransfer.setData("text/habit-plan-slot", chip.getAttribute("data-plan-slot"));
       evt.dataTransfer.setData("text/habit-plan-member", chip.getAttribute("data-plan-member"));
+      evt.dataTransfer.setData("text/habit-plan-idea", chip.getAttribute("data-plan-idea") || "");
     };
     chip.onclick = () => {
       habitPlanPicking = {
         memberId: chip.getAttribute("data-plan-member"),
         slot: Number(chip.getAttribute("data-plan-slot")),
         title: chip.getAttribute("data-plan-title"),
+        idea: chip.getAttribute("data-plan-idea") || "",
       };
       renderHabits();
     };
@@ -3481,9 +3484,9 @@ async function renderHabits() {
   planQueryAll("[data-habit-plan-pick-day]").forEach((btn) => {
     btn.onclick = async () => {
       if (!habitPlanPicking) return;
-      const { memberId, slot } = habitPlanPicking;
+      const { memberId, slot, idea } = habitPlanPicking;
       habitPlanPicking = null;
-      await assignHabitPlan(memberId, slot, btn.getAttribute("data-habit-plan-pick-day"));
+      await assignHabitPlan(memberId, slot, btn.getAttribute("data-habit-plan-pick-day"), idea);
     };
   });
   planQueryAll("[data-habit-plan-pick-cancel]").forEach((btn) => {
@@ -3517,7 +3520,7 @@ async function renderHabits() {
       const slot = evt.dataTransfer.getData("text/habit-plan-slot");
       const memberId = evt.dataTransfer.getData("text/habit-plan-member");
       if (!slot || !memberId) return;
-      await assignHabitPlan(memberId, Number(slot), row.getAttribute("data-habit-plan-day"));
+      await assignHabitPlan(memberId, Number(slot), row.getAttribute("data-habit-plan-day"), evt.dataTransfer.getData("text/habit-plan-idea"));
     };
   });
 }
@@ -3610,6 +3613,14 @@ function habitWeekPlanHtml(m, weekStart) {
     const label = `${h.emoji ? h.emoji + " " : ""}${h.usualTitle || h.title}`;
     return `<button type="button" class="lunchbox-chip" draggable="true" data-habit-plan-chip data-plan-slot="${h.slot}" data-plan-member="${m.memberId}" data-plan-title="${escapeAttr(label)}">${escapeHtml(label)}</button>`;
   }).join("");
+  // ✨ The family's own ideas (made with ⚙️ Ideas) can go on a day too —
+  // they stand in for that day's Move / Cook / Home habit.
+  const have = new Set(myHabits.map((h) => (h.usualTitle || h.title).toLowerCase()));
+  const ideaChips = [["movement", 1], ["cook", 2], ["home", 3]].flatMap(([cat, slot]) =>
+    (plannerIdeasByCategory[cat] || []).filter((i) => !have.has(i.title.toLowerCase())).map((i) => {
+      const label = `${habitEmojiFor(i.title, slot)} ${i.title}`;
+      return `<button type="button" class="lunchbox-chip idea-plan-chip" draggable="true" data-habit-plan-chip data-plan-idea="${escapeAttr(i.title)}" data-plan-slot="${slot}" data-plan-member="${m.memberId}" data-plan-title="${escapeAttr(label)}">${escapeHtml(label)}</button>`;
+    })).join("");
 
   const pickerHtml = habitPlanPicking && habitPlanPicking.memberId === m.memberId
     ? `<div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center; margin:6px 0; padding:6px 8px; background:#fff; border-radius:10px;">
@@ -3641,17 +3652,24 @@ function habitWeekPlanHtml(m, weekStart) {
   return `<div class="habit-week-plan" style="margin-top:10px;">
     <p class="muted" style="font-size:0.72rem; font-weight:700; margin:0 0 6px;">Drag or tap a habit onto a day — add a ⏰ time if you want a reminder</p>
     <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px;">${paletteHtml}</div>
+    ${ideaChips ? `<p class="muted" style="font-size:0.72rem; font-weight:700; margin:8px 0 6px;">✨ Our ideas — drag one onto a day too</p><div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px;">${ideaChips}</div>` : ""}
     ${pickerHtml}
     <div>${weekListHtml}</div>
   </div>`;
 }
 
-async function assignHabitPlan(memberId, slot, day) {
+async function assignHabitPlan(memberId, slot, day, idea) {
+  const send = () => api("/api/habit-day-plan", { method: "POST", body: JSON.stringify(idea ? { memberId, slot, day, title: idea } : { memberId, slot, day }) });
   try {
-    await api("/api/habit-day-plan", { method: "POST", body: JSON.stringify({ memberId, slot, day }) });
+    try { await send(); }
+    catch (err) {
+      // Swapping in a different idea for a day is a grown-up job.
+      if (err.status !== 403 || !idea) throw err;
+      await withParentPin(`put “${idea}” on the week`, send);
+    }
     await renderHabits();
-    toast("Added to your week plan!");
-  } catch (err) { toast(err.message, true); }
+    toast(idea ? `✨ ${idea} added to the week!` : "Added to your week plan!");
+  } catch (err) { if (err && err.message) toast(err.message, true); }
 }
 
 // Google Calendar items as bonus tickable items alongside the 3 typed
