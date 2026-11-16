@@ -1662,7 +1662,10 @@ function applyMeDefaults() {
   const me = getMe();
   const person = me && me !== "shared" ? state.members.find((m) => m.id === me) : null;
   // A kid's own phone: hide grown-up settings (invites, Google, PIN…).
-  document.body.classList.toggle("kid-view", !!(person && person.role === "child"));
+  // (Only when the family has a grown-up — a family made by a kid with no
+  // parent yet still needs to be able to add people.)
+  const hasParent = state.members.some((m) => m.role === "parent");
+  document.body.classList.toggle("kid-view", !!(person && person.role === "child" && hasParent));
   $("whoAmIBtn").textContent = person ? `👤 ${person.display_name} ▾` : me === "shared" ? "👥 Everyone ▾" : "👤 Who are you?";
   if (person) {
     habitsActiveMemberId = person.id;
@@ -1996,7 +1999,7 @@ document.querySelectorAll("[data-invite-role]").forEach((b) => { b.onclick = () 
 // them (a younger kid on a family device). "Resend" opens it pre-filled.
 function openPeoplePopup(mode, member) {
   $("inviteName").value = member ? member.display_name : ""; $("inviteEmail").value = ""; clearError("inviteError");
-  setInviteRole(member ? member.role : "child");
+  setInviteRole(member ? member.role : state.members.some((m) => m.role === "parent") ? "child" : "parent");
   $("invitePopupTitle").textContent = mode === "add" ? "👋 Add family member" : member ? `✉️ Invite ${member.display_name}` : "✉️ Invite someone";
   $("invitePopupBlurb").textContent = mode === "add"
     ? "Got an email for them? Send an invite and they'll join on their own phone. Younger kids can just be added and use a family device."
@@ -2129,6 +2132,12 @@ async function loadHome() {
 
 function renderMembers() {
   const list = $("membersList"); list.innerHTML = "";
+  if (!state.members.some((m) => m.role === "parent")) {
+    const note = document.createElement("p");
+    note.className = "admin-box to-give"; note.style.margin = "0 0 10px";
+    note.innerHTML = "👋 <b>Add a grown-up as a Parent</b> — they set habits and say OK to rewards. (Their parent PIN starts as <b>1234</b>.)";
+    list.appendChild(note);
+  }
   const notifySelect = $("notifyMemberSelect"); notifySelect.innerHTML = "";
   const aiSelect = $("aiMemberSelect"); aiSelect.innerHTML = "";
   const mealVoterSelect = $("mealVoterSelect"); mealVoterSelect.innerHTML = "";
@@ -2284,7 +2293,7 @@ async function giveStar(memberId) {
 }
 
 $("showAddMemberBtn").onclick = () => {
-  if (canProgram()) return openPeoplePopup("add");
+  if (canProgram() || !state.members.some((m) => m.role === "parent")) return openPeoplePopup("add");
   withParentPin("add family members", () => openPeoplePopup("add")).catch(() => {});
 };
 

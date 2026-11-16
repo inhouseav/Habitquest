@@ -4,6 +4,9 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-16 — Family started by a kid
+- If a family has no parent yet (e.g. a kid made it and picked "Child"), kids aren't put in kid view. "+ Add family member" opens straight away and suggests adding a Parent, with a note on the Family page.
+
 ## 2026-11-16 — New families: the creator can add people straight away
 - Bug: since the default parent PIN (1234), the parent who just created a family was locked out of parent jobs (no adding members, "Habits are set by a parent"). Fix: signup now unlocks parent mode for the creator on that device.
 - A parent who isn't unlocked gets "🔓 Unlock to set habits" on Today. "+ Add family member" asks for the PIN first instead of failing.
