@@ -4,6 +4,11 @@ Honest, up-to-date status of every feature. Nothing in this file is marked "done
 
 Status key: ✅ Working & tested · 🚧 In progress · ⛔ Not started · ⚠️ Demo/mock only (not real) · 🔒 Blocked (needs external setup)
 
+## 2026-11-17 — Profiles: "Add your own" on every tab
+- 😎 Me: add your own thing you love (saved in interests with a matching emoji, e.g. 🐴 Horse riding).
+- 🍽️ Meals: add your own meal. It's also added to Recipes as a dinner (with "✏️ Add the ingredients / steps" placeholders) and ❤️'d, so it works in the dinner planner.
+- Move / Cook / Home / Lunchbox already had it. More activity emojis (horse, guitar, piano, tennis, karate…).
+
 ## 2026-11-16 — Family screen: only today's things, plus habits
 - Bug: `eventOccurrenceKeys()` returned a one-off event's date even when it was outside the range, so "Today's plan" (family screen and Today page) listed future events. One-off events now only count inside the range.
 - Family screen (after 2 minutes idle) adds "⭐ Today's habits": each person's 3 habits with ✓ for done, 🏆 when all 3 are done.

@@ -1853,8 +1853,9 @@ function drawProfile() {
   let body = "";
   if (profileTab === "me") {
     body = `<p class="pf-q">What do you love doing? <span class="muted">(we use this for ideas)</span></p>
-      <div class="interest-grid">${INTERESTS.map(([k, e, l]) => `<button type="button" data-pf-interest="${k}" class="${loves.includes(k) ? "on" : ""}">${e} ${l}</button>`).join("")}</div>
-      <div class="pf-summary">${["move", "cook", "home", "recipes", "lunchbox"].map((k) => `<span>${PROFILE_TABS.find((t) => t[0] === k)[1]} <b>${favs[k].length}</b> ❤️</span>`).join("")}</div>`;
+      <div class="interest-grid">${INTERESTS.map(([k, e, l]) => `<button type="button" data-pf-interest="${k}" class="${loves.includes(k) ? "on" : ""}">${e} ${l}</button>`).join("")}${loves.filter((k) => !INTERESTS.some((i) => i[0] === k)).map((k) => `<button type="button" data-pf-interest="${escapeAttr(k)}" class="on">${escapeHtml(k)}</button>`).join("")}</div>
+      ${edit ? `<form class="pf-own" data-pf-own="interest"><input placeholder="＋ Add your own… e.g. Horse riding" maxlength="26" /><button type="submit" class="small" style="width:auto; margin:0;">Add ❤️</button></form>` : ""}
+      <div class="pf-summary" style="margin-top:12px;">${["move", "cook", "home", "recipes", "lunchbox"].map((k) => `<span>${PROFILE_TABS.find((t) => t[0] === k)[1]} <b>${favs[k].length}</b> ❤️</span>`).join("")}</div>`;
   } else if (["move", "cook", "home"].includes(profileTab)) {
     const slot = { move: 1, cook: 2, home: 3 }[profileTab];
     const ideas = interestIdeas(m, slot);
@@ -1869,7 +1870,8 @@ function drawProfile() {
   } else if (profileTab === "recipes") {
     const list = sortRecipesByLove(recipesCache);
     body = `<p class="pf-q">Which meals do you love? ❤️ Meals loved by 2+ people are <b>👨‍👩‍👧 family favourites</b> and come first when planning dinners.</p>
-      <div class="pf-grid">${list.map((r) => { const lovers = recipeLovers(r.id).filter((x) => x.id !== m.id); return tile("recipes", r.id, recipeEmoji(r), r.title, favs.recipes.includes(r.id), lovers.length ? `<span class="pf-also">${lovers.map((x) => x.avatar || "❤️").join("")}</span>` : ""); }).join("") || '<p class="muted">No recipes yet.</p>'}</div>`;
+      <div class="pf-grid">${list.map((r) => { const lovers = recipeLovers(r.id).filter((x) => x.id !== m.id); return tile("recipes", r.id, recipeEmoji(r), r.title, favs.recipes.includes(r.id), lovers.length ? `<span class="pf-also">${lovers.map((x) => x.avatar || "❤️").join("")}</span>` : ""); }).join("") || '<p class="muted">No recipes yet.</p>'}</div>
+      ${edit ? `<form class="pf-own" data-pf-own="meal"><input placeholder="＋ Add your own meal… e.g. Nan's lasagne" maxlength="60" /><button type="submit" class="small" style="width:auto; margin:0;">Add ❤️</button></form><p class="muted" style="font-size:0.8rem; margin:6px 0 0;">It's added to Recipes too — tap it there to fill in the ingredients and steps.</p>` : ""}`;
   } else {
     const items = [...favs.lunchbox.filter((f) => !LUNCHBOX_PALETTE_ITEMS.includes(f)), ...LUNCHBOX_PALETTE_ITEMS];
     body = `<p class="pf-q">What do you like in your lunchbox? ❤️ They come first in 🎒 Build a lunchbox.</p>
@@ -1905,6 +1907,21 @@ function drawProfile() {
     form.onsubmit = async (e) => {
       e.preventDefault(); if (!guard()) return;
       const key = form.getAttribute("data-pf-own"); let v = form.querySelector("input").value.trim(); if (!v) return;
+      if (key === "interest") {
+        const label = LEAD_EMOJI_RE.test(v) ? v : `${habitEmojiFor(v, 1)} ${v}`;
+        const set = [...new Set([...loves, label])];
+        try { await api(`/api/members/${m.id}/interests`, { method: "POST", body: JSON.stringify({ interests: set }) }); m.interests = JSON.stringify(set); drawProfile(); toast(`❤️ Saved ${label}`); } catch (err) { toast(err.message, true); }
+        return;
+      }
+      if (key === "meal") {
+        try {
+          const res = await api("/api/recipes", { method: "POST", body: JSON.stringify({ title: v, category: "dinner", ingredients: ["✏️ Add the ingredients"], steps: ["✏️ Add the steps"] }) });
+          await renderRecipes();
+          const f = memberFavs(m.id); f.recipes = [res.recipe.id, ...f.recipes]; await saveFavs(m.id, f);
+          drawProfile(); renderDinners().catch(() => {}); toast(`❤️ ${v} added to your meals and Recipes`);
+        } catch (err) { toast(err.message, true); }
+        return;
+      }
       if (key === "lunchbox" && !LEAD_EMOJI_RE.test(v)) v = `🍱 ${v}`;
       const f = memberFavs(m.id); if (!f[key].includes(v)) f[key] = [v, ...f[key]];
       try { await saveFavs(m.id, f); drawProfile(); toast(`❤️ Saved ${v}`); } catch (err) { toast(err.message, true); }
@@ -3904,6 +3921,9 @@ function topHabitsForSlot(slot, n = 5) {
 }
 // An emoji that suits a habit someone typed ("Walk the dog" → 🐕).
 const HABIT_EMOJI = [
+  [/horse|pony/i, "🐴"], [/guitar/i, "🎸"], [/piano|music|sing/i, "🎵"], [/gymnast/i, "🤸"], [/tennis/i, "🎾"], [/cricket/i, "🏏"],
+  [/basketball/i, "🏀"], [/karate|taekwondo|martial/i, "🥋"], [/surf/i, "🏄"], [/fishing/i, "🎣"], [/camp/i, "⛺"], [/chess/i, "♟️"],
+  [/gam(e|ing)/i, "🎮"], [/photo/i, "📷"], [/\bcats?\b|kitten/i, "🐱"], [/draw|paint/i, "🎨"], [/run(ning)?\b/i, "🏃"],
   [/netball/i, "🏐"], [/soccer|footy|football/i, "⚽"], [/bike|ride|cycl/i, "🚲"], [/scooter/i, "🛴"], [/dance/i, "💃"], [/swim/i, "🏊"],
   [/outside|outdoor|park|nature/i, "🌳"],
   [/dog/i, "🐕"], [/cat\b|pet|fish|rabbit|guinea/i, "🐾"], [/bed\b/i, "🛏️"], [/teeth|brush/i, "🪥"], [/water\b|drink/i, "💧"],
