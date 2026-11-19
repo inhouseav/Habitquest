@@ -2327,7 +2327,7 @@ function eventInvolvesMember(e, memberId) {
   if (memberId === "together") return isTogetherEvent(e);
   if (e.memberIds && e.memberIds.length) return e.memberIds.includes(memberId);
   if (e.member_id) return e.member_id === memberId;
-  return false;
+  return true; // whole-family ("Everyone") events show on each person's calendar too
 }
 
 // Display name + color for an event chip, covering all three shapes: one
@@ -2473,7 +2473,7 @@ function renderCalendarGrid() {
   const planChipsByDay = {};
   const planMembers = (lastHabitsData && lastHabitsData.members) || [];
   habitDayPlanItems.forEach((it) => {
-    if (calendarMemberFilter === "together" ? !it.isFamily : calendarMemberFilter !== "all" && it.memberId !== calendarMemberFilter) return;
+    if (calendarMemberFilter === "together" ? !it.isFamily : calendarMemberFilter !== "all" && !it.isFamily && it.memberId !== calendarMemberFilter) return;
     const m = planMembers.find((mm) => mm.memberId === it.memberId);
     const h = m && m.habits.find((hh) => hh.slot === it.slot);
     const title = it.title || (h && (h.usualTitle || h.title));
