@@ -1,7 +1,7 @@
-# Fuel the Fun — Project Brief
+# HabitQuest — Project Brief
 
 ## What this is
-Fuel the Fun is a healthy-habits app for children aged 7–12, built as Maddie's Steiner Tobias Project. It helps kids choose fun activities that build healthy habits — eating well, trying new foods, moving daily, spending time outside, learning where food comes from, and building healthy family routines — without it ever feeling like a chore, a diet, or a competition.
+HabitQuest is a healthy-habits app for children aged 7–12, built as Maddie's Steiner Tobias Project. It helps kids choose fun activities that build healthy habits — eating well, trying new foods, moving daily, spending time outside, learning where food comes from, and building healthy family routines — without it ever feeling like a chore, a diet, or a competition.
 
 ## Where it came from
 - V1 was built as a single-file, client-only Claude Artifact (HabitQuest): calendar-first planning, dynamic family members, "Pick 3 Habits for the Week," and an IDEA → ACTION system for turning vague challenges into concrete steps.

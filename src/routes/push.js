@@ -51,7 +51,7 @@ export async function sendTest(request, familyId, env) {
   const results = [];
   for (const sub of subs.results || []) {
     try {
-      const r = await sendWebPush(sub, { title: "Fuel the Fun 🌱", body: "Test notification — it works!" }, env);
+      const r = await sendWebPush(sub, { title: "HabitQuest 🌱", body: "Test notification — it works!" }, env);
       if (r.expired) await db.prepare("DELETE FROM push_subscriptions WHERE id = ?").bind(sub.id).run();
       results.push({ id: sub.id, ...r });
     } catch (err) {

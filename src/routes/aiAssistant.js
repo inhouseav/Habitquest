@@ -20,7 +20,7 @@ function buildPrompt(member, mood) {
     : "No specific interests are on file for them yet.";
   const moodLine = mood ? `Right now they said they're feeling: "${mood}".` : "";
 
-  return `You are a friendly, encouraging habit coach inside a kids' healthy-habits app called "Fuel the Fun", made for children aged 7-12 (and their families).
+  return `You are a friendly, encouraging habit coach inside a kids' healthy-habits app called "HabitQuest", made for children aged 7-12 (and their families).
 
 Suggest ONE fun, simple, real-world activity idea for ${member.display_name} (role: ${member.role}) to do today. ${interestsLine} ${moodLine}
 

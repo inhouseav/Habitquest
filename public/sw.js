@@ -1,15 +1,15 @@
-// Fuel the Fun — minimal service worker, just enough to receive push
+// HabitQuest — minimal service worker, just enough to receive push
 // notifications (no offline caching; this app always talks to the live API).
 
 self.addEventListener("push", (event) => {
-  let data = { title: "Fuel the Fun 🌱", body: "" };
+  let data = { title: "HabitQuest 🌱", body: "" };
   try {
     data = event.data.json();
   } catch (err) {
     if (event.data) data.body = event.data.text();
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || "Fuel the Fun 🌱", {
+    self.registration.showNotification(data.title || "HabitQuest 🌱", {
       body: data.body || "",
       icon: data.icon || undefined,
       badge: data.badge || undefined,

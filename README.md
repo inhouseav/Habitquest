@@ -1,4 +1,4 @@
-# Fuel the Fun (HabitQuest V2 — "GrowCrew")
+# HabitQuest (made for the Tobias Project — first named "Fuel the Fun")
 
 Maddie's Tobias Project: a healthy-habits app for kids 7–12, built for real as a Cloudflare Worker (static assets + API) + D1 + R2 app.
 

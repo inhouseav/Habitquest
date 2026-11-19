@@ -1,4 +1,4 @@
-// Fuel the Fun — unified Worker entry point.
+// HabitQuest — unified Worker entry point.
 // Serves the static app (public/) and handles every /api/* route.
 
 import { errorResponse, json } from "./lib/http.js";

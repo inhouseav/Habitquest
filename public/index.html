@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Fuel the Fun 🌱</title>
+<title>HabitQuest 🌱</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -840,7 +840,7 @@
 
   <!-- AUTH SCREEN -->
   <div id="authScreen">
-    <h1>Fuel the Fun 🌱</h1>
+    <h1>HabitQuest 🌱</h1>
     <p style="margin:-2px 0 12px;"><a href="/welcome" style="color:var(--terracotta); font-weight:700;">✨ New here? See how it works →</a></p>
     <div class="tabs">
       <div class="tab active" id="tabLogin">Log in</div>
@@ -879,7 +879,7 @@
   <!-- HOME SCREEN -->
   <div id="homeScreen" class="hidden">
     <div class="top-bar">
-      <h1 id="familyNameHeading">Fuel the Fun 🌱</h1>
+      <h1 id="familyNameHeading">HabitQuest 🌱</h1>
       <button class="who-chip" id="whoAmIBtn" type="button">👤 Who are you?</button>
     </div>
 
@@ -1376,7 +1376,7 @@
     <div id="fsHabits"></div>
   </div>
   <div class="fs-photo" id="fsPhoto"><div class="fs-cap" id="fsCap"></div></div>
-  <div class="fs-hint">👆 Tap anywhere to open Fuel the Fun</div>
+  <div class="fs-hint">👆 Tap anywhere to open HabitQuest</div>
 </div>
 <div id="quickAddPopup" class="ftf-overlay hidden" role="dialog" aria-modal="true">
   <div class="ftf-sheet wide">
@@ -2045,7 +2045,7 @@ function canProgram() {
 function inviteText() {
   const code = state.family ? state.family.joinCode : "";
   const name = state.family ? state.family.name : "our family";
-  return `Ready to Win the Day? 🌟 Join ${name} on Fuel the Fun!\n\nSee how it works and join here:\n${location.origin}/welcome?code=${code}\n\n1. Tap "Let's go!"\n2. Choose "Log in" — our family code ${code} is already filled in\n3. Type the family PIN (ask me for it)\n4. Tap "👤 Who's using this phone?" and pick your name\n5. Pick this week's reward, then go win the day!\n\nAdd your favourite recipes, exercise and home ideas so we can plan together. 🍳🚲🏡`;
+  return `Ready to Win the Day? 🌟 Join ${name} on HabitQuest!\n\nSee how it works and join here:\n${location.origin}/welcome?code=${code}\n\n1. Tap "Let's go!"\n2. Choose "Log in" — our family code ${code} is already filled in\n3. Type the family PIN (ask me for it)\n4. Tap "👤 Who's using this phone?" and pick your name\n5. Pick this week's reward, then go win the day!\n\nAdd your favourite recipes, exercise and home ideas so we can plan together. 🍳🚲🏡`;
 }
 // ✉️ Invite someone: name + email → (adds them to the family if new) →
 // opens Gmail in the browser with a personal invite. Their link carries
@@ -2061,7 +2061,7 @@ function personalInviteText(inv) {
   const fam = state.family ? state.family.name : "our family";
   const from = (meMember() || {}).display_name;
   const kid = inv.role !== "parent";
-  return `Hi ${inv.name}! 🌟\n\nYou're invited to join ${fam} on Fuel the Fun — the app where we have fun AND build healthy habits together.\n\n👉 Tap your personal link:\n${inv.link}\n\nThen:\n1. Tap "Let's go!" (our family code ${state.family ? state.family.joinCode : ""} is already filled in)\n2. Type the family PIN — ${from ? "ask " + from : "ask a parent"} (it's not in this email)\n3. Answer a quick fun quiz: what you love doing${kid ? ", your 3 habits and the reward you want to work towards 🎁" : " and your 3 habits"}\n\n⭐ How it works: tick your 3 habits each day to Win the Day. 1 star per habit, 2 for family activities, a bonus for trying a new food — and 12 stars by Saturday unlocks your reward!\n\nSee you in the app 💚${from ? "\n" + from : ""}`;
+  return `Hi ${inv.name}! 🌟\n\nYou're invited to join ${fam} on HabitQuest — the app where we have fun AND build healthy habits together.\n\n👉 Tap your personal link:\n${inv.link}\n\nThen:\n1. Tap "Let's go!" (our family code ${state.family ? state.family.joinCode : ""} is already filled in)\n2. Type the family PIN — ${from ? "ask " + from : "ask a parent"} (it's not in this email)\n3. Answer a quick fun quiz: what you love doing${kid ? ", your 3 habits and the reward you want to work towards 🎁" : " and your 3 habits"}\n\n⭐ How it works: tick your 3 habits each day to Win the Day. 1 star per habit, 2 for family activities, a bonus for trying a new food — and 12 stars by Saturday unlocks your reward!\n\nSee you in the app 💚${from ? "\n" + from : ""}`;
 }
 function setInviteRole(role) {
   inviteRole = role;
@@ -2124,7 +2124,7 @@ $("inviteNextBtn").onclick = () => withBusyButton($("inviteNextBtn"), "Making it
     hide("inviteStepForm"); show("inviteStepSend");
   } catch (err) { showError("inviteError", err.message); }
 });
-function inviteSubject() { return `${inviteMade.name}, you're invited to Fuel the Fun! 🌟`; }
+function inviteSubject() { return `${inviteMade.name}, you're invited to HabitQuest! 🌟`; }
 $("inviteGmailBtn").onclick = () => {
   const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(inviteMade.email)}&su=${encodeURIComponent(inviteSubject())}&body=${encodeURIComponent(personalInviteText(inviteMade))}`;
   const w = window.open(url, "_blank");
@@ -3878,7 +3878,7 @@ async function loadGoogleTodayItems(wrap) {
 }
 
 const BONUS_SLOTS = [4, 5];
-// Ideas from the 7 Fuel the Fun modules, offered under the right habit slot.
+// Ideas from the 7 HabitQuest modules, offered under the right habit slot.
 const MODULE_IDEAS = {
   1: [["🏃 Move Your Way", [["🌳", "Play outside for 30 mins"], ["🚲", "Ride to the park"], ["🤸", "Make up an obstacle course"]]],
       ["📵 Screen Balance", [["⚽", "Outdoor game instead of screens"]]]],
@@ -5592,7 +5592,7 @@ async function buildBook(recipes) {
   const cover = `<section class="bk-page bk-cover">
       <div class="bk-stickers">${stickers.map((e, i) => `<span style="--a:${i * 30}deg">${e}</span>`).join("")}</div>
       <div class="bk-cover-in">
-        <div class="bk-kicker">✨ Fuel the Fun presents ✨</div>
+        <div class="bk-kicker">✨ HabitQuest presents ✨</div>
         <h1>${escapeHtml(famName)}'s<br><span>Cookbook</span></h1>
         <p class="bk-sub">${recipes.length} recipes we love to cook together</p>
         <div class="bk-chefs">Our chefs: ${people}</div>
@@ -6105,7 +6105,7 @@ async function refreshGoogleCalUi() {
       $("connectGoogleBtn").style.display = "none";
       $("disconnectGoogleBtn").style.display = "inline-block";
     } else if (data.configured === false) {
-      $("googleCalStatus").textContent = "Linking to Google Calendar isn't switched on for this app yet — your Fuel the Fun calendar works fine on its own.";
+      $("googleCalStatus").textContent = "Linking to Google Calendar isn't switched on for this app yet — your HabitQuest calendar works fine on its own.";
       $("connectGoogleBtn").style.display = "none";
       $("disconnectGoogleBtn").style.display = "none";
     } else {
@@ -6402,17 +6402,17 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
 
   function buildNotesMarkdown(notes, stamp) {
     const lines = [
-      `# Fuel the Fun — ${notes.length} update${notes.length === 1 ? "" : "s"} for Claude`,
+      `# HabitQuest — ${notes.length} update${notes.length === 1 ? "" : "s"} for Claude`,
       "",
       `Exported: ${new Date().toLocaleString()}`,
-      notes.some((n) => n.image) ? `Screenshots are the files named fuelthefun-notes-${stamp}-NN.png — the number matches the note.` : "No screenshots in this batch.",
+      notes.some((n) => n.image) ? `Screenshots are the files named habitquest-notes-${stamp}-NN.png — the number matches the note.` : "No screenshots in this batch.",
       "",
     ];
     notes.forEach((n, i) => {
       const num = String(i + 1).padStart(2, "0");
       lines.push(`## ${i + 1}. ${(n.text.split("\n")[0] || "(see screenshot)").slice(0, 80)}`);
       if (n.label) lines.push(`- Section: ${n.label}`);
-      if (n.image) lines.push(`- Screenshot: fuelthefun-notes-${stamp}-${num}.png`);
+      if (n.image) lines.push(`- Screenshot: habitquest-notes-${stamp}-${num}.png`);
       lines.push(`- Screen size: ${n.viewport}${n.family ? ` · Family: ${n.family}` : ""}`);
       lines.push(`- Noted: ${new Date(n.createdAt).toLocaleString()}`);
       lines.push("", n.text || "(no words — see the screenshot)", "");
@@ -6430,10 +6430,10 @@ $("shoppingInfoBtn").onclick = () => { $("shoppingInfoText").classList.toggle("h
     notes.forEach((n, i) => {
       if (!n.image) return;
       const num = String(i + 1).padStart(2, "0");
-      setTimeout(() => downloadDataUrl(n.image, `fuelthefun-notes-${stamp}-${num}.png`), delay);
+      setTimeout(() => downloadDataUrl(n.image, `habitquest-notes-${stamp}-${num}.png`), delay);
       delay += 350; // browsers drop downloads fired all at the same instant
     });
-    setTimeout(() => downloadText(buildNotesMarkdown(notes, stamp), `fuelthefun-notes-${stamp}.md`), delay);
+    setTimeout(() => downloadText(buildNotesMarkdown(notes, stamp), `habitquest-notes-${stamp}.md`), delay);
     const files = notes.filter((n) => n.image).length + 1;
     toast(`Downloading ${files} file${files === 1 ? "" : "s"} — drag them all into your Claude chat. (If your browser asks, allow multiple downloads.)`);
   };
@@ -6550,7 +6550,7 @@ function drawSetup() {
   let next = "Next →";
   if (step === "hello") {
     html = `<div class="setup-big">👋🌟</div>
-      <h2 style="text-align:center;">Hi ${name}! Welcome to Fuel the Fun</h2>
+      <h2 style="text-align:center;">Hi ${name}! Welcome to HabitQuest</h2>
       <p style="text-align:center; margin:0;">Here's how it works:</p>
       <ul class="setup-list">
         <li>🌟 Every day you get <b>3 small habits</b> — one to Move, one to Cook, one for Home. Do all 3 to <b>Win the Day</b>!</li>

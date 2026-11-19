@@ -72,7 +72,7 @@ export async function callback(request, env, url) {
         .bind(stateRow.family_id, tokens.refresh_token)
         .run();
     }
-    return htmlResult("Google Calendar is connected! You can close this tab and go back to Fuel the Fun.", true);
+    return htmlResult("Google Calendar is connected! You can close this tab and go back to HabitQuest.", true);
   } catch (err) {
     return htmlResult(`Something went wrong connecting: ${err.message}`);
   }

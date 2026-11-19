@@ -81,7 +81,7 @@ export async function recipeFromPhoto(request, familyId, env) {
   if (bytes.byteLength > MAX_BYTES) return errorResponse("That photo is too large (max 8MB).");
 
   const base64 = arrayBufferToBase64(bytes);
-  const prompt = `You are reading a photo of a recipe (a cookbook page, a handwritten recipe card, or a packet) for a kids' family cooking app called "Fuel the Fun", for families with children aged 7-12.
+  const prompt = `You are reading a photo of a recipe (a cookbook page, a handwritten recipe card, or a packet) for a kids' family cooking app called "HabitQuest", for families with children aged 7-12.
 
 Extract the recipe's title, its ingredients (one per array entry, keep quantities/units as shown), and its steps (short, clear, one per array entry). Then pick the single best category for when this is usually eaten: breakfast, lunch, dinner, snacks, or lunchboxes.
 
@@ -121,7 +121,7 @@ export async function recipeFromName(request, familyId, env) {
   const name = (body && body.name ? String(body.name) : "").trim().slice(0, 100);
   if (!name) return errorResponse("Type a dish name first (e.g. \"veggie tacos\").");
 
-  const prompt = `You are a recipe writer for a kids' family cooking app called "Fuel the Fun", for families with children aged 7-12. Write a simple, family-friendly recipe for: "${name}".
+  const prompt = `You are a recipe writer for a kids' family cooking app called "HabitQuest", for families with children aged 7-12. Write a simple, family-friendly recipe for: "${name}".
 
 Rules:
 - Keep it realistic for a home kitchen, around 5-12 ingredients.
